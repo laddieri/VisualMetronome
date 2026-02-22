@@ -659,12 +659,26 @@ class Conductor {
       return [waypoints[n - 1][0], waypoints[n - 1][1]];
     }
 
-    const progress = getAnimationProgress();
-    // The beat that most recently fired (0-indexed).
-    // Use animBeat (updated atomically with lastBeatTime in the Draw callback)
-    // rather than currentBeat (incremented early in the audio thread) to avoid
-    // a visible position jump when progress resets to 0 on each beat.
-    const lastFiredBeatIndex = (animBeat - 1 + beatsPerMeasure) % beatsPerMeasure;
+    // Compute progress and waypoint selection independently of getAnimationProgress()
+    // so we can handle the Bluetooth delay window correctly for waypoint-based animation.
+    // During the delay window, animBeat has already incremented but the audio hasn't
+    // reached the speaker yet — we must keep the previous waypoint pair so the hand
+    // arrives at the beat waypoint exactly when the sound plays (not when it fires).
+    const beatDuration = 60 / Tone.Transport.bpm.value;
+    const timeSinceLastBeat = Tone.now() - lastBeatTime - (bluetoothDelay / 1000);
+
+    let progress, effectiveAnimBeat;
+    if (timeSinceLastBeat < 0) {
+      // Bluetooth delay window: continue on the previous segment.
+      progress = (timeSinceLastBeat + beatDuration) / beatDuration;
+      if (progress < 0) progress = 0;
+      effectiveAnimBeat = animBeat - 1; // keep previous waypoints until audio plays
+    } else {
+      progress = Math.min(timeSinceLastBeat / beatDuration, 1);
+      effectiveAnimBeat = animBeat;
+    }
+
+    const lastFiredBeatIndex = (effectiveAnimBeat - 1 + beatsPerMeasure) % beatsPerMeasure;
 
     const fromIdx = lastFiredBeatIndex % n;
     const toIdx = (fromIdx + 1) % n;
