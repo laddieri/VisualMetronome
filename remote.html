@@ -296,6 +296,22 @@
       border-top: 1px solid #374151;
       margin: 2px 0;
     }
+
+    /* ── Bluetooth delay ──────────────────────────────────────────────────── */
+    .bt-delay-display {
+      font-size: 0.82rem;
+      color: #93c5fd;
+      font-variant-numeric: tabular-nums;
+      min-width: 44px;
+      text-align: right;
+    }
+    .bt-delay-slider {
+      width: 100%;
+      height: 6px;
+      accent-color: #2563eb;
+      cursor: pointer;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -442,6 +458,16 @@
           <span class="toggle-track"></span>
         </label>
       </div>
+
+      <hr class="setting-divider">
+
+      <!-- Bluetooth delay -->
+      <div class="setting-row">
+        <span class="setting-label">Bluetooth Delay</span>
+        <span id="r-bt-delay-value" class="bt-delay-display">0 ms</span>
+      </div>
+      <input type="range" id="r-bt-delay" min="0" max="500" step="10" value="0" class="bt-delay-slider" aria-label="Bluetooth delay">
+      <p class="hint" style="margin-top:4px">Slide right if animation is ahead of the beat</p>
     </div>
   </div>
 
@@ -482,6 +508,8 @@
     var rWaltzbeat    = document.getElementById('r-waltzbeat');
     var rWaltzBeatRow = document.getElementById('r-waltzbeat-row');
     var rFullscreen  = document.getElementById('fullscreen-toggle');
+    var rBtDelay     = document.getElementById('r-bt-delay');
+    var rBtDelayVal  = document.getElementById('r-bt-delay-value');
 
     // Track current fullscreen state for button styling
     var currentFullscreen = false;
@@ -537,6 +565,10 @@
         } else {
           rFullscreen.classList.remove('active');
         }
+      }
+      if (msg.bluetoothDelay !== undefined) {
+        rBtDelay.value = msg.bluetoothDelay;
+        rBtDelayVal.textContent = msg.bluetoothDelay + ' ms';
       }
 
       updateConditionalUI();
@@ -746,6 +778,14 @@
 
     rWaltzbeat.addEventListener('change', function () {
       send({ type: 'setWaltzBeatEnabled', value: this.checked });
+    });
+
+    // Bluetooth delay slider
+    rBtDelay.addEventListener('input', function () {
+      rBtDelayVal.textContent = this.value + ' ms';
+    });
+    rBtDelay.addEventListener('change', function () {
+      send({ type: 'setBluetoothDelay', value: parseInt(this.value, 10) });
     });
 
     // ── Start ─────────────────────────────────────────────────────────────────

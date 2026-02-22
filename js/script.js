@@ -34,6 +34,7 @@ var lastBeatTime = 0; // Track when last beat fired for animation sync
 var animBeat = 0;    // Beat index for conductor animation, updated in Draw callback
 var bounceDirection = 'horizontal'; // 'horizontal' or 'vertical'
 var isFullscreen = false; // Fullscreen mode state
+var bluetoothDelay = 0; // Bluetooth audio delay compensation in milliseconds (0 = no offset)
 
 // Voice counting — pre-recorded samples played through Tone.js Players for
 // sample-accurate timing.  Unlike the Web Speech API (which goes through a
@@ -358,11 +359,13 @@ function getAnimationProgress() {
 
   const now = Tone.now();
   const beatDuration = 60 / Tone.Transport.bpm.value;
-  const timeSinceLastBeat = now - lastBeatTime;
+  // bluetoothDelay is in ms; subtract it so the animation leads the audio
+  // by that amount, compensating for speaker latency.
+  const timeSinceLastBeat = now - lastBeatTime - (bluetoothDelay / 1000);
 
-  // If timeSinceLastBeat is negative (clock adjustment) or exceeds 2 beat
-  // durations (tab was backgrounded, or scheduling hiccup), clamp to avoid
-  // visual glitches
+  // If timeSinceLastBeat is negative (clock adjustment or delay overshoot) or
+  // exceeds 2 beat durations (tab was backgrounded, or scheduling hiccup),
+  // clamp to avoid visual glitches
   if (timeSinceLastBeat < 0 || timeSinceLastBeat > beatDuration * 2) {
     return 0;
   }
@@ -1228,6 +1231,17 @@ function initSettingsListeners() {
   if (circleColorPicker) {
     circleColorPicker.addEventListener('input', (e) => {
       circleColor = e.target.value;
+      sendStateUpdate();
+    });
+  }
+
+  // Bluetooth delay slider
+  const bluetoothDelaySlider = document.getElementById('bluetooth-delay-slider');
+  const bluetoothDelayValue  = document.getElementById('bluetooth-delay-value');
+  if (bluetoothDelaySlider) {
+    bluetoothDelaySlider.addEventListener('input', (e) => {
+      bluetoothDelay = parseInt(e.target.value, 10);
+      if (bluetoothDelayValue) bluetoothDelayValue.textContent = bluetoothDelay;
       sendStateUpdate();
     });
   }
@@ -2138,6 +2152,7 @@ function sendStateUpdate() {
     waltzBeatEnabled: waltzBeatEnabled,
     isFullscreen:     isFullscreen,
     circleColor:      circleColor,
+    bluetoothDelay:   bluetoothDelay,
   };
   if (_remoteMode === 'ws' && _remoteWS && _remoteWS.readyState === WebSocket.OPEN) {
     _remoteWS.send(JSON.stringify(state));
@@ -2303,6 +2318,19 @@ function applyRemoteCommand(msg) {
         circleColor = c;
         var cp = document.getElementById('circle-color');
         if (cp) cp.value = c;
+        sendStateUpdate();
+      }
+      break;
+    }
+
+    case 'setBluetoothDelay': {
+      var bd = parseInt(msg.value, 10);
+      if (!isNaN(bd) && bd >= 0 && bd <= 500) {
+        bluetoothDelay = bd;
+        var bdSlider = document.getElementById('bluetooth-delay-slider');
+        var bdValue  = document.getElementById('bluetooth-delay-value');
+        if (bdSlider) bdSlider.value = bd;
+        if (bdValue)  bdValue.textContent = bd;
         sendStateUpdate();
       }
       break;

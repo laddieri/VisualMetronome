@@ -1205,6 +1205,13 @@ footer p {
   color: #a0aec0;
 }
 
+.bluetooth-delay-range {
+  width: 100%;
+  margin-top: 10px;
+  accent-color: #667eea;
+  cursor: pointer;
+}
+
 .settings-buttons {
   margin-top: 24px;
   text-align: center;
