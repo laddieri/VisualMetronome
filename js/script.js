@@ -359,14 +359,24 @@ function getAnimationProgress() {
 
   const now = Tone.now();
   const beatDuration = 60 / Tone.Transport.bpm.value;
-  // bluetoothDelay is in ms; subtract it so the animation leads the audio
-  // by that amount, compensating for speaker latency.
+  // bluetoothDelay is in ms; subtract it so the animation reaches the beat
+  // position exactly when the sound arrives at the speaker.
   const timeSinceLastBeat = now - lastBeatTime - (bluetoothDelay / 1000);
 
-  // If timeSinceLastBeat is negative (clock adjustment or delay overshoot) or
-  // exceeds 2 beat durations (tab was backgrounded, or scheduling hiccup),
-  // clamp to avoid visual glitches
-  if (timeSinceLastBeat < 0 || timeSinceLastBeat > beatDuration * 2) {
+  if (timeSinceLastBeat < 0) {
+    // We're inside the Bluetooth delay window: the audio-context beat has fired
+    // but the sound hasn't reached the speaker yet.  Rather than snapping the
+    // animation back to position 0, continue from the tail of the previous beat
+    // cycle so motion stays fluid.
+    const prevProgress = (timeSinceLastBeat + beatDuration) / beatDuration;
+    // Safety: out-of-range means delay > one full beat duration — hold at 0.
+    if (prevProgress < 0) return 0;
+    return prevProgress; // always < 1 since timeSinceLastBeat < 0
+  }
+
+  // If timeSinceLastBeat exceeds 2 beat durations (tab was backgrounded, or
+  // scheduling hiccup), clamp to avoid visual glitches.
+  if (timeSinceLastBeat > beatDuration * 2) {
     return 0;
   }
 
