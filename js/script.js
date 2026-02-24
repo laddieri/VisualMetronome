@@ -687,8 +687,9 @@ class Conductor {
 
     const eased = Easing.easeInOutQuad(progress);
     // Subtract bounce so hands rise between beats (smaller y = higher on canvas).
-    // Double the amplitude after the last beat of the measure.
-    const bounceAmp = fromIdx === n - 1 ? 140 : 70;
+    // Only the rebound after the last beat of the measure uses full amplitude (140);
+    // all other inter-beat bounces use a reduced amplitude (35) so they stay low.
+    const bounceAmp = fromIdx === n - 1 ? 140 : 35;
     const bounce = Math.sin(progress * Math.PI) * bounceAmp;
     return [fx + (tx - fx) * eased, fy + (ty - fy) * eased - bounce];
   }
