@@ -691,7 +691,22 @@ class Conductor {
     // all other inter-beat bounces use a reduced amplitude (35) so they stay low.
     const bounceAmp = fromIdx === n - 1 ? 140 : 35;
     const bounce = Math.sin(progress * Math.PI) * bounceAmp;
-    return [fx + (tx - fx) * eased, fy + (ty - fy) * eased - bounce];
+
+    // Horizontal rebound off the ictus: hand briefly continues its incoming
+    // direction before turning toward the next beat, for fluid conducting motion.
+    // Only applies at ictus-level beats (not the upbeat rebound).
+    let hRebound = 0;
+    if (fromIdx !== n - 1) {
+      const dx = tx - fx;
+      if (dx !== 0) {
+        const reboundAmp = 18;
+        // Compress into the first third of the beat; peaks early, fades smoothly
+        const t = Math.min(progress * 3, 1);
+        hRebound = -Math.sign(dx) * reboundAmp * Math.sin(t * Math.PI) * (1 - t);
+      }
+    }
+
+    return [fx + (tx - fx) * eased + hRebound, fy + (ty - fy) * eased - bounce];
   }
 
   pigmove() {
