@@ -695,7 +695,11 @@ class Conductor {
     // Only the rebound after the last beat of the measure uses full amplitude (140);
     // all other inter-beat bounces use a reduced amplitude (35) so they stay low.
     const bounceAmp = fromIdx === n - 1 ? 140 : 35;
-    const bounce = Math.sin(progress * Math.PI) * bounceAmp;
+    // Brief downward dip at beat start to smooth the direction change —
+    // the hand scoops into the ictus before the main upward arc.
+    const dipT = Math.min(progress * 6, 1); // spans first ~17% of beat
+    const dip = 15 * Math.sin(dipT * Math.PI);
+    const bounce = Math.sin(progress * Math.PI) * bounceAmp - dip;
 
     // Horizontal rebound off the ictus: hand briefly continues its incoming
     // direction before turning toward the next beat, for fluid conducting motion.
