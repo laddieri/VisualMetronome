@@ -1338,6 +1338,7 @@ document.addEventListener('visibilitychange', function() {
 
 // Create sound players and synthesizers for different animals
 var pigPlayer = new Tone.Player("./sounds/oink.wav").toMaster();
+pigPlayer.volume.value = 6;
 
 // Selfie clap synth - snappy percussive sound
 var selfieSynth = new Tone.NoiseSynth({
@@ -1349,6 +1350,7 @@ var selfieSynth = new Tone.NoiseSynth({
     release: 0.1
   }
 }).toMaster();
+selfieSynth.volume.value = 6;
 
 // Circle click synth - clean metronome tick
 var circleSynth = new Tone.Synth({
@@ -1360,6 +1362,7 @@ var circleSynth = new Tone.Synth({
     release: 0.05
   }
 }).toMaster();
+circleSynth.volume.value = 6;
 
 // Subdivision click synth - soft tick for subdivisions
 var subdivisionSynth = new Tone.Synth({
@@ -1371,7 +1374,7 @@ var subdivisionSynth = new Tone.Synth({
     release: 0.05
   }
 }).toMaster();
-subdivisionSynth.volume.value = -12; // Quieter than main beat
+subdivisionSynth.volume.value = -6; // Quieter than main beat
 
 // Accent synth - louder, higher-pitched click for beat 1
 var accentSynth = new Tone.Synth({
@@ -1383,7 +1386,7 @@ var accentSynth = new Tone.Synth({
     release: 0.05
   }
 }).toMaster();
-accentSynth.volume.value = 0; // Audible accent level
+accentSynth.volume.value = 6; // Audible accent level
 
 // Rock beat drum synthesizers (used when rockBeatEnabled is true in 4/4 time)
 var kickSynth = new Tone.MembraneSynth({
@@ -1396,7 +1399,7 @@ var kickSynth = new Tone.MembraneSynth({
     release: 0.1
   }
 }).toMaster();
-kickSynth.volume.value = 3;
+kickSynth.volume.value = 9;
 
 var snareSynth = new Tone.NoiseSynth({
   noise: { type: "white" },
@@ -1407,7 +1410,7 @@ var snareSynth = new Tone.NoiseSynth({
     release: 0.05
   }
 }).toMaster();
-snareSynth.volume.value = -4;
+snareSynth.volume.value = 2;
 
 var hihatSynth = new Tone.MetalSynth({
   frequency: 400,
@@ -1421,7 +1424,7 @@ var hihatSynth = new Tone.MetalSynth({
   resonance: 4000,
   octaves: 1.5
 }).toMaster();
-hihatSynth.volume.value = -12;
+hihatSynth.volume.value = -6;
 
 // TriggerSound Play - switches based on animal type
 function triggerSound(time, isAccent = false){
