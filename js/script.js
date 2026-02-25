@@ -439,6 +439,11 @@ const Easing = {
   // Quadratic ease in-out for smooth acceleration
   easeInOutQuad: function(t) {
     return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  },
+
+  // Cubic ease in-out — stronger contrast: lingers at endpoints, fast in the middle
+  easeInOutCubic: function(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 };
 
@@ -685,7 +690,7 @@ class Conductor {
     const [fx, fy] = waypoints[fromIdx];
     const [tx, ty] = waypoints[toIdx];
 
-    const eased = Easing.easeInOutQuad(progress);
+    const eased = Easing.easeInOutCubic(progress);
     // Subtract bounce so hands rise between beats (smaller y = higher on canvas).
     // Only the rebound after the last beat of the measure uses full amplitude (140);
     // all other inter-beat bounces use a reduced amplitude (35) so they stay low.
