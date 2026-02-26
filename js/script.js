@@ -701,24 +701,7 @@ class Conductor {
     const dip = 15 * Math.sin(dipT * Math.PI);
     const bounce = Math.sin(progress * Math.PI) * bounceAmp - dip;
 
-    // Horizontal rebound off the ictus: hand briefly continues its incoming
-    // direction before turning toward the next beat, for fluid conducting motion.
-    // Only applies at ictus-level beats (not the upbeat rebound).
-    // Uses sin² envelope so the hand eases out of the beat and eases back
-    // into the forward motion (zero velocity at both ends of the rebound).
-    let hRebound = 0;
-    if (fromIdx !== n - 1) {
-      const dx = tx - fx;
-      if (dx !== 0) {
-        const reboundAmp = 22;
-        // Rebound spans the first ~45% of the beat, peaking around 23%
-        const t = Math.min(progress * 2.2, 1);
-        const env = Math.pow(Math.sin(t * Math.PI), 2);
-        hRebound = -Math.sign(dx) * reboundAmp * env;
-      }
-    }
-
-    return [fx + (tx - fx) * eased + hRebound, fy + (ty - fy) * eased - bounce];
+    return [fx + (tx - fx) * eased, fy + (ty - fy) * eased - bounce];
   }
 
   pigmove() {
