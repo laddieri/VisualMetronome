@@ -23,6 +23,7 @@ var mirrorSelfies = true; // When true, selfie images face each other
 var beatsPerMeasure = 4;
 var currentBeat = 0;
 var subdivision = 'none'; // 'none', 'eighth', 'triplet', 'sixteenth'
+var swingEnabled = false; // Swing 8th notes (shifts subdivision from 50% to 66.7% of beat)
 var animalSoundEnabled = true; // Play animal sound on beat
 var accentEnabled = true;
 var flashEnabled = true; // Flash background on beat
@@ -1180,6 +1181,19 @@ function initSettingsListeners() {
   const waltzBeatCheckbox = document.getElementById('waltz-beat-enabled');
   const waltzBeatGroup = document.getElementById('waltz-beat-setting-group');
 
+  function updateSwingVisibility() {
+    var swingGroup = document.getElementById('swing-group');
+    if (swingGroup) {
+      swingGroup.style.display = (subdivision === 'eighth') ? '' : 'none';
+    }
+    // Auto-disable swing if subdivision changes away from eighth
+    if (subdivision !== 'eighth' && swingEnabled) {
+      swingEnabled = false;
+      var swingCb = document.getElementById('swing-enabled');
+      if (swingCb) swingCb.checked = false;
+    }
+  }
+
   function updateRockBeatVisibility() {
     if (rockBeatGroup) {
       rockBeatGroup.style.display = beatsPerMeasure === 4 ? '' : 'none';
@@ -1221,6 +1235,16 @@ function initSettingsListeners() {
   if (subdivisionSelect) {
     subdivisionSelect.addEventListener('change', (e) => {
       subdivision = e.target.value;
+      updateSwingVisibility();
+      sendStateUpdate();
+    });
+  }
+
+  // Swing 8th note toggle
+  const swingCheckbox = document.getElementById('swing-enabled');
+  if (swingCheckbox) {
+    swingCheckbox.addEventListener('change', (e) => {
+      swingEnabled = e.target.checked;
       sendStateUpdate();
     });
   }
@@ -1619,8 +1643,9 @@ function scheduleSubdivisionsForBeat(beatTime) {
 
   switch(subdivision) {
     case 'eighth':
-      // One subdivision at the halfway point
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + beatDuration / 2);
+      // One subdivision — straight at 50%, or swung to 66.7% (triplet feel)
+      var eighthOffset = swingEnabled ? (beatDuration * 2) / 3 : beatDuration / 2;
+      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + eighthOffset);
       break;
 
     case 'triplet':
@@ -2087,6 +2112,7 @@ function initPeerMode(remoteBtn) {
         direction:        bounceDirection,
         beatsPerMeasure:  beatsPerMeasure,
         subdivision:      subdivision,
+        swingEnabled:     swingEnabled,
         soundEnabled:     animalSoundEnabled,
         accentEnabled:    accentEnabled,
         flashEnabled:     flashEnabled,
@@ -2182,6 +2208,7 @@ function sendStateUpdate() {
     direction:        bounceDirection,
     beatsPerMeasure:  beatsPerMeasure,
     subdivision:      subdivision,
+    swingEnabled:     swingEnabled,
     soundEnabled:     animalSoundEnabled,
     accentEnabled:    accentEnabled,
     flashEnabled:     flashEnabled,
@@ -2286,6 +2313,22 @@ function applyRemoteCommand(msg) {
       subdivision = sub;
       var subSel = document.getElementById('subdivision');
       if (subSel) subSel.value = sub;
+      // Update swing visibility and auto-disable if leaving eighth
+      var swingGrp = document.getElementById('swing-group');
+      if (swingGrp) swingGrp.style.display = (sub === 'eighth') ? '' : 'none';
+      if (sub !== 'eighth' && swingEnabled) {
+        swingEnabled = false;
+        var swCb = document.getElementById('swing-enabled');
+        if (swCb) swCb.checked = false;
+      }
+      sendStateUpdate();
+      break;
+    }
+
+    case 'setSwingEnabled': {
+      swingEnabled = !!msg.value;
+      var swingCb2 = document.getElementById('swing-enabled');
+      if (swingCb2) swingCb2.checked = swingEnabled;
       sendStateUpdate();
       break;
     }

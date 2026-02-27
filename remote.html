@@ -406,6 +406,15 @@
         </select>
       </div>
 
+      <!-- Swing (shown only when subdivision is 8th notes) -->
+      <div class="setting-row" id="r-swing-row" style="display:none">
+        <span class="setting-label">Swing</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="r-swing">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
       <hr class="setting-divider">
 
       <!-- Toggle switches -->
@@ -499,6 +508,8 @@
     var rColorRow    = document.getElementById('r-color-row');
     var rBeats       = document.getElementById('r-beats');
     var rSubdivision = document.getElementById('r-subdivision');
+    var rSwing       = document.getElementById('r-swing');
+    var rSwingRow    = document.getElementById('r-swing-row');
     var rSound       = document.getElementById('r-sound');
     var rAccent      = document.getElementById('r-accent');
     var rFlash       = document.getElementById('r-flash');
@@ -540,6 +551,8 @@
       var beats = parseInt(rBeats.value);
       rRockbeatRow.style.display  = (beats === 4) ? '' : 'none';
       rWaltzBeatRow.style.display = (beats === 3) ? '' : 'none';
+      // Swing shown only when subdivision is eighth
+      rSwingRow.style.display = (rSubdivision.value === 'eighth') ? '' : 'none';
     }
 
     function onStateUpdate(msg) {
@@ -551,7 +564,11 @@
       if (msg.direction !== undefined)       rDirection.value   = msg.direction;
       if (msg.circleColor !== undefined)     rColor.value       = msg.circleColor;
       if (msg.beatsPerMeasure !== undefined) rBeats.value       = msg.beatsPerMeasure;
-      if (msg.subdivision !== undefined)     rSubdivision.value = msg.subdivision;
+      if (msg.subdivision !== undefined) {
+        rSubdivision.value = msg.subdivision;
+        rSwingRow.style.display = (msg.subdivision === 'eighth') ? '' : 'none';
+      }
+      if (msg.swingEnabled !== undefined)    rSwing.checked     = msg.swingEnabled;
       if (msg.soundEnabled !== undefined)    rSound.checked     = msg.soundEnabled;
       if (msg.accentEnabled !== undefined)   rAccent.checked    = msg.accentEnabled;
       if (msg.flashEnabled !== undefined)    rFlash.checked     = msg.flashEnabled;
@@ -753,6 +770,13 @@
     // Subdivision
     rSubdivision.addEventListener('change', function () {
       send({ type: 'setSubdivision', value: this.value });
+      rSwingRow.style.display = (this.value === 'eighth') ? '' : 'none';
+      if (this.value !== 'eighth') rSwing.checked = false;
+    });
+
+    // Swing
+    rSwing.addEventListener('change', function () {
+      send({ type: 'setSwingEnabled', value: this.checked });
     });
 
     // Toggle switches

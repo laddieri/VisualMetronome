@@ -1205,6 +1205,25 @@ footer p {
   color: #a0aec0;
 }
 
+/* Swing label — appears below the subdivision dropdown */
+.swing-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.swing-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
 .bluetooth-delay-range {
   width: 100%;
   margin-top: 10px;
