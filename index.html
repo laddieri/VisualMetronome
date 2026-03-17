@@ -252,8 +252,8 @@
       <div class="settings-container counting-trainer-container">
         <h2>Counting Trainer</h2>
         <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
-          Set a number of measures (and optional extra beats) to count silently.
-          The metronome will give a count-in, then go silent while the animation continues.
+          Set a number of measures (and optional extra beats) to count.
+          The metronome will give a count-in, then follow your sound and visual settings.
         </p>
 
         <div class="setting-group">
@@ -273,6 +273,22 @@
             <button id="ct-beats-plus" class="ct-stepper-btn" aria-label="Increase beats">+</button>
           </div>
           <p class="setting-hint">0 = end on a full measure</p>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="ct-sound-on">
+            Keep metronome sound on during counting
+          </label>
+          <p class="setting-hint">Sound always plays during the count-in</p>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="ct-visual-on" checked>
+            Keep visual animation on during counting
+          </label>
+          <p class="setting-hint">Animation always plays during the count-in</p>
         </div>
 
         <div class="setting-group">

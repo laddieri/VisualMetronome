@@ -47,6 +47,8 @@ var ctBeatsRemaining = 0;            // Beats left to count in the silent phase
 var ctMeasuresCompleted = 0;         // Measures completed so far (for display)
 var ctCurrentBeatInMeasure = 0;      // Current beat within the measure (for display)
 var ctDoneTime = 0;                  // Tone.now() when "done" was triggered
+var ctSoundOn = false;               // Keep metronome sound on during counting phase
+var ctVisualOn = true;               // Keep visual animation on during counting phase
 
 // Voice counting — pre-recorded samples played through Tone.js Players for
 // sample-accurate timing.  Unlike the Web Speech API (which goes through a
@@ -1613,9 +1615,21 @@ function scheduleMainBeat() {
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    // ── Counting Trainer: silent counting phase ────────────────────────────
+    // ── Counting Trainer: counting phase ────────────────────────────────────
     if (ctPhase === 'counting') {
-      // No sound — animation continues via the Draw callback below
+      // Play sound if user opted to keep it on
+      if (ctSoundOn) {
+        if (rockBeatEnabled && beatsPerMeasure === 4) {
+          triggerRockBeat(time, currentBeat);
+        } else if (waltzBeatEnabled && beatsPerMeasure === 3) {
+          triggerWaltzBeat(time, currentBeat);
+        } else {
+          var isAccentCt = currentBeat === 0;
+          triggerSound(time, isAccentCt);
+          scheduleSubdivisionsForBeat(time);
+        }
+        speakBeatNumber(currentBeat + 1, time);
+      }
       ctBeatsRemaining--;
 
       // Capture current measure/beat for display BEFORE incrementing
@@ -1940,6 +1954,8 @@ function initCountingTrainerListeners() {
   var ctModal = document.getElementById('counting-trainer-modal');
   var ctCloseBtn = document.getElementById('ct-close-btn');
   var ctEnabledCheckbox = document.getElementById('ct-enabled');
+  var ctSoundCheckbox = document.getElementById('ct-sound-on');
+  var ctVisualCheckbox = document.getElementById('ct-visual-on');
   var ctMeasuresInput = document.getElementById('ct-measures');
   var ctExtraBeatsInput = document.getElementById('ct-extra-beats');
 
@@ -1972,6 +1988,24 @@ function initCountingTrainerListeners() {
       if (ctBtn) {
         ctBtn.classList.toggle('ct-active', countingTrainerEnabled);
       }
+      sendStateUpdate();
+    });
+  }
+
+  // Sound on/off during counting
+  if (ctSoundCheckbox) {
+    ctSoundCheckbox.checked = ctSoundOn;
+    ctSoundCheckbox.addEventListener('change', function(e) {
+      ctSoundOn = e.target.checked;
+      sendStateUpdate();
+    });
+  }
+
+  // Visual on/off during counting
+  if (ctVisualCheckbox) {
+    ctVisualCheckbox.checked = ctVisualOn;
+    ctVisualCheckbox.addEventListener('change', function(e) {
+      ctVisualOn = e.target.checked;
       sendStateUpdate();
     });
   }
@@ -2225,7 +2259,12 @@ function draw() {
   push();
   scale(canvasScale);
 
-  if (animalType === 'conductor') {
+  // Hide animals during counting phase when visual is off
+  var ctHideVisual = ctPhase === 'counting' && !ctVisualOn;
+
+  if (ctHideVisual) {
+    // Skip animal rendering — canvas stays blank (just background)
+  } else if (animalType === 'conductor') {
     // Conductor mode: both hands move in a 2D beat pattern regardless of direction setting
     animal1.pigmove();
     animal2.pigmove();
@@ -2283,6 +2322,19 @@ function draw() {
     fill(255);
     textAlign(CENTER, CENTER);
     text(label, 320, bannerY);
+
+    // Second line: sound/visual mode
+    var modeLabel = (ctSoundOn ? 'Sound ON' : 'Sound OFF') + '  |  ' +
+                    (ctVisualOn ? 'Visual ON' : 'Visual OFF');
+    textSize(12);
+    textStyle(NORMAL);
+    var modeY = bannerY + 24;
+    var mtw = textWidth(modeLabel);
+    fill(102, 126, 234, 140);
+    rect(320, modeY, mtw + 24, 22, 11);
+    fill(255, 255, 255, 220);
+    text(modeLabel, 320, modeY);
+
     // Reset text style
     textStyle(NORMAL);
     rectMode(CORNER);
@@ -2451,6 +2503,8 @@ function initPeerMode(remoteBtn) {
         countingTrainerEnabled: countingTrainerEnabled,
         ctTargetMeasures: ctTargetMeasures,
         ctTargetExtraBeats: ctTargetExtraBeats,
+        ctSoundOn: ctSoundOn,
+        ctVisualOn: ctVisualOn,
       });
     });
     conn.on('data', function (data) {
@@ -2551,6 +2605,8 @@ function sendStateUpdate() {
     countingTrainerEnabled: countingTrainerEnabled,
     ctTargetMeasures: ctTargetMeasures,
     ctTargetExtraBeats: ctTargetExtraBeats,
+    ctSoundOn: ctSoundOn,
+    ctVisualOn: ctVisualOn,
   };
   if (_remoteMode === 'ws' && _remoteWS && _remoteWS.readyState === WebSocket.OPEN) {
     _remoteWS.send(JSON.stringify(state));
@@ -2785,6 +2841,22 @@ function applyRemoteCommand(msg) {
         if (ctBIn) ctBIn.value = b;
         sendStateUpdate();
       }
+      break;
+    }
+
+    case 'setCtSoundOn': {
+      ctSoundOn = !!msg.value;
+      var ctSCb = document.getElementById('ct-sound-on');
+      if (ctSCb) ctSCb.checked = ctSoundOn;
+      sendStateUpdate();
+      break;
+    }
+
+    case 'setCtVisualOn': {
+      ctVisualOn = !!msg.value;
+      var ctVCb = document.getElementById('ct-visual-on');
+      if (ctVCb) ctVCb.checked = ctVisualOn;
+      sendStateUpdate();
       break;
     }
 
