@@ -858,14 +858,17 @@ class Conductor {
     }
 
     // Conductor's right hand (direction === -1, left side of canvas from viewer) holds the baton
+    // Baton angles inward toward center (x=320) rather than extending along the arm.
     if (this.direction === -1) {
       const armDx = this.x - shoulderX;
       const armDy = this.y - shoulderY;
       const armLen = Math.sqrt(armDx * armDx + armDy * armDy);
       if (armLen > 0) {
         const batonLen = 60;
-        const batonX = this.x + (armDx / armLen) * batonLen;
-        const batonY = this.y + (armDy / armLen) * batonLen;
+        // Rotate arm direction ~45° inward (clockwise for left-side hand)
+        const angle = Math.atan2(armDy, armDx) + Math.PI * 0.25;
+        const batonX = this.x + Math.cos(angle) * batonLen;
+        const batonY = this.y + Math.sin(angle) * batonLen;
         stroke(230, 220, 200);
         strokeWeight(3);
         line(this.x, this.y, batonX, batonY);
