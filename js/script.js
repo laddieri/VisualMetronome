@@ -31,6 +31,7 @@ var voiceCountEnabled = false; // Count beats aloud
 var rockBeatEnabled = false; // Rock beat drum machine (4/4 only)
 var waltzBeatEnabled = false; // Waltz beat drum machine (3/4 only)
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
+var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
 var lastBeatTime = 0; // Track when last beat fired for animation sync
 var animBeat = 0;    // Beat index for conductor animation, updated in Draw callback
 var bounceDirection = 'horizontal'; // 'horizontal' or 'vertical'
@@ -1554,7 +1555,7 @@ function scheduleMainBeat() {
   Tone.Transport.scheduleRepeat(function(time) {
     // ── Count-in phase ──────────────────────────────────────────────────────
     if (countInBeatsRemaining > 0) {
-      const totalCountIn = 2 * beatsPerMeasure;
+      const totalCountIn = countInMeasures * beatsPerMeasure;
       const beatIndex = totalCountIn - countInBeatsRemaining; // 0-based position in count-in
       const isCountInAccent = beatIndex % beatsPerMeasure === 0;
 
@@ -1575,8 +1576,8 @@ function scheduleMainBeat() {
           lastBeatTime = Tone.now();
           animBeat = 0;
         }, time);
-      } else if (beatsPerMeasure === 4 && beatIndex < beatsPerMeasure) {
-        // 4/4 first count-in measure: speak only on beats 1 & 3 ("one", "two"),
+      } else if (beatsPerMeasure === 4 && beatIndex < beatsPerMeasure && countInMeasures >= 2) {
+        // 4/4 first count-in measure of a 2-bar count-in: speak only on beats 1 & 3 ("one", "two"),
         // leave beats 2 & 4 silent so the pattern is "one – two – | one two ready go".
         if (beatIndex % 2 === 0) {
           speakWord(String(beatIndex / 2 + 1), time); // beatIndex 0→"1", 2→"2"
@@ -1669,6 +1670,7 @@ scheduleMainBeat();
 
 //start/stop the transport
 const _playToggleEl      = document.querySelector('tone-play-toggle');
+const _countIn1Btn       = document.getElementById('count-in-1-play-btn');
 const _countInBtn        = document.getElementById('count-in-play-btn');
 const _stopBtn           = document.getElementById('stop-btn');
 const _playBtnsContainer = document.getElementById('play-buttons-container');
@@ -1711,9 +1713,14 @@ _playToggleEl.addEventListener('change', () => {
   _ensureAudioContext(() => toggleTransport(false));
 });
 
+// +1 button: start with 1-measure count-in
+_countIn1Btn.addEventListener('click', () => {
+  _ensureAudioContext(() => toggleTransport(1));
+});
+
 // +2 button: start with 2-measure count-in
 _countInBtn.addEventListener('click', () => {
-  _ensureAudioContext(() => toggleTransport(true));
+  _ensureAudioContext(() => toggleTransport(2));
 });
 
 // Stop button: stop the metronome and restore the two play buttons
@@ -1729,6 +1736,8 @@ function toggleTransport(withCountIn) {
     lastBeatTime = 0;
     animBeat = 0;
     countInBeatsRemaining = 0;
+    countInMeasures = 0;
+    _countIn1Btn.classList.remove('active');
     _countInBtn.classList.remove('active');
     _setPlayTogglePlaying(false);
     _updatePlayStopUI(false);
@@ -1737,13 +1746,17 @@ function toggleTransport(withCountIn) {
     currentBeat = 0;
     lastBeatTime = 0;
     animBeat = 0;
-    countInBeatsRemaining = withCountIn ? 2 * beatsPerMeasure : 0;
+    // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
+    countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
+    countInBeatsRemaining = countInMeasures * beatsPerMeasure;
     Tone.Transport.start();
     // Always sync the play-toggle visual — needed when called from remote
     // (clicking tone-play-toggle directly already updates it before firing 'change',
     // so setting .playing = true again is a safe no-op in that path).
     _setPlayTogglePlaying(true);
-    if (withCountIn) {
+    if (countInMeasures === 1) {
+      _countIn1Btn.classList.add('active');
+    } else if (countInMeasures === 2) {
       _countInBtn.classList.add('active');
     }
     _updatePlayStopUI(true);
@@ -2241,9 +2254,15 @@ function applyRemoteCommand(msg) {
       }
       break;
 
+    case 'playWithCountIn1':
+      if (Tone.Transport.state !== 'started') {
+        _ensureAudioContext(function () { toggleTransport(1); });
+      }
+      break;
+
     case 'playWithCountIn':
       if (Tone.Transport.state !== 'started') {
-        _ensureAudioContext(function () { toggleTransport(true); });
+        _ensureAudioContext(function () { toggleTransport(2); });
       }
       break;
 
