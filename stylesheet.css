@@ -445,23 +445,16 @@ tone-play-toggle {
 }
 
 .play-button-group {
-  display: grid;
-  align-items: center;
-  justify-items: start;
+  position: relative;
   margin: 0 8px;
   flex-shrink: 0;
   align-self: center;
 }
 
-/* Both children share the same grid cell so the group always holds
-   the width of the larger child (the 3 play buttons), preventing the
-   tempo slider from resizing when switching to/from the stop button. */
-.play-button-group > * {
-  grid-area: 1 / 1;
-}
-
-/* Override global .hidden so the inactive child stays in layout flow
-   (invisible, non-interactive) rather than collapsing to display:none. */
+/* The play-buttons-container always stays in normal flow so it
+   determines the group's width, even when visually hidden.
+   The stop button is absolutely positioned on top so it never
+   affects the group's layout size. */
 .play-button-group > .hidden {
   display: flex !important;
   visibility: hidden;
@@ -506,6 +499,9 @@ tone-play-toggle {
 }
 
 #stop-btn {
+  position: absolute;
+  top: 0;
+  left: 0;
   font-size: 16px;
   font-weight: 700;
   background: #e53e3e;
@@ -517,7 +513,6 @@ tone-play-toggle {
   height: 44px;
   cursor: pointer;
   transition: background 0.15s ease, filter 0.15s ease;
-  flex-shrink: 0;
 }
 
 #stop-btn:hover {
