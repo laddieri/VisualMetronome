@@ -120,6 +120,7 @@
             </div>
 
             <div class="controls-utility">
+              <button id="song-sections-btn" class="utility-btn" title="Song Sections">🎶</button>
               <button id="counting-trainer-btn" class="utility-btn" title="Counting Trainer">🎯</button>
               <button id="fullscreen-btn" class="utility-btn" title="Fullscreen Mode">⛶</button>
               <button id="settings-btn" class="utility-btn" title="Settings">⚙️</button>
@@ -303,6 +304,37 @@
 
         <div class="settings-buttons">
           <button id="ct-close-btn" class="settings-btn-close">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Song Sections Modal -->
+    <div id="song-sections-modal" class="settings-modal hidden">
+      <div class="settings-container song-sections-container">
+        <h2>Song Sections</h2>
+        <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
+          Define sections with different tempos and time signatures.
+          The metronome will play through all sections in order.
+        </p>
+
+        <div id="song-sections-list">
+          <!-- Sections will be rendered here dynamically -->
+        </div>
+
+        <div style="text-align:center; margin: 16px 0;">
+          <button id="song-add-section-btn" class="song-add-btn" title="Add section">+ Add Section</button>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="song-mode-enabled">
+            Enable song mode
+          </label>
+          <p class="setting-hint">When enabled, play will run through all sections in order</p>
+        </div>
+
+        <div class="settings-buttons">
+          <button id="song-sections-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>
     </div>

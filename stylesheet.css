@@ -1535,6 +1535,167 @@ footer p {
   padding: 6px 18px;
 }
 
+/* Song Sections */
+.song-sections-container {
+  max-width: 520px;
+}
+
+#song-sections-btn.ct-active {
+  background: #f0e6ff;
+  border-color: #764ba2;
+  box-shadow: 0 0 0 2px rgba(118, 75, 162, 0.3);
+}
+
+.song-section-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.song-section-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #4a5568;
+  min-width: 22px;
+  align-self: center;
+}
+
+.song-section-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.song-field-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.song-section-input {
+  width: 100%;
+  padding: 6px 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #2d3748;
+  text-align: center;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  -moz-appearance: textfield;
+}
+
+.song-section-input::-webkit-outer-spin-button,
+.song-section-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.song-section-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.song-section-select {
+  width: 100%;
+  padding: 6px 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #2d3748;
+  text-align: center;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  appearance: none;
+}
+
+.song-section-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.song-section-delete {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: #fed7d7;
+  color: #e53e3e;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.song-section-delete:hover {
+  background: #feb2b2;
+}
+
+.song-add-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.song-add-btn:hover {
+  background: #5a67d8;
+}
+
+/* Song progress display on canvas area */
+.song-progress-display {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 11;
+  pointer-events: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  white-space: nowrap;
+}
+
+.song-progress-display.active {
+  background: rgba(118, 75, 162, 0.7);
+  color: white;
+}
+
+.song-progress-display.done {
+  background: rgba(72, 187, 120, 0.85);
+  color: white;
+  font-size: 1rem;
+  padding: 6px 18px;
+}
+
 @media (max-width: 480px) {
   .fullscreen-exit-btn {
     top: 10px;
