@@ -707,8 +707,15 @@ footer p {
   }
 
   .controls-primary {
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
     padding-bottom: 10px;
+  }
+
+  .play-button-group {
+    margin: 0;
+    align-self: flex-start;
   }
 
   .controls-primary tone-play-toggle,
@@ -720,6 +727,8 @@ footer p {
 
   .tempo-controls {
     gap: 4px;
+    flex: unset;
+    width: 100%;
   }
 
   .tempo-slider-row {
