@@ -1978,7 +1978,10 @@ function initCountingTrainerListeners() {
   if (ctMeasuresInput) {
     ctMeasuresInput.value = ctTargetMeasures;
     ctMeasuresInput.addEventListener('change', function(e) {
-      ctTargetMeasures = Math.max(1, Math.min(99, parseInt(e.target.value) || 4));
+      ctTargetMeasures = Math.max(0, Math.min(99, parseInt(e.target.value) || 0));
+      // Ensure at least 1 total beat (0 measures requires extra beats > 0)
+      if (ctTargetMeasures === 0 && ctTargetExtraBeats === 0) ctTargetExtraBeats = 1;
+      if (ctExtraBeatsInput) ctExtraBeatsInput.value = ctTargetExtraBeats;
       e.target.value = ctTargetMeasures;
       sendStateUpdate();
     });
@@ -1989,6 +1992,8 @@ function initCountingTrainerListeners() {
     ctExtraBeatsInput.value = ctTargetExtraBeats;
     ctExtraBeatsInput.addEventListener('change', function(e) {
       ctTargetExtraBeats = Math.max(0, Math.min(beatsPerMeasure - 1, parseInt(e.target.value) || 0));
+      // Ensure at least 1 total beat
+      if (ctTargetMeasures === 0 && ctTargetExtraBeats === 0) ctTargetExtraBeats = 1;
       e.target.value = ctTargetExtraBeats;
       sendStateUpdate();
     });
@@ -2002,7 +2007,12 @@ function initCountingTrainerListeners() {
 
   if (measMinus) {
     measMinus.addEventListener('click', function() {
-      ctTargetMeasures = Math.max(1, ctTargetMeasures - 1);
+      ctTargetMeasures = Math.max(0, ctTargetMeasures - 1);
+      // Ensure at least 1 total beat
+      if (ctTargetMeasures === 0 && ctTargetExtraBeats === 0) {
+        ctTargetExtraBeats = 1;
+        if (ctExtraBeatsInput) ctExtraBeatsInput.value = ctTargetExtraBeats;
+      }
       if (ctMeasuresInput) ctMeasuresInput.value = ctTargetMeasures;
       sendStateUpdate();
     });
@@ -2016,7 +2026,8 @@ function initCountingTrainerListeners() {
   }
   if (beatsMinus) {
     beatsMinus.addEventListener('click', function() {
-      ctTargetExtraBeats = Math.max(0, ctTargetExtraBeats - 1);
+      var minBeats = ctTargetMeasures === 0 ? 1 : 0;
+      ctTargetExtraBeats = Math.max(minBeats, ctTargetExtraBeats - 1);
       if (ctExtraBeatsInput) ctExtraBeatsInput.value = ctTargetExtraBeats;
       sendStateUpdate();
     });
