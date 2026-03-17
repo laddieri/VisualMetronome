@@ -108,6 +108,7 @@ main {
 }
 
 .controls-primary tone-play-toggle,
+.controls-primary #count-in-1-play-btn,
 .controls-primary #count-in-play-btn,
 .controls-primary #stop-btn {
   transform: scale(1.4);
@@ -459,6 +460,7 @@ tone-play-toggle {
   gap: 24px;
 }
 
+#count-in-1-play-btn,
 #count-in-play-btn {
   font-size: 16px;
   font-weight: 700;
@@ -474,14 +476,17 @@ tone-play-toggle {
   flex-shrink: 0;
 }
 
+#count-in-1-play-btn:hover,
 #count-in-play-btn:hover {
   filter: brightness(1.12);
 }
 
+#count-in-1-play-btn.active,
 #count-in-play-btn.active {
   background: #48bb78;
 }
 
+#count-in-1-play-btn.active:hover,
 #count-in-play-btn.active:hover {
   background: #38a169;
 }
@@ -624,6 +629,7 @@ footer p {
   }
 
   .controls-primary tone-play-toggle,
+  .controls-primary #count-in-1-play-btn,
   .controls-primary #count-in-play-btn,
   .controls-primary #stop-btn {
     transform: scale(1.2);
@@ -707,6 +713,7 @@ footer p {
   }
 
   .controls-primary tone-play-toggle,
+  .controls-primary #count-in-1-play-btn,
   .controls-primary #count-in-play-btn,
   .controls-primary #stop-btn {
     transform: scale(1.2);
@@ -1381,6 +1388,7 @@ footer p {
   transform: scale(1.3);
 }
 
+#fullscreen-toggle-placeholder #count-in-1-play-btn,
 #fullscreen-toggle-placeholder #count-in-play-btn,
 #fullscreen-toggle-placeholder #stop-btn {
   transform: scale(1.3);
@@ -1409,6 +1417,7 @@ footer p {
   }
 
   #fullscreen-toggle-placeholder tone-play-toggle,
+  #fullscreen-toggle-placeholder #count-in-1-play-btn,
   #fullscreen-toggle-placeholder #count-in-play-btn,
   #fullscreen-toggle-placeholder #stop-btn {
     transform: scale(1.2);

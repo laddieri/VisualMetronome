@@ -71,14 +71,17 @@
       box-shadow: 0 0 36px rgba(37, 99, 235, 0.45);
     }
 
-    /* Count-in "+2" */
+    /* Count-in "+1" and "+2" */
+    #count-in-1-btn,
     #count-in-btn {
       flex-direction: column;
       gap: 2px;
       background: #065f46;
       box-shadow: 0 0 36px rgba(6, 95, 70, 0.4);
     }
+    #count-in-1-btn .ci-play,
     #count-in-btn .ci-play  { font-size: 1.5rem; line-height: 1; }
+    #count-in-1-btn .ci-label,
     #count-in-btn .ci-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; opacity: 0.85; }
 
     /* Combined stop button */
@@ -319,8 +322,12 @@
   <div id="status" class="disconnected">Connecting&hellip;</div>
 
   <div class="play-group">
-    <button id="play-btn"     class="play-circle" aria-label="Play / Stop">&#9654;</button>
-    <button id="count-in-btn" class="play-circle" aria-label="Play with 2-bar count-in">
+    <button id="play-btn"       class="play-circle" aria-label="Play / Stop">&#9654;</button>
+    <button id="count-in-1-btn" class="play-circle" aria-label="Play with 1-bar count-in">
+      <span class="ci-play">&#9654;</span>
+      <span class="ci-label">+1 bar</span>
+    </button>
+    <button id="count-in-btn"   class="play-circle" aria-label="Play with 2-bar count-in">
       <span class="ci-play">&#9654;</span>
       <span class="ci-label">+2 bars</span>
     </button>
@@ -494,9 +501,10 @@
     var sliderDragging = false;
 
     var statusEl      = document.getElementById('status');
-    var playBtn       = document.getElementById('play-btn');
-    var countInBtn    = document.getElementById('count-in-btn');
-    var remoteStopBtn = document.getElementById('remote-stop-btn');
+    var playBtn        = document.getElementById('play-btn');
+    var countIn1Btn    = document.getElementById('count-in-1-btn');
+    var countInBtn     = document.getElementById('count-in-btn');
+    var remoteStopBtn  = document.getElementById('remote-stop-btn');
     var bpmDisp       = document.getElementById('bpm-display');
     var bpmSlider     = document.getElementById('bpm-slider');
 
@@ -527,12 +535,14 @@
 
     function updateUI() {
       if (isPlaying) {
-        playBtn.style.display    = 'none';
-        countInBtn.style.display = 'none';
+        playBtn.style.display     = 'none';
+        countIn1Btn.style.display = 'none';
+        countInBtn.style.display  = 'none';
         remoteStopBtn.style.display = '';
       } else {
-        playBtn.style.display    = '';
-        countInBtn.style.display = '';
+        playBtn.style.display     = '';
+        countIn1Btn.style.display = '';
+        countInBtn.style.display  = '';
         remoteStopBtn.style.display = 'none';
       }
 
@@ -683,6 +693,10 @@
     // ── Play / Stop controls ─────────────────────────────────────────────────
     playBtn.addEventListener('click', function () {
       send({ type: 'play' });
+    });
+
+    countIn1Btn.addEventListener('click', function () {
+      send({ type: 'playWithCountIn1' });
     });
 
     countInBtn.addEventListener('click', function () {
