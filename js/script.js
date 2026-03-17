@@ -2194,9 +2194,6 @@ function setup() {
   // Initialize counting trainer listeners
   initCountingTrainerListeners();
 
-  // Initialize song sections listeners
-  initSongSectionsListeners();
-
   document.querySelector('#animal-selector').addEventListener('change', e => {
     animalType = e.target.value;
 
@@ -2379,7 +2376,10 @@ function hideSongProgressDisplay() {
 }
 
 // ── Song Sections Modal UI ──────────────────────────────────────────────────
+var _songListenersInitialized = false;
 function initSongSectionsListeners() {
+  if (_songListenersInitialized) return;
+  _songListenersInitialized = true;
   var songBtn = document.getElementById('song-sections-btn');
   var songModal = document.getElementById('song-sections-modal');
   var songCloseBtn = document.getElementById('song-sections-close-btn');
@@ -3194,4 +3194,11 @@ function applyRemoteCommand(msg) {
       sendStateUpdate();
       break;
   }
+}
+
+// Initialize song sections listeners immediately (not dependent on p5.js setup)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSongSectionsListeners);
+} else {
+  initSongSectionsListeners();
 }
