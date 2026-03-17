@@ -2182,6 +2182,12 @@ function updateCtDisplayWith(measDisplay, beatDisplay, elapsed, totalTarget) {
     wrapper.appendChild(el);
   }
   el.className = 'ct-measure-display counting';
+  // Hide the beat/measure text when visual is off so it doesn't
+  // give a visual rhythm cue by updating each beat
+  if (!ctVisualOn) {
+    el.classList.add('hidden');
+    return;
+  }
   el.textContent = 'Measure ' + measDisplay + ', Beat ' + beatDisplay +
     '  |  ' + elapsed + ' / ' + totalTarget + ' beats';
   el.classList.remove('hidden');
@@ -2236,7 +2242,9 @@ function hideCtDisplay() {
 function draw() {
   // Flash white at beat (when progress is near 0) if enabled
   const progress = getAnimationProgress();
-  const isFlashing = flashEnabled && Tone.Transport.state === 'started' && progress < 0.08;
+  // Suppress beat flash when counting trainer hides visuals
+  const ctHideVisual = ctPhase === 'counting' && !ctVisualOn;
+  const isFlashing = flashEnabled && !ctHideVisual && Tone.Transport.state === 'started' && progress < 0.08;
   // Counting trainer "done" flash: green background
   const isDoneFlashing = ctPhase === 'done' && Tone.Transport.state === 'started';
   if (isDoneFlashing && progress < 0.12) {
@@ -2258,9 +2266,6 @@ function draw() {
   // Scale all drawing to fit responsive canvas
   push();
   scale(canvasScale);
-
-  // Hide animals during counting phase when visual is off
-  var ctHideVisual = ctPhase === 'counting' && !ctVisualOn;
 
   if (ctHideVisual) {
     // Skip animal rendering — canvas stays blank (just background)
