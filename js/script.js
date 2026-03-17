@@ -649,56 +649,107 @@ class Conductor {
     this.handSize = 32;
   }
 
-  // Waypoints defined for the right hand; left hand is mirrored around x=320.
-  // All beat positions share the same y (BEAT_Y), except the last beat which is
-  // slightly above (LAST_Y). All x values must be >= 320 so hands never cross.
-  getRightHandWaypoints() {
-    const n = beatsPerMeasure;
-    const BY = 425; // beat y-level
-    const LY = 381; // last-beat y (slightly above)
-    const defined = {
-      1: [[475, BY]],
-      2: [[475, BY], [475, LY]],
-      3: [[475, BY], [530, BY], [475, LY]],
-      4: [[475, BY], [385, BY], [530, BY], [475, LY]],
-      5: [[475, BY], [385, BY], [475, BY], [530, BY], [475, LY]],
-      6: [[475, BY], [385, BY], [400, BY], [530, BY], [490, BY], [475, LY]],
-    };
-    if (defined[n]) return defined[n];
+  // Conducting patterns using Bezier curves for realistic motion.
+  // Each beat is defined by an ictus point (the precise beat location) and a
+  // control point (the rebound peak after the beat). The hand follows a quadratic
+  // Bezier curve: ictus → rebound peak → next ictus, with ease-in timing so the
+  // hand lingers at the rebound and accelerates into each ictus — just like a
+  // real conductor's baton.
+  //
+  // Standard conducting patterns (right hand, viewer's perspective):
+  //   2-beat: Down, Up                     (J-arc)
+  //   3-beat: Down, Right, Up              (triangle)
+  //   4-beat: Down, Left, Right, Up        (cross / t-shape)
+  //   5-beat: Down, Left, Center, Right, Up (3+2 subdivision)
+  //   6-beat: Down, Left-low, Left, Right, Right, Up (German six)
+  //
+  // All ictus x-values are >= 320 so hands never cross the center line.
+  // Left hand is mirrored around x = 320.
 
-    // Fallback for 7+ beats: alternate inner/outer at BY, last beat at LY
-    const pts = [[475, BY]];
+  getRightHandPattern() {
+    const n = beatsPerMeasure;
+
+    // { ictus: [x,y] = where the beat lands, control: [x,y] = rebound peak after }
+    const patterns = {
+      1: [
+        { ictus: [465, 420], control: [465, 275] }
+      ],
+      2: [
+        { ictus: [465, 422], control: [478, 372] },   // beat 1 (down) → small rebound up-right
+        { ictus: [478, 408], control: [465, 272] }     // beat 2 (up)   → BIG rebound (prep)
+      ],
+      3: [
+        { ictus: [458, 422], control: [505, 372] },   // beat 1 (down)  → rebound up-right
+        { ictus: [535, 418], control: [502, 366] },    // beat 2 (right) → rebound up
+        { ictus: [478, 408], control: [460, 270] }     // beat 3 (up)    → BIG rebound
+      ],
+      4: [
+        { ictus: [462, 424], control: [418, 374] },   // beat 1 (down)  → rebound up-left
+        { ictus: [385, 418], control: [460, 370] },    // beat 2 (left)  → rebound up-right
+        { ictus: [538, 418], control: [512, 368] },    // beat 3 (right) → rebound up
+        { ictus: [480, 406], control: [462, 268] }     // beat 4 (up)    → BIG rebound
+      ],
+      5: [
+        { ictus: [460, 424], control: [412, 376] },   // beat 1 (down)  → rebound up-left
+        { ictus: [385, 420], control: [462, 372] },    // beat 2 (left)  → rebound up-center
+        { ictus: [465, 422], control: [510, 374] },    // beat 3 (center)→ rebound up-right
+        { ictus: [535, 416], control: [510, 366] },    // beat 4 (right) → rebound up
+        { ictus: [480, 406], control: [462, 268] }     // beat 5 (up)    → BIG rebound
+      ],
+      6: [
+        { ictus: [462, 424], control: [420, 380] },   // beat 1 (down)      → rebound up-left
+        { ictus: [392, 422], control: [396, 380] },    // beat 2 (left-low)  → small rebound up
+        { ictus: [402, 418], control: [468, 372] },    // beat 3 (left)      → rebound up-right
+        { ictus: [530, 420], control: [522, 376] },    // beat 4 (right)     → small rebound up
+        { ictus: [512, 414], control: [496, 368] },    // beat 5 (right-in)  → rebound up
+        { ictus: [478, 406], control: [462, 268] }     // beat 6 (up)        → BIG rebound
+      ]
+    };
+
+    if (patterns[n]) return patterns[n];
+
+    // Fallback for 7+ beats: alternate inner/outer ictus positions with
+    // proportional rebound heights; last beat gets the big preparatory rebound.
+    const pts = [{ ictus: [462, 424], control: [420, 378] }];
     for (let i = 1; i < n - 1; i++) {
-      const x = i % 2 === 0 ? 530 : 385;
-      pts.push([x, BY]);
+      const isInner = i % 2 === 1;
+      const ix = isInner ? 390 : 535;
+      const iy = 420 - i * 0.5;               // subtle staircase up
+      const cx = isInner ? 440 : 510;
+      const cy = 374 - i * 0.5;
+      pts.push({ ictus: [ix, iy], control: [cx, cy] });
     }
-    pts.push([475, LY]);
+    pts.push({ ictus: [478, 406], control: [462, 268] });
     return pts;
   }
 
-  getWaypoints() {
-    const rightPts = this.getRightHandWaypoints();
-    if (this.direction === 1) return rightPts;
+  getPattern() {
+    const rightPattern = this.getRightHandPattern();
+    if (this.direction === 1) return rightPattern;
     // Mirror x around canvas center (320) for left hand
-    return rightPts.map(([x, y]) => [640 - x, y]);
+    return rightPattern.map(({ ictus, control }) => ({
+      ictus:   [640 - ictus[0],   ictus[1]],
+      control: [640 - control[0], control[1]]
+    }));
   }
 
   getConductorPosition() {
-    const waypoints = this.getWaypoints();
-    const n = waypoints.length;
+    const pattern = this.getPattern();
+    const n = pattern.length;
     if (n === 0) return [this.x, this.y];
 
-    // When stopped, rest at the UP position (last waypoint)
+    // When stopped, rest at the preparatory position (top of the big rebound
+    // after the last beat — where a conductor holds before the downbeat).
     if (Tone.Transport.state !== 'started' || lastBeatTime <= 0) {
-      return [waypoints[n - 1][0], waypoints[n - 1][1]];
+      const rest = pattern[n - 1].control;
+      return [rest[0], rest[1]];
     }
 
-    // Compute progress and waypoint selection independently of getAnimationProgress()
-    // so we can handle the Bluetooth delay window correctly for waypoint-based animation.
+    // Compute progress and segment selection independently of getAnimationProgress()
+    // so we can handle the Bluetooth delay window correctly for Bezier animation.
     // During the delay window, animBeat has already incremented but the audio hasn't
-    // reached the speaker yet — we must keep the previous waypoint pair so the hand
-    // arrives at the beat waypoint exactly when the sound plays (not when it fires).
-    // Use cachedBPM so this matches the BPM active when lastBeatTime was set.
+    // reached the speaker yet — we must keep the previous segment so the hand
+    // arrives at the ictus exactly when the sound plays (not when it fires).
     const beatDuration = 60 / (cachedBPM || Tone.Transport.bpm.value);
     const timeSinceLastBeat = Tone.now() - lastBeatTime - (bluetoothDelay / 1000);
 
@@ -707,31 +758,33 @@ class Conductor {
       // Bluetooth delay window: continue on the previous segment.
       progress = (timeSinceLastBeat + beatDuration) / beatDuration;
       if (progress < 0) progress = 0;
-      effectiveAnimBeat = animBeat - 1; // keep previous waypoints until audio plays
+      effectiveAnimBeat = animBeat - 1;
     } else {
       progress = Math.min(timeSinceLastBeat / beatDuration, 1);
       effectiveAnimBeat = animBeat;
     }
 
     const lastFiredBeatIndex = (effectiveAnimBeat - 1 + beatsPerMeasure) % beatsPerMeasure;
-
     const fromIdx = lastFiredBeatIndex % n;
     const toIdx = (fromIdx + 1) % n;
-    const [fx, fy] = waypoints[fromIdx];
-    const [tx, ty] = waypoints[toIdx];
 
-    const eased = progress; // linear — constant speed between beats
-    // Subtract bounce so hands rise between beats (smaller y = higher on canvas).
-    // Only the rebound after the last beat of the measure uses full amplitude (140);
-    // all other inter-beat bounces use a reduced amplitude (35) so they stay low.
-    const bounceAmp = fromIdx === n - 1 ? 140 : 35;
-    // Brief downward dip at beat start to smooth the direction change —
-    // the hand scoops into the ictus before the main upward arc.
-    const dipT = Math.min(progress * 6, 1); // spans first ~17% of beat
-    const dip = 15 * Math.sin(dipT * Math.PI);
-    const bounce = Math.sin(progress * Math.PI) * bounceAmp - dip;
+    // Bezier endpoints: current ictus → rebound peak → next ictus
+    const p0 = pattern[fromIdx].ictus;
+    const p1 = pattern[fromIdx].control;
+    const p2 = pattern[toIdx].ictus;
 
-    return [fx + (tx - fx) * eased, fy + (ty - fy) * eased - bounce];
+    // Ease-in timing: hand lingers at rebound peak, accelerates into the ictus.
+    // Stronger ease for the large preparatory rebound (last beat → downbeat)
+    // so the conductor visibly "hangs" at the top before sweeping down.
+    const easePower = fromIdx === n - 1 ? 2.2 : 1.6;
+    const t = Math.pow(progress, easePower);
+
+    // Quadratic Bezier: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+    const mt = 1 - t;
+    return [
+      mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0],
+      mt * mt * p0[1] + 2 * mt * t * p1[1] + t * t * p2[1]
+    ];
   }
 
   pigmove() {
