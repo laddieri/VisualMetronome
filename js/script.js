@@ -57,12 +57,6 @@ var songCurrentSection = -1;     // Index of currently playing section (-1 = not
 var songMeasureInSection = 0;    // Current measure within the current section (0-based)
 var songBeatInMeasure = 0;       // Current beat within the current measure (0-based, for section tracking)
 
-// Gradual tempo transition state
-var songTransitionActive = false;    // Whether a gradual BPM ramp is in progress
-var songTransitionFromBPM = 0;       // BPM at the start of the ramp
-var songTransitionToBPM = 0;         // Target BPM at the end of the ramp
-var songTransitionBeatsDone = 0;     // Beats completed so far in the ramp
-var songTransitionTotalBeats = 0;    // Total beats over which to ramp
 
 // Voice counting — pre-recorded samples played through Tone.js Players for
 // sample-accurate timing.  Unlike the Web Speech API (which goes through a
@@ -1645,67 +1639,50 @@ function scheduleMainBeat() {
           var next = songSections[songCurrentSection];
           beatsPerMeasure = next.beatsPerMeasure;
           currentBeat = 0;
-
-          // Determine whether to ramp the tempo or jump instantly
-          var transCount = next.transitionBeats || 0;
-          var transUnit = next.transitionUnit || 'beats';
-          var totalTransBeats = (transCount > 0)
-            ? (transUnit === 'measures' ? transCount * next.beatsPerMeasure : transCount)
-            : 0;
-
-          if (totalTransBeats > 0 && next.bpm !== cachedBPM) {
-            // Start a gradual ramp — cancel any previous transition first
-            songTransitionActive = true;
-            songTransitionFromBPM = cachedBPM;
-            songTransitionToBPM = next.bpm;
-            songTransitionBeatsDone = 0;
-            songTransitionTotalBeats = totalTransBeats;
-            // Apply the first interpolated BPM step
-            var firstStep = songTransitionFromBPM +
-              (songTransitionToBPM - songTransitionFromBPM) / totalTransBeats;
-            firstStep = Math.max(30, Math.min(300, firstStep));
-            Tone.Transport.bpm.setValueAtTime(firstStep, time);
-            cachedBPM = firstStep;
-            secondsPerBeat = 1 / (firstStep / 60);
-          } else {
-            // Instant BPM change (no transition, or same BPM)
-            songTransitionActive = false;
-            Tone.Transport.bpm.setValueAtTime(next.bpm, time);
-            cachedBPM = next.bpm;
-            secondsPerBeat = 1 / (next.bpm / 60);
-          }
-
+          // Snap to the exact target BPM — the end-of-section ramp (below)
+          // should have already brought us here; this ensures precision.
+          Tone.Transport.bpm.setValueAtTime(next.bpm, time);
+          cachedBPM = next.bpm;
+          secondsPerBeat = 1 / (next.bpm / 60);
           Tone.Draw.schedule(function() {
             applySongSectionUI(next);
             updateSongProgressDisplay();
           }, time);
         } else {
           // Song finished — stop
-          songTransitionActive = false;
           Tone.Draw.schedule(function() {
             toggleTransport(false);
             updateSongProgressDisplay();
           }, time);
           return; // Don't play a beat after song ends
         }
-      } else if (songTransitionActive) {
-        // Ongoing ramp — advance one step and update BPM
-        songTransitionBeatsDone++;
-        if (songTransitionBeatsDone >= songTransitionTotalBeats) {
-          // Ramp complete: land exactly on target BPM
-          songTransitionActive = false;
-          Tone.Transport.bpm.setValueAtTime(songTransitionToBPM, time);
-          cachedBPM = songTransitionToBPM;
-          secondsPerBeat = 1 / (songTransitionToBPM / 60);
-        } else {
-          // Intermediate step
-          var step = songTransitionBeatsDone + 1;
-          var bpmStep = songTransitionFromBPM +
-            (songTransitionToBPM - songTransitionFromBPM) * step / songTransitionTotalBeats;
-          bpmStep = Math.max(30, Math.min(300, bpmStep));
-          Tone.Transport.bpm.setValueAtTime(bpmStep, time);
-          cachedBPM = bpmStep;
-          secondsPerBeat = 1 / (bpmStep / 60);
+      } else {
+        // Still within the current section — check whether we should be
+        // ramping the tempo toward the next section's BPM.
+        var nextSec = songSections[songCurrentSection + 1];
+        if (nextSec) {
+          var transCount = nextSec.transitionBeats || 0;
+          if (transCount > 0 && nextSec.bpm !== curSec.bpm) {
+            var transUnit = nextSec.transitionUnit || 'beats';
+            var totalTransBeats = (transUnit === 'measures')
+              ? transCount * nextSec.beatsPerMeasure
+              : transCount;
+            var totalBeatsInSection = curSec.measures * curSec.beatsPerMeasure;
+            // Never let the ramp be longer than the section itself
+            totalTransBeats = Math.min(totalTransBeats, totalBeatsInSection);
+            var currentBeatIndex = songMeasureInSection * curSec.beatsPerMeasure + songBeatInMeasure;
+            var beatsRemaining = totalBeatsInSection - currentBeatIndex; // incl. this beat
+            if (beatsRemaining <= totalTransBeats) {
+              // This beat falls inside the ramp window — interpolate BPM
+              var beatsIntoRamp = totalTransBeats - beatsRemaining; // 0-indexed step
+              var rampBPM = curSec.bpm +
+                (nextSec.bpm - curSec.bpm) * (beatsIntoRamp + 1) / totalTransBeats;
+              rampBPM = Math.max(30, Math.min(300, rampBPM));
+              Tone.Transport.bpm.setValueAtTime(rampBPM, time);
+              cachedBPM = rampBPM;
+              secondsPerBeat = 1 / (rampBPM / 60);
+            }
+          }
         }
       }
     }
@@ -1970,7 +1947,6 @@ function toggleTransport(withCountIn) {
       songCurrentSection = 0;
       songMeasureInSection = 0;
       songBeatInMeasure = 0;
-      songTransitionActive = false;
       var firstSec = songSections[0];
       beatsPerMeasure = firstSec.beatsPerMeasure;
       currentBeat = 0;
@@ -2608,7 +2584,7 @@ function renderSongSectionsList() {
 
       var rampLabel = document.createElement('span');
       rampLabel.className = 'song-ramp-label';
-      rampLabel.textContent = 'Ramp in:';
+      rampLabel.textContent = 'Transition:';
       rampRow.appendChild(rampLabel);
 
       var rampInput = document.createElement('input');
@@ -2644,7 +2620,7 @@ function renderSongSectionsList() {
 
       var rampHint = document.createElement('span');
       rampHint.className = 'song-ramp-hint';
-      rampHint.textContent = '(0 = instant)';
+      rampHint.textContent = 'at end of prev. section (0 = instant)';
       rampRow.appendChild(rampHint);
 
       listEl.appendChild(rampRow);
