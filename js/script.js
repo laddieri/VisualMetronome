@@ -1830,14 +1830,16 @@ function toggleTransport(withCountIn) {
     ctMeasuresCompleted = 0;
     ctCurrentBeatInMeasure = 0;
     hideCtDisplay();
-    // Counting trainer requires a count-in: if enabled and no count-in requested,
-    // force a 1-measure count-in so the student has a tempo reference
-    if (countingTrainerEnabled && !withCountIn) {
-      withCountIn = 1;
-    }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
     countInBeatsRemaining = countInMeasures * beatsPerMeasure;
+    // If counting trainer is enabled and there's no count-in, start
+    // the silent counting phase immediately
+    if (countingTrainerEnabled && !withCountIn) {
+      ctPhase = 'counting';
+      ctBeatsRemaining = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+      updateCtDisplay();
+    }
     Tone.Transport.start();
     // Always sync the play-toggle visual — needed when called from remote
     // (clicking tone-play-toggle directly already updates it before firing 'change',
