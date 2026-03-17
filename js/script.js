@@ -1685,8 +1685,12 @@ function scheduleMainBeat() {
                 (nextSec.bpm - curSec.bpm) * (beatsIntoRamp + 1) / totalTransBeats;
               rampBPM = Math.max(30, Math.min(300, rampBPM));
               Tone.Transport.bpm.setValueAtTime(rampBPM, time);
-              cachedBPM = rampBPM;
-              secondsPerBeat = 1 / (rampBPM / 60);
+              // Do NOT update cachedBPM here: the scheduler fires look-ahead
+              // (~100ms early) so updating cachedBPM now changes beatDuration
+              // while lastBeatTime still belongs to the previous beat.  When
+              // slowing down this makes progress jump backward, causing a
+              // visible stutter.  Tone.Draw.schedule updates cachedBPM
+              // atomically with lastBeatTime at the correct moment.
             }
           }
         }
