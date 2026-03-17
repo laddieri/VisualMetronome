@@ -2254,6 +2254,40 @@ function draw() {
     animal2.display();
   }
 
+  // Counting trainer "ready" indicator — shown when armed and not yet playing
+  if (countingTrainerEnabled && Tone.Transport.state !== 'started') {
+    // Semi-transparent banner at top of canvas
+    var bannerY = 18;
+    var totalBeats = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+    var label = 'Counting Trainer: ';
+    if (ctTargetMeasures > 0 && ctTargetExtraBeats > 0) {
+      label += ctTargetMeasures + (ctTargetMeasures === 1 ? ' measure' : ' measures') +
+        ' + ' + ctTargetExtraBeats + (ctTargetExtraBeats === 1 ? ' beat' : ' beats');
+    } else if (ctTargetMeasures > 0) {
+      label += ctTargetMeasures + (ctTargetMeasures === 1 ? ' measure' : ' measures');
+    } else {
+      label += ctTargetExtraBeats + (ctTargetExtraBeats === 1 ? ' beat' : ' beats');
+    }
+
+    noStroke();
+    fill(102, 126, 234, 180);
+    rectMode(CENTER);
+    var tw = textWidth(label);
+    // Set font before measuring so width is accurate
+    textFont('Inter, sans-serif');
+    textSize(15);
+    textStyle(BOLD);
+    tw = textWidth(label);
+    rect(320, bannerY, tw + 32, 28, 14);
+
+    fill(255);
+    textAlign(CENTER, CENTER);
+    text(label, 320, bannerY);
+    // Reset text style
+    textStyle(NORMAL);
+    rectMode(CORNER);
+  }
+
   pop();
 }
 
