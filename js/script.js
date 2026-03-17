@@ -2674,11 +2674,13 @@ function draw() {
   const isDoneFlashing = ctPhase === 'done' && Tone.Transport.state === 'started';
   // Compute the base background colour, blending in a warm amber tint
   // when a tempo transition ramp is active.  rampProgress runs 0→1 over
-  // the ramp window, so the tint intensifies gradually as the change approaches.
+  // the ramp window; inverting it (1 - rampProgress) makes the tint
+  // brightest at the first ramp beat and fades to normal as the new tempo
+  // is reached.
   const baseColor   = color(105, 105, 105);   // #696969 — normal grey
   const rampColor   = color(180, 120,  40);   // warm amber for ramp cue
   const bgColor = (rampProgress > 0)
-    ? lerpColor(baseColor, rampColor, rampProgress * 0.45)
+    ? lerpColor(baseColor, rampColor, (1 - rampProgress) * 0.45)
     : baseColor;
 
   if (isDoneFlashing && progress < 0.12) {
