@@ -1747,13 +1747,17 @@ const _countInBtn        = document.getElementById('count-in-play-btn');
 const _stopBtn           = document.getElementById('stop-btn');
 const _playBtnsContainer = document.getElementById('play-buttons-container');
 
-// Show/hide the combined stop button vs. the two individual play buttons
+// Show/hide the combined stop button vs. the two individual play buttons.
+// The play-buttons-container uses visibility (not display) so it always
+// holds its layout space, preventing the tempo slider from shifting.
 function _updatePlayStopUI(playing) {
   if (playing) {
-    _playBtnsContainer.classList.add('hidden');
+    _playBtnsContainer.style.visibility = 'hidden';
+    _playBtnsContainer.style.pointerEvents = 'none';
     _stopBtn.classList.remove('hidden');
   } else {
-    _playBtnsContainer.classList.remove('hidden');
+    _playBtnsContainer.style.visibility = '';
+    _playBtnsContainer.style.pointerEvents = '';
     _stopBtn.classList.add('hidden');
   }
 }

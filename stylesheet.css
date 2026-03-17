@@ -451,16 +451,6 @@ tone-play-toggle {
   align-self: center;
 }
 
-/* The play-buttons-container always stays in normal flow so it
-   determines the group's width, even when visually hidden.
-   The stop button is absolutely positioned on top so it never
-   affects the group's layout size. */
-.play-button-group > .hidden {
-  display: flex !important;
-  visibility: hidden;
-  pointer-events: none;
-}
-
 #play-buttons-container {
   display: flex;
   align-items: center;
