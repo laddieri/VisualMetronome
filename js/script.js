@@ -1603,7 +1603,9 @@ function scheduleMainBeat() {
       // ── Counting Trainer: transition to silent counting when count-in ends ──
       if (countInBeatsRemaining === 0 && countingTrainerEnabled && ctPhase === 'idle') {
         ctPhase = 'counting';
-        ctBeatsRemaining = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+        // +1 so the "done" chime lands one beat AFTER the last counted beat
+        // (e.g. 1 measure in 4/4 → student counts beats 1-2-3-4, done on next beat 1)
+        ctBeatsRemaining = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats + 1;
         ctMeasuresCompleted = 0;
         ctCurrentBeatInMeasure = 0;
         Tone.Draw.schedule(function() {
@@ -1666,7 +1668,8 @@ function scheduleMainBeat() {
         // Use captured values so the display shows the beat that just fired,
         // not the already-incremented next beat
         var totalTarget = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
-        var elapsed = totalTarget - ctBeatsRemaining;
+        // ctBeatsRemaining includes the +1 landing beat, so subtract 1 for display
+        var elapsed = totalTarget - (ctBeatsRemaining - 1);
         Tone.Draw.schedule(function() {
           updateCtDisplayWith(ctMeasureForDisplay + 1, ctBeatForDisplay + 1, elapsed, totalTarget);
         }, time);
@@ -1851,7 +1854,8 @@ function toggleTransport(withCountIn) {
     // the silent counting phase immediately
     if (countingTrainerEnabled && !withCountIn) {
       ctPhase = 'counting';
-      ctBeatsRemaining = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+      // +1 so the "done" chime lands one beat AFTER the last counted beat
+      ctBeatsRemaining = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats + 1;
       updateCtDisplay();
     }
     Tone.Transport.start();
