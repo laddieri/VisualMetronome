@@ -53,10 +53,12 @@ var ctVisualOn = true;               // Keep visual animation on during counting
 
 // Song Sections (multi-section playback)
 var songSections = [];           // Array of {measures, beatsPerMeasure, bpm, transitionBeats, transitionUnit}
+var songTitle = '';              // Current song title (used when saving)
 var songModeEnabled = false;     // Whether song mode is active
 var songCurrentSection = -1;     // Index of currently playing section (-1 = not playing)
 var songMeasureInSection = 0;    // Current measure within the current section (0-based)
 var songBeatInMeasure = 0;       // Current beat within the current measure (0-based, for section tracking)
+var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
 
 
 // Voice counting — pre-recorded samples played through Tone.js Players for
@@ -2447,6 +2449,91 @@ function hideSongProgressDisplay() {
 
 // ── Song Sections Modal UI ──────────────────────────────────────────────────
 var _songListenersInitialized = false;
+// ── Saved Songs (localStorage) ───────────────────────────────────────────────
+
+function getSavedSongs() {
+  try { return JSON.parse(localStorage.getItem(_VM_SONGS_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function saveSong() {
+  if (songSections.length === 0) {
+    alert('Add at least one section before saving.');
+    return;
+  }
+  var title = (songTitle || '').trim() || 'Untitled Song';
+  var songs = getSavedSongs();
+  songs.push({
+    id: Date.now(),
+    title: title,
+    sections: JSON.parse(JSON.stringify(songSections)),
+    savedAt: new Date().toLocaleDateString()
+  });
+  localStorage.setItem(_VM_SONGS_KEY, JSON.stringify(songs));
+  renderSavedSongsList();
+}
+
+function loadSavedSong(id) {
+  var songs = getSavedSongs();
+  var entry = songs.find(function(s) { return s.id === id; });
+  if (!entry) return;
+  songSections = JSON.parse(JSON.stringify(entry.sections));
+  songTitle = entry.title;
+  var titleInput = document.getElementById('song-title-input');
+  if (titleInput) titleInput.value = songTitle;
+  renderSongSectionsList();
+}
+
+function deleteSavedSong(id) {
+  var songs = getSavedSongs().filter(function(s) { return s.id !== id; });
+  localStorage.setItem(_VM_SONGS_KEY, JSON.stringify(songs));
+  renderSavedSongsList();
+}
+
+function renderSavedSongsList() {
+  var container = document.getElementById('song-saved-list');
+  if (!container) return;
+  var songs = getSavedSongs();
+  container.innerHTML = '';
+  if (songs.length === 0) {
+    container.innerHTML = '<p class="song-saved-empty">No saved songs yet.</p>';
+    return;
+  }
+  songs.slice().reverse().forEach(function(entry) {
+    var row = document.createElement('div');
+    row.className = 'song-saved-row';
+
+    var info = document.createElement('div');
+    info.className = 'song-saved-info';
+    var name = document.createElement('span');
+    name.className = 'song-saved-name';
+    name.textContent = entry.title;
+    var meta = document.createElement('span');
+    meta.className = 'song-saved-meta';
+    meta.textContent = entry.sections.length + (entry.sections.length === 1 ? ' section' : ' sections') + ' · ' + entry.savedAt;
+    info.appendChild(name);
+    info.appendChild(meta);
+
+    var loadBtn = document.createElement('button');
+    loadBtn.className = 'song-saved-load-btn';
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', function() { loadSavedSong(entry.id); });
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'song-saved-del-btn';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete';
+    delBtn.addEventListener('click', function() { deleteSavedSong(entry.id); });
+
+    row.appendChild(info);
+    row.appendChild(loadBtn);
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function initSongSectionsListeners() {
   if (_songListenersInitialized) return;
   _songListenersInitialized = true;
@@ -2457,10 +2544,26 @@ function initSongSectionsListeners() {
   var songAddBtn = document.getElementById('song-add-section-btn');
   var songListEl = document.getElementById('song-sections-list');
 
+  var songTitleInput = document.getElementById('song-title-input');
+  var songSaveBtn = document.getElementById('song-save-btn');
+
+  if (songTitleInput) {
+    songTitleInput.value = songTitle;
+    songTitleInput.addEventListener('input', function() {
+      songTitle = songTitleInput.value;
+    });
+  }
+
+  if (songSaveBtn) {
+    songSaveBtn.addEventListener('click', saveSong);
+  }
+
   if (songBtn) {
     songBtn.addEventListener('click', function() {
       songModal.classList.remove('hidden');
+      if (songTitleInput) songTitleInput.value = songTitle;
       renderSongSectionsList();
+      renderSavedSongsList();
     });
   }
 
