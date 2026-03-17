@@ -50,6 +50,13 @@ var ctDoneTime = 0;                  // Tone.now() when "done" was triggered
 var ctSoundOn = false;               // Keep metronome sound on during counting phase
 var ctVisualOn = true;               // Keep visual animation on during counting phase
 
+// Song Sections (multi-section playback)
+var songSections = [];           // Array of {measures, beatsPerMeasure, bpm}
+var songModeEnabled = false;     // Whether song mode is active
+var songCurrentSection = -1;     // Index of currently playing section (-1 = not playing)
+var songMeasureInSection = 0;    // Current measure within the current section (0-based)
+var songBeatInMeasure = 0;       // Current beat within the current measure (0-based, for section tracking)
+
 // Voice counting — pre-recorded samples played through Tone.js Players for
 // sample-accurate timing.  Unlike the Web Speech API (which goes through a
 // separate, high-latency audio pipeline), these samples are scheduled on
@@ -1721,6 +1728,50 @@ function scheduleMainBeat() {
 
     // Advance beat counter
     currentBeat = (currentBeat + 1) % beatsPerMeasure;
+
+    // ── Song mode: track measures and handle section transitions ──────────
+    if (songModeEnabled && songCurrentSection >= 0 && songCurrentSection < songSections.length) {
+      songBeatInMeasure++;
+      if (songBeatInMeasure >= beatsPerMeasure) {
+        songBeatInMeasure = 0;
+        songMeasureInSection++;
+        var sec = songSections[songCurrentSection];
+        if (songMeasureInSection >= sec.measures) {
+          // Move to next section
+          songCurrentSection++;
+          songMeasureInSection = 0;
+          if (songCurrentSection < songSections.length) {
+            var next = songSections[songCurrentSection];
+            // Apply new section settings
+            beatsPerMeasure = next.beatsPerMeasure;
+            currentBeat = 0;
+            Tone.Transport.bpm.value = next.bpm;
+            cachedBPM = next.bpm;
+            secondsPerBeat = 1 / (next.bpm / 60);
+            // Sync UI controls
+            Tone.Draw.schedule(function() {
+              applySongSectionUI(next);
+              updateSongProgressDisplay();
+            }, time);
+          } else {
+            // Song finished — stop after this beat sounds
+            Tone.Draw.schedule(function() {
+              toggleTransport(false);
+              updateSongProgressDisplay();
+            }, time);
+          }
+        } else {
+          Tone.Draw.schedule(function() {
+            updateSongProgressDisplay();
+          }, time);
+        }
+      } else {
+        Tone.Draw.schedule(function() {
+          updateSongProgressDisplay();
+        }, time);
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────
   }, "4n");
 }
 
@@ -1836,6 +1887,11 @@ function toggleTransport(withCountIn) {
     ctMeasuresCompleted = 0;
     ctCurrentBeatInMeasure = 0;
     hideCtDisplay();
+    // Reset song mode state
+    songCurrentSection = -1;
+    songMeasureInSection = 0;
+    songBeatInMeasure = 0;
+    hideSongProgressDisplay();
     _countIn1Btn.classList.remove('active');
     _countInBtn.classList.remove('active');
     _setPlayTogglePlaying(false);
@@ -1851,6 +1907,25 @@ function toggleTransport(withCountIn) {
     ctMeasuresCompleted = 0;
     ctCurrentBeatInMeasure = 0;
     hideCtDisplay();
+    // Initialize song mode if enabled and has sections
+    if (songModeEnabled && songSections.length > 0) {
+      songCurrentSection = 0;
+      songMeasureInSection = 0;
+      songBeatInMeasure = 0;
+      var firstSec = songSections[0];
+      beatsPerMeasure = firstSec.beatsPerMeasure;
+      currentBeat = 0;
+      Tone.Transport.bpm.value = firstSec.bpm;
+      cachedBPM = firstSec.bpm;
+      secondsPerBeat = 1 / (firstSec.bpm / 60);
+      applySongSectionUI(firstSec);
+      updateSongProgressDisplay();
+    } else {
+      songCurrentSection = -1;
+      songMeasureInSection = 0;
+      songBeatInMeasure = 0;
+      hideSongProgressDisplay();
+    }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
     countInBeatsRemaining = countInMeasures * beatsPerMeasure;
@@ -2119,6 +2194,9 @@ function setup() {
   // Initialize counting trainer listeners
   initCountingTrainerListeners();
 
+  // Initialize song sections listeners
+  initSongSectionsListeners();
+
   document.querySelector('#animal-selector').addEventListener('change', e => {
     animalType = e.target.value;
 
@@ -2247,6 +2325,219 @@ function hideCtDisplay() {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Song Mode helpers ────────────────────────────────────────────────────────
+
+// Sync UI controls when a new section starts
+function applySongSectionUI(sec) {
+  var slider = document.getElementById('tempo-slider');
+  var numInput = document.getElementById('bpm-input');
+  var fsSlider = document.getElementById('fullscreen-tempo-slider');
+  var fsBpmVal = document.getElementById('fullscreen-bpm-value');
+  var tsSel = document.getElementById('time-signature');
+  if (slider) slider.value = sec.bpm;
+  if (numInput) numInput.value = sec.bpm;
+  if (fsSlider) fsSlider.value = sec.bpm;
+  if (fsBpmVal) fsBpmVal.textContent = sec.bpm;
+  if (tsSel) tsSel.value = sec.beatsPerMeasure;
+}
+
+// Show section progress overlay on the canvas
+function updateSongProgressDisplay() {
+  if (!songModeEnabled || songSections.length === 0) return;
+  var wrapper = isFullscreen
+    ? document.querySelector('.fullscreen-canvas-wrapper')
+    : document.querySelector('.canvas-wrapper');
+  if (!wrapper) return;
+
+  var el = wrapper.querySelector('.song-progress-display');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'song-progress-display';
+    wrapper.appendChild(el);
+  }
+
+  if (songCurrentSection < 0 || songCurrentSection >= songSections.length) {
+    el.textContent = 'Song complete';
+    el.className = 'song-progress-display done';
+    return;
+  }
+
+  var sec = songSections[songCurrentSection];
+  el.className = 'song-progress-display active';
+  el.textContent = 'Section ' + (songCurrentSection + 1) + '/' + songSections.length +
+    '  |  Measure ' + (songMeasureInSection + 1) + '/' + sec.measures +
+    '  |  ' + sec.beatsPerMeasure + '/4 at ' + sec.bpm + ' BPM';
+}
+
+function hideSongProgressDisplay() {
+  ['.canvas-wrapper', '.fullscreen-canvas-wrapper'].forEach(function(sel) {
+    var wrapper = document.querySelector(sel);
+    if (!wrapper) return;
+    var el = wrapper.querySelector('.song-progress-display');
+    if (el) el.remove();
+  });
+}
+
+// ── Song Sections Modal UI ──────────────────────────────────────────────────
+function initSongSectionsListeners() {
+  var songBtn = document.getElementById('song-sections-btn');
+  var songModal = document.getElementById('song-sections-modal');
+  var songCloseBtn = document.getElementById('song-sections-close-btn');
+  var songEnabledCheckbox = document.getElementById('song-mode-enabled');
+  var songAddBtn = document.getElementById('song-add-section-btn');
+  var songListEl = document.getElementById('song-sections-list');
+
+  if (songBtn) {
+    songBtn.addEventListener('click', function() {
+      songModal.classList.remove('hidden');
+      renderSongSectionsList();
+    });
+  }
+
+  if (songCloseBtn) {
+    songCloseBtn.addEventListener('click', function() {
+      songModal.classList.add('hidden');
+    });
+  }
+
+  if (songModal) {
+    songModal.addEventListener('click', function(e) {
+      if (e.target === songModal) songModal.classList.add('hidden');
+    });
+  }
+
+  if (songEnabledCheckbox) {
+    songEnabledCheckbox.checked = songModeEnabled;
+    songEnabledCheckbox.addEventListener('change', function(e) {
+      songModeEnabled = e.target.checked;
+      if (songBtn) songBtn.classList.toggle('ct-active', songModeEnabled);
+      sendStateUpdate();
+    });
+  }
+
+  if (songAddBtn) {
+    songAddBtn.addEventListener('click', function() {
+      // Default: current settings or 4 measures, 4/4, 120 BPM
+      songSections.push({
+        measures: 16,
+        beatsPerMeasure: beatsPerMeasure,
+        bpm: cachedBPM
+      });
+      renderSongSectionsList();
+    });
+  }
+}
+
+function renderSongSectionsList() {
+  var listEl = document.getElementById('song-sections-list');
+  if (!listEl) return;
+  listEl.innerHTML = '';
+
+  if (songSections.length === 0) {
+    var empty = document.createElement('p');
+    empty.className = 'setting-hint';
+    empty.style.textAlign = 'center';
+    empty.textContent = 'No sections yet. Click + to add one.';
+    listEl.appendChild(empty);
+    return;
+  }
+
+  songSections.forEach(function(sec, idx) {
+    var row = document.createElement('div');
+    row.className = 'song-section-row';
+
+    // Section number label
+    var label = document.createElement('span');
+    label.className = 'song-section-label';
+    label.textContent = (idx + 1) + '.';
+    row.appendChild(label);
+
+    // Measures input
+    var measGroup = document.createElement('div');
+    measGroup.className = 'song-section-field';
+    var measLabel = document.createElement('label');
+    measLabel.textContent = 'Meas.';
+    measLabel.className = 'song-field-label';
+    var measInput = document.createElement('input');
+    measInput.type = 'number';
+    measInput.className = 'song-section-input';
+    measInput.min = 1;
+    measInput.max = 999;
+    measInput.value = sec.measures;
+    measInput.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].measures = Math.max(1, Math.min(999, parseInt(e.target.value) || 1));
+        e.target.value = songSections[i].measures;
+      };
+    })(idx));
+    measGroup.appendChild(measLabel);
+    measGroup.appendChild(measInput);
+    row.appendChild(measGroup);
+
+    // Beats per measure input
+    var bpmGroup = document.createElement('div');
+    bpmGroup.className = 'song-section-field';
+    var bpmLabel = document.createElement('label');
+    bpmLabel.textContent = 'Beats';
+    bpmLabel.className = 'song-field-label';
+    var bpmSelect = document.createElement('select');
+    bpmSelect.className = 'song-section-select';
+    for (var b = 1; b <= 9; b++) {
+      var opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      if (b === sec.beatsPerMeasure) opt.selected = true;
+      bpmSelect.appendChild(opt);
+    }
+    bpmSelect.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].beatsPerMeasure = parseInt(e.target.value);
+      };
+    })(idx));
+    bpmGroup.appendChild(bpmLabel);
+    bpmGroup.appendChild(bpmSelect);
+    row.appendChild(bpmGroup);
+
+    // Tempo (BPM) input
+    var tempoGroup = document.createElement('div');
+    tempoGroup.className = 'song-section-field';
+    var tempoLabel = document.createElement('label');
+    tempoLabel.textContent = 'BPM';
+    tempoLabel.className = 'song-field-label';
+    var tempoInput = document.createElement('input');
+    tempoInput.type = 'number';
+    tempoInput.className = 'song-section-input';
+    tempoInput.min = 30;
+    tempoInput.max = 300;
+    tempoInput.value = sec.bpm;
+    tempoInput.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].bpm = Math.max(30, Math.min(300, parseInt(e.target.value) || 120));
+        e.target.value = songSections[i].bpm;
+      };
+    })(idx));
+    tempoGroup.appendChild(tempoLabel);
+    tempoGroup.appendChild(tempoInput);
+    row.appendChild(tempoGroup);
+
+    // Delete button
+    var delBtn = document.createElement('button');
+    delBtn.className = 'song-section-delete';
+    delBtn.textContent = '\u00D7';
+    delBtn.title = 'Remove section';
+    delBtn.addEventListener('click', (function(i) {
+      return function() {
+        songSections.splice(i, 1);
+        renderSongSectionsList();
+      };
+    })(idx));
+    row.appendChild(delBtn);
+
+    listEl.appendChild(row);
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function draw() {
   // Flash white at beat (when progress is near 0) if enabled
   const progress = getAnimationProgress();
@@ -2349,6 +2640,32 @@ function draw() {
     text(modeLabel, 320, modeY);
 
     // Reset text style
+    textStyle(NORMAL);
+    rectMode(CORNER);
+  }
+
+  // Song mode "ready" indicator — shown when armed and not yet playing
+  if (songModeEnabled && songSections.length > 0 && Tone.Transport.state !== 'started') {
+    var songBannerY = countingTrainerEnabled ? 66 : 18;
+    var totalMeas = 0;
+    for (var si = 0; si < songSections.length; si++) totalMeas += songSections[si].measures;
+    var songLabel = 'Song Mode: ' + songSections.length +
+      (songSections.length === 1 ? ' section' : ' sections') +
+      ', ' + totalMeas + ' measures';
+
+    noStroke();
+    fill(118, 75, 162, 180);
+    rectMode(CENTER);
+    textFont('Inter, sans-serif');
+    textSize(15);
+    textStyle(BOLD);
+    var stw = textWidth(songLabel);
+    rect(320, songBannerY, stw + 32, 28, 14);
+
+    fill(255);
+    textAlign(CENTER, CENTER);
+    text(songLabel, 320, songBannerY);
+
     textStyle(NORMAL);
     rectMode(CORNER);
   }
