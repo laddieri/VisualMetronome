@@ -1652,6 +1652,65 @@ footer p {
   background: #feb2b2;
 }
 
+/* Tempo ramp / transition row */
+.song-section-ramp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 12px 10px 28px;
+  font-size: 0.8rem;
+  color: #888;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 2px;
+}
+
+.song-ramp-icon {
+  font-size: 1rem;
+  color: #764ba2;
+  flex-shrink: 0;
+}
+
+.song-ramp-label {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.song-ramp-input {
+  width: 52px;
+  padding: 3px 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.song-ramp-input::-webkit-outer-spin-button,
+.song-ramp-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.song-ramp-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.song-ramp-select {
+  padding: 3px 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: white;
+  cursor: pointer;
+}
+
+.song-ramp-hint {
+  color: #bbb;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
 .song-add-btn {
   background: #667eea;
   color: white;

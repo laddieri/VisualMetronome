@@ -51,11 +51,18 @@ var ctSoundOn = false;               // Keep metronome sound on during counting 
 var ctVisualOn = true;               // Keep visual animation on during counting phase
 
 // Song Sections (multi-section playback)
-var songSections = [];           // Array of {measures, beatsPerMeasure, bpm}
+var songSections = [];           // Array of {measures, beatsPerMeasure, bpm, transitionBeats, transitionUnit}
 var songModeEnabled = false;     // Whether song mode is active
 var songCurrentSection = -1;     // Index of currently playing section (-1 = not playing)
 var songMeasureInSection = 0;    // Current measure within the current section (0-based)
 var songBeatInMeasure = 0;       // Current beat within the current measure (0-based, for section tracking)
+
+// Gradual tempo transition state
+var songTransitionActive = false;    // Whether a gradual BPM ramp is in progress
+var songTransitionFromBPM = 0;       // BPM at the start of the ramp
+var songTransitionToBPM = 0;         // Target BPM at the end of the ramp
+var songTransitionBeatsDone = 0;     // Beats completed so far in the ramp
+var songTransitionTotalBeats = 0;    // Total beats over which to ramp
 
 // Voice counting — pre-recorded samples played through Tone.js Players for
 // sample-accurate timing.  Unlike the Web Speech API (which goes through a
@@ -1638,21 +1645,67 @@ function scheduleMainBeat() {
           var next = songSections[songCurrentSection];
           beatsPerMeasure = next.beatsPerMeasure;
           currentBeat = 0;
-          // Set BPM at this exact audio time so the interval changes immediately
-          Tone.Transport.bpm.setValueAtTime(next.bpm, time);
-          cachedBPM = next.bpm;
-          secondsPerBeat = 1 / (next.bpm / 60);
+
+          // Determine whether to ramp the tempo or jump instantly
+          var transCount = next.transitionBeats || 0;
+          var transUnit = next.transitionUnit || 'beats';
+          var totalTransBeats = (transCount > 0)
+            ? (transUnit === 'measures' ? transCount * next.beatsPerMeasure : transCount)
+            : 0;
+
+          if (totalTransBeats > 0 && next.bpm !== cachedBPM) {
+            // Start a gradual ramp — cancel any previous transition first
+            songTransitionActive = true;
+            songTransitionFromBPM = cachedBPM;
+            songTransitionToBPM = next.bpm;
+            songTransitionBeatsDone = 0;
+            songTransitionTotalBeats = totalTransBeats;
+            // Apply the first interpolated BPM step
+            var firstStep = songTransitionFromBPM +
+              (songTransitionToBPM - songTransitionFromBPM) / totalTransBeats;
+            firstStep = Math.max(30, Math.min(300, firstStep));
+            Tone.Transport.bpm.setValueAtTime(firstStep, time);
+            cachedBPM = firstStep;
+            secondsPerBeat = 1 / (firstStep / 60);
+          } else {
+            // Instant BPM change (no transition, or same BPM)
+            songTransitionActive = false;
+            Tone.Transport.bpm.setValueAtTime(next.bpm, time);
+            cachedBPM = next.bpm;
+            secondsPerBeat = 1 / (next.bpm / 60);
+          }
+
           Tone.Draw.schedule(function() {
             applySongSectionUI(next);
             updateSongProgressDisplay();
           }, time);
         } else {
           // Song finished — stop
+          songTransitionActive = false;
           Tone.Draw.schedule(function() {
             toggleTransport(false);
             updateSongProgressDisplay();
           }, time);
           return; // Don't play a beat after song ends
+        }
+      } else if (songTransitionActive) {
+        // Ongoing ramp — advance one step and update BPM
+        songTransitionBeatsDone++;
+        if (songTransitionBeatsDone >= songTransitionTotalBeats) {
+          // Ramp complete: land exactly on target BPM
+          songTransitionActive = false;
+          Tone.Transport.bpm.setValueAtTime(songTransitionToBPM, time);
+          cachedBPM = songTransitionToBPM;
+          secondsPerBeat = 1 / (songTransitionToBPM / 60);
+        } else {
+          // Intermediate step
+          var step = songTransitionBeatsDone + 1;
+          var bpmStep = songTransitionFromBPM +
+            (songTransitionToBPM - songTransitionFromBPM) * step / songTransitionTotalBeats;
+          bpmStep = Math.max(30, Math.min(300, bpmStep));
+          Tone.Transport.bpm.setValueAtTime(bpmStep, time);
+          cachedBPM = bpmStep;
+          secondsPerBeat = 1 / (bpmStep / 60);
         }
       }
     }
@@ -1917,6 +1970,7 @@ function toggleTransport(withCountIn) {
       songCurrentSection = 0;
       songMeasureInSection = 0;
       songBeatInMeasure = 0;
+      songTransitionActive = false;
       var firstSec = songSections[0];
       beatsPerMeasure = firstSec.beatsPerMeasure;
       currentBeat = 0;
@@ -2426,7 +2480,9 @@ function initSongSectionsListeners() {
       songSections.push({
         measures: 16,
         beatsPerMeasure: beatsPerMeasure,
-        bpm: cachedBPM
+        bpm: cachedBPM,
+        transitionBeats: 0,
+        transitionUnit: 'beats'
       });
       renderSongSectionsList();
     });
@@ -2539,6 +2595,60 @@ function renderSongSectionsList() {
     row.appendChild(delBtn);
 
     listEl.appendChild(row);
+
+    // Transition ramp row — shown for every section except the first
+    if (idx > 0) {
+      var rampRow = document.createElement('div');
+      rampRow.className = 'song-section-ramp-row';
+
+      var rampIcon = document.createElement('span');
+      rampIcon.className = 'song-ramp-icon';
+      rampIcon.textContent = '\u21D7'; // ⇗
+      rampRow.appendChild(rampIcon);
+
+      var rampLabel = document.createElement('span');
+      rampLabel.className = 'song-ramp-label';
+      rampLabel.textContent = 'Ramp in:';
+      rampRow.appendChild(rampLabel);
+
+      var rampInput = document.createElement('input');
+      rampInput.type = 'number';
+      rampInput.className = 'song-ramp-input';
+      rampInput.min = 0;
+      rampInput.max = 999;
+      rampInput.value = sec.transitionBeats || 0;
+      rampInput.title = '0 = instant tempo change';
+      rampInput.addEventListener('change', (function(i) {
+        return function(e) {
+          songSections[i].transitionBeats = Math.max(0, Math.min(999, parseInt(e.target.value) || 0));
+          e.target.value = songSections[i].transitionBeats;
+        };
+      })(idx));
+      rampRow.appendChild(rampInput);
+
+      var rampSelect = document.createElement('select');
+      rampSelect.className = 'song-ramp-select';
+      ['beats', 'measures'].forEach(function(unit) {
+        var o = document.createElement('option');
+        o.value = unit;
+        o.textContent = unit;
+        if (unit === (sec.transitionUnit || 'beats')) o.selected = true;
+        rampSelect.appendChild(o);
+      });
+      rampSelect.addEventListener('change', (function(i) {
+        return function(e) {
+          songSections[i].transitionUnit = e.target.value;
+        };
+      })(idx));
+      rampRow.appendChild(rampSelect);
+
+      var rampHint = document.createElement('span');
+      rampHint.className = 'song-ramp-hint';
+      rampHint.textContent = '(0 = instant)';
+      rampRow.appendChild(rampHint);
+
+      listEl.appendChild(rampRow);
+    }
   });
 }
 // ─────────────────────────────────────────────────────────────────────────────
