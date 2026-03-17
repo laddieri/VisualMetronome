@@ -1618,9 +1618,11 @@ function scheduleMainBeat() {
       // No sound — animation continues via the Draw callback below
       ctBeatsRemaining--;
 
-      // Track measure/beat for display
-      var ctBeatSnap = ctCurrentBeatInMeasure;
-      var ctMeasureSnap = ctMeasuresCompleted;
+      // Capture current measure/beat for display BEFORE incrementing
+      var ctBeatForDisplay = ctCurrentBeatInMeasure;
+      var ctMeasureForDisplay = ctMeasuresCompleted;
+
+      // Advance the counters
       ctCurrentBeatInMeasure++;
       if (ctCurrentBeatInMeasure >= beatsPerMeasure) {
         ctCurrentBeatInMeasure = 0;
@@ -1647,8 +1649,12 @@ function scheduleMainBeat() {
           }
         }, '+' + autoStopDelay);
       } else {
+        // Use captured values so the display shows the beat that just fired,
+        // not the already-incremented next beat
+        var totalTarget = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+        var elapsed = totalTarget - ctBeatsRemaining;
         Tone.Draw.schedule(function() {
-          updateCtDisplay();
+          updateCtDisplayWith(ctMeasureForDisplay + 1, ctBeatForDisplay + 1, elapsed, totalTarget);
         }, time);
       }
 
@@ -2114,7 +2120,9 @@ function windowResized() {
 
 
 // ── Counting Trainer display helpers ──────────────────────────────────────────
-function updateCtDisplay() {
+
+// Show the counting overlay with pre-computed values (avoids race with async Draw)
+function updateCtDisplayWith(measDisplay, beatDisplay, elapsed, totalTarget) {
   var wrapper = isFullscreen
     ? document.querySelector('.fullscreen-canvas-wrapper')
     : document.querySelector('.canvas-wrapper');
@@ -2127,14 +2135,15 @@ function updateCtDisplay() {
     wrapper.appendChild(el);
   }
   el.className = 'ct-measure-display counting';
-
-  var totalTarget = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
-  var elapsed = totalTarget - ctBeatsRemaining;
-  var measDisplay = ctMeasuresCompleted + 1;
-  var beatDisplay = ctCurrentBeatInMeasure + 1;
   el.textContent = 'Measure ' + measDisplay + ', Beat ' + beatDisplay +
     '  |  ' + elapsed + ' / ' + totalTarget + ' beats';
   el.classList.remove('hidden');
+}
+
+// Initial display when counting phase begins (beat 1 of measure 1, 0 elapsed)
+function updateCtDisplay() {
+  var totalTarget = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+  updateCtDisplayWith(1, 1, 0, totalTarget);
 }
 
 function showCtDoneFeedback() {
