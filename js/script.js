@@ -38,6 +38,16 @@ var bounceDirection = 'horizontal'; // 'horizontal' or 'vertical'
 var isFullscreen = false; // Fullscreen mode state
 var bluetoothDelay = 0; // Bluetooth audio delay compensation in milliseconds (0 = no offset)
 
+// Counting Trainer state
+var countingTrainerEnabled = false;  // Whether counting trainer mode is active
+var ctTargetMeasures = 4;            // Number of full measures to count
+var ctTargetExtraBeats = 0;          // Extra beats beyond full measures
+var ctPhase = 'idle';                // 'idle' | 'counting' | 'done'
+var ctBeatsRemaining = 0;            // Beats left to count in the silent phase
+var ctMeasuresCompleted = 0;         // Measures completed so far (for display)
+var ctCurrentBeatInMeasure = 0;      // Current beat within the measure (for display)
+var ctDoneTime = 0;                  // Tone.now() when "done" was triggered
+
 // Voice counting — pre-recorded samples played through Tone.js Players for
 // sample-accurate timing.  Unlike the Web Speech API (which goes through a
 // separate, high-latency audio pipeline), these samples are scheduled on
@@ -1587,29 +1597,85 @@ function scheduleMainBeat() {
       }
 
       countInBeatsRemaining--;
+
+      // ── Counting Trainer: transition to silent counting when count-in ends ──
+      if (countInBeatsRemaining === 0 && countingTrainerEnabled && ctPhase === 'idle') {
+        ctPhase = 'counting';
+        ctBeatsRemaining = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+        ctMeasuresCompleted = 0;
+        ctCurrentBeatInMeasure = 0;
+        Tone.Draw.schedule(function() {
+          updateCtDisplay();
+        }, time);
+      }
+
       return; // Skip normal beat processing during count-in
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    // Drum machine modes: play drum pattern instead of normal click sounds
-    if (rockBeatEnabled && beatsPerMeasure === 4) {
-      triggerRockBeat(time, currentBeat);
-    } else if (waltzBeatEnabled && beatsPerMeasure === 3) {
-      triggerWaltzBeat(time, currentBeat);
-    } else {
-      // Determine if this is beat 1 (accented)
-      const isAccent = currentBeat === 0;
-      triggerSound(time, isAccent);
+    // ── Counting Trainer: silent counting phase ────────────────────────────
+    if (ctPhase === 'counting') {
+      // No sound — animation continues via the Draw callback below
+      ctBeatsRemaining--;
 
-      // Schedule subdivisions for this beat
-      scheduleSubdivisionsForBeat(time);
+      // Track measure/beat for display
+      var ctBeatSnap = ctCurrentBeatInMeasure;
+      var ctMeasureSnap = ctMeasuresCompleted;
+      ctCurrentBeatInMeasure++;
+      if (ctCurrentBeatInMeasure >= beatsPerMeasure) {
+        ctCurrentBeatInMeasure = 0;
+        ctMeasuresCompleted++;
+      }
+
+      if (ctBeatsRemaining <= 0) {
+        // Target reached — trigger "done" feedback
+        ctPhase = 'done';
+        ctDoneTime = Tone.now();
+        // Play a distinctive "done" sound: two quick rising tones
+        accentSynth.triggerAttackRelease("C6", "16n", time);
+        accentSynth.triggerAttackRelease("E6", "16n", time + 0.12);
+
+        Tone.Draw.schedule(function() {
+          showCtDoneFeedback();
+        }, time);
+
+        // Auto-stop after 2 beats so the student hears the confirmation
+        var autoStopDelay = (60 / Tone.Transport.bpm.value) * 2;
+        Tone.Transport.schedule(function() {
+          if (ctPhase === 'done') {
+            toggleTransport(false);
+          }
+        }, '+' + autoStopDelay);
+      } else {
+        Tone.Draw.schedule(function() {
+          updateCtDisplay();
+        }, time);
+      }
+
+      // Continue with animation sync (fall through to Draw schedule below)
+    } else if (ctPhase !== 'done') {
+      // ── Normal sound playback (not in counting trainer) ──────────────────
+      // Drum machine modes: play drum pattern instead of normal click sounds
+      if (rockBeatEnabled && beatsPerMeasure === 4) {
+        triggerRockBeat(time, currentBeat);
+      } else if (waltzBeatEnabled && beatsPerMeasure === 3) {
+        triggerWaltzBeat(time, currentBeat);
+      } else {
+        // Determine if this is beat 1 (accented)
+        const isAccent = currentBeat === 0;
+        triggerSound(time, isAccent);
+
+        // Schedule subdivisions for this beat
+        scheduleSubdivisionsForBeat(time);
+      }
+
+      // Store beat number before it gets incremented
+      const beatToSpeak = currentBeat + 1; // 1-indexed for speaking
+
+      // Schedule speech with precise look-ahead compensation so it lands on the beat
+      speakBeatNumber(beatToSpeak, time);
     }
-
-    // Store beat number before it gets incremented
-    const beatToSpeak = currentBeat + 1; // 1-indexed for speaking
-
-    // Schedule speech with precise look-ahead compensation so it lands on the beat
-    speakBeatNumber(beatToSpeak, time);
+    // ────────────────────────────────────────────────────────────────────────
 
     // Capture beat index before incrementing so Draw callback can use it
     const thisBeat = currentBeat;
@@ -1737,6 +1803,12 @@ function toggleTransport(withCountIn) {
     animBeat = 0;
     countInBeatsRemaining = 0;
     countInMeasures = 0;
+    // Reset counting trainer state
+    ctPhase = 'idle';
+    ctBeatsRemaining = 0;
+    ctMeasuresCompleted = 0;
+    ctCurrentBeatInMeasure = 0;
+    hideCtDisplay();
     _countIn1Btn.classList.remove('active');
     _countInBtn.classList.remove('active');
     _setPlayTogglePlaying(false);
@@ -1746,6 +1818,17 @@ function toggleTransport(withCountIn) {
     currentBeat = 0;
     lastBeatTime = 0;
     animBeat = 0;
+    // Reset counting trainer for fresh start
+    ctPhase = 'idle';
+    ctBeatsRemaining = 0;
+    ctMeasuresCompleted = 0;
+    ctCurrentBeatInMeasure = 0;
+    hideCtDisplay();
+    // Counting trainer requires a count-in: if enabled and no count-in requested,
+    // force a 1-measure count-in so the student has a tempo reference
+    if (countingTrainerEnabled && !withCountIn) {
+      withCountIn = 1;
+    }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
     countInBeatsRemaining = countInMeasures * beatsPerMeasure;
@@ -1843,6 +1926,110 @@ function createAnimals() {
   }
 }
 
+// ── Counting Trainer UI ──────────────────────────────────────────────────────
+function initCountingTrainerListeners() {
+  var ctBtn = document.getElementById('counting-trainer-btn');
+  var ctModal = document.getElementById('counting-trainer-modal');
+  var ctCloseBtn = document.getElementById('ct-close-btn');
+  var ctEnabledCheckbox = document.getElementById('ct-enabled');
+  var ctMeasuresInput = document.getElementById('ct-measures');
+  var ctExtraBeatsInput = document.getElementById('ct-extra-beats');
+
+  // Open modal
+  if (ctBtn) {
+    ctBtn.addEventListener('click', function() {
+      ctModal.classList.remove('hidden');
+    });
+  }
+
+  // Close modal
+  if (ctCloseBtn) {
+    ctCloseBtn.addEventListener('click', function() {
+      ctModal.classList.add('hidden');
+    });
+  }
+
+  // Close on backdrop click
+  if (ctModal) {
+    ctModal.addEventListener('click', function(e) {
+      if (e.target === ctModal) ctModal.classList.add('hidden');
+    });
+  }
+
+  // Enable/disable toggle
+  if (ctEnabledCheckbox) {
+    ctEnabledCheckbox.checked = countingTrainerEnabled;
+    ctEnabledCheckbox.addEventListener('change', function(e) {
+      countingTrainerEnabled = e.target.checked;
+      if (ctBtn) {
+        ctBtn.classList.toggle('ct-active', countingTrainerEnabled);
+      }
+      sendStateUpdate();
+    });
+  }
+
+  // Measures input
+  if (ctMeasuresInput) {
+    ctMeasuresInput.value = ctTargetMeasures;
+    ctMeasuresInput.addEventListener('change', function(e) {
+      ctTargetMeasures = Math.max(1, Math.min(99, parseInt(e.target.value) || 4));
+      e.target.value = ctTargetMeasures;
+      sendStateUpdate();
+    });
+  }
+
+  // Extra beats input
+  if (ctExtraBeatsInput) {
+    ctExtraBeatsInput.value = ctTargetExtraBeats;
+    ctExtraBeatsInput.addEventListener('change', function(e) {
+      ctTargetExtraBeats = Math.max(0, Math.min(beatsPerMeasure - 1, parseInt(e.target.value) || 0));
+      e.target.value = ctTargetExtraBeats;
+      sendStateUpdate();
+    });
+  }
+
+  // Stepper buttons
+  var measMinus = document.getElementById('ct-measures-minus');
+  var measPlus = document.getElementById('ct-measures-plus');
+  var beatsMinus = document.getElementById('ct-beats-minus');
+  var beatsPlus = document.getElementById('ct-beats-plus');
+
+  if (measMinus) {
+    measMinus.addEventListener('click', function() {
+      ctTargetMeasures = Math.max(1, ctTargetMeasures - 1);
+      if (ctMeasuresInput) ctMeasuresInput.value = ctTargetMeasures;
+      sendStateUpdate();
+    });
+  }
+  if (measPlus) {
+    measPlus.addEventListener('click', function() {
+      ctTargetMeasures = Math.min(99, ctTargetMeasures + 1);
+      if (ctMeasuresInput) ctMeasuresInput.value = ctTargetMeasures;
+      sendStateUpdate();
+    });
+  }
+  if (beatsMinus) {
+    beatsMinus.addEventListener('click', function() {
+      ctTargetExtraBeats = Math.max(0, ctTargetExtraBeats - 1);
+      if (ctExtraBeatsInput) ctExtraBeatsInput.value = ctTargetExtraBeats;
+      sendStateUpdate();
+    });
+  }
+  if (beatsPlus) {
+    beatsPlus.addEventListener('click', function() {
+      ctTargetExtraBeats = Math.min(beatsPerMeasure - 1, ctTargetExtraBeats + 1);
+      if (ctExtraBeatsInput) ctExtraBeatsInput.value = ctTargetExtraBeats;
+      sendStateUpdate();
+    });
+  }
+
+  // Set initial button state
+  if (ctBtn && countingTrainerEnabled) {
+    ctBtn.classList.add('ct-active');
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Setup p5.js canvas
 function setup() {
   // Calculate responsive canvas size
@@ -1867,6 +2054,9 @@ function setup() {
 
   // Initialize fullscreen listeners
   initFullscreenListeners();
+
+  // Initialize counting trainer listeners
+  initCountingTrainerListeners();
 
   document.querySelector('#animal-selector').addEventListener('change', e => {
     animalType = e.target.value;
@@ -1923,11 +2113,79 @@ function windowResized() {
 }
 
 
+// ── Counting Trainer display helpers ──────────────────────────────────────────
+function updateCtDisplay() {
+  var wrapper = isFullscreen
+    ? document.querySelector('.fullscreen-canvas-wrapper')
+    : document.querySelector('.canvas-wrapper');
+  if (!wrapper) return;
+
+  var el = wrapper.querySelector('.ct-measure-display');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'ct-measure-display counting';
+    wrapper.appendChild(el);
+  }
+  el.className = 'ct-measure-display counting';
+
+  var totalTarget = ctTargetMeasures * beatsPerMeasure + ctTargetExtraBeats;
+  var elapsed = totalTarget - ctBeatsRemaining;
+  var measDisplay = ctMeasuresCompleted + 1;
+  var beatDisplay = ctCurrentBeatInMeasure + 1;
+  el.textContent = 'Measure ' + measDisplay + ', Beat ' + beatDisplay +
+    '  |  ' + elapsed + ' / ' + totalTarget + ' beats';
+  el.classList.remove('hidden');
+}
+
+function showCtDoneFeedback() {
+  var wrapper = isFullscreen
+    ? document.querySelector('.fullscreen-canvas-wrapper')
+    : document.querySelector('.canvas-wrapper');
+  if (!wrapper) return;
+
+  // Update measure display to show "Done!"
+  var el = wrapper.querySelector('.ct-measure-display');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'ct-measure-display';
+    wrapper.appendChild(el);
+  }
+  el.className = 'ct-measure-display done';
+  el.textContent = 'Time is up!';
+  el.classList.remove('hidden');
+
+  // Add green flash overlay
+  var overlay = wrapper.querySelector('.ct-canvas-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'ct-canvas-overlay';
+    wrapper.appendChild(overlay);
+  }
+  overlay.className = 'ct-canvas-overlay ct-done-flash';
+}
+
+function hideCtDisplay() {
+  // Clean up from both wrappers (normal + fullscreen)
+  ['.canvas-wrapper', '.fullscreen-canvas-wrapper'].forEach(function(sel) {
+    var wrapper = document.querySelector(sel);
+    if (!wrapper) return;
+    var el = wrapper.querySelector('.ct-measure-display');
+    if (el) el.remove();
+    var overlay = wrapper.querySelector('.ct-canvas-overlay');
+    if (overlay) overlay.remove();
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function draw() {
   // Flash white at beat (when progress is near 0) if enabled
   const progress = getAnimationProgress();
   const isFlashing = flashEnabled && Tone.Transport.state === 'started' && progress < 0.08;
-  if (isFlashing) {
+  // Counting trainer "done" flash: green background
+  const isDoneFlashing = ctPhase === 'done' && Tone.Transport.state === 'started';
+  if (isDoneFlashing && progress < 0.12) {
+    background('#48bb78');
+  } else if (isFlashing) {
     background('white');
   } else {
     background('#696969');
@@ -1937,7 +2195,7 @@ function draw() {
   if (isFullscreen) {
     const overlay = document.getElementById('fullscreen-overlay');
     if (overlay) {
-      overlay.style.background = isFlashing ? 'white' : '#696969';
+      overlay.style.background = (isDoneFlashing && progress < 0.12) ? '#48bb78' : isFlashing ? 'white' : '#696969';
     }
   }
 
@@ -2134,6 +2392,9 @@ function initPeerMode(remoteBtn) {
         waltzBeatEnabled: waltzBeatEnabled,
         isFullscreen:     isFullscreen,
         circleColor:      circleColor,
+        countingTrainerEnabled: countingTrainerEnabled,
+        ctTargetMeasures: ctTargetMeasures,
+        ctTargetExtraBeats: ctTargetExtraBeats,
       });
     });
     conn.on('data', function (data) {
@@ -2231,6 +2492,9 @@ function sendStateUpdate() {
     isFullscreen:     isFullscreen,
     circleColor:      circleColor,
     bluetoothDelay:   bluetoothDelay,
+    countingTrainerEnabled: countingTrainerEnabled,
+    ctTargetMeasures: ctTargetMeasures,
+    ctTargetExtraBeats: ctTargetExtraBeats,
   };
   if (_remoteMode === 'ws' && _remoteWS && _remoteWS.readyState === WebSocket.OPEN) {
     _remoteWS.send(JSON.stringify(state));
@@ -2431,6 +2695,38 @@ function applyRemoteCommand(msg) {
         var bdValue  = document.getElementById('bluetooth-delay-value');
         if (bdSlider) bdSlider.value = bd;
         if (bdValue)  bdValue.textContent = bd;
+        sendStateUpdate();
+      }
+      break;
+    }
+
+    case 'setCountingTrainerEnabled': {
+      countingTrainerEnabled = !!msg.value;
+      var ctCb = document.getElementById('ct-enabled');
+      if (ctCb) ctCb.checked = countingTrainerEnabled;
+      var ctBtnEl = document.getElementById('counting-trainer-btn');
+      if (ctBtnEl) ctBtnEl.classList.toggle('ct-active', countingTrainerEnabled);
+      sendStateUpdate();
+      break;
+    }
+
+    case 'setCtTargetMeasures': {
+      var m = parseInt(msg.value);
+      if (!isNaN(m) && m >= 1 && m <= 99) {
+        ctTargetMeasures = m;
+        var ctMIn = document.getElementById('ct-measures');
+        if (ctMIn) ctMIn.value = m;
+        sendStateUpdate();
+      }
+      break;
+    }
+
+    case 'setCtTargetExtraBeats': {
+      var b = parseInt(msg.value);
+      if (!isNaN(b) && b >= 0 && b <= 8) {
+        ctTargetExtraBeats = b;
+        var ctBIn = document.getElementById('ct-extra-beats');
+        if (ctBIn) ctBIn.value = b;
         sendStateUpdate();
       }
       break;

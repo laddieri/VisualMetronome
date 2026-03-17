@@ -120,6 +120,7 @@
             </div>
 
             <div class="controls-utility">
+              <button id="counting-trainer-btn" class="utility-btn" title="Counting Trainer">🎯</button>
               <button id="fullscreen-btn" class="utility-btn" title="Fullscreen Mode">⛶</button>
               <button id="settings-btn" class="utility-btn" title="Settings">⚙️</button>
               <button id="remote-btn" class="utility-btn hidden" title="Phone Remote Control">📱</button>
@@ -242,6 +243,50 @@
             <input type="checkbox" id="mirror-selfies" checked>
             Mirror images (face each other)
           </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Counting Trainer Modal -->
+    <div id="counting-trainer-modal" class="settings-modal hidden">
+      <div class="settings-container counting-trainer-container">
+        <h2>Counting Trainer</h2>
+        <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
+          Set a number of measures (and optional extra beats) to count silently.
+          The metronome will give a count-in, then go silent while the animation continues.
+        </p>
+
+        <div class="setting-group">
+          <label class="setting-label" for="ct-measures">Measures to count</label>
+          <div class="ct-input-row">
+            <button id="ct-measures-minus" class="ct-stepper-btn" aria-label="Decrease measures">−</button>
+            <input type="number" id="ct-measures" class="ct-number-input" min="1" max="99" value="4">
+            <button id="ct-measures-plus" class="ct-stepper-btn" aria-label="Increase measures">+</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label" for="ct-extra-beats">Extra beats (partial measure)</label>
+          <div class="ct-input-row">
+            <button id="ct-beats-minus" class="ct-stepper-btn" aria-label="Decrease beats">−</button>
+            <input type="number" id="ct-extra-beats" class="ct-number-input" min="0" max="8" value="0">
+            <button id="ct-beats-plus" class="ct-stepper-btn" aria-label="Increase beats">+</button>
+          </div>
+          <p class="setting-hint">0 = end on a full measure</p>
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="ct-enabled" checked>
+            Enable counting trainer
+          </label>
+          <p class="setting-hint">When enabled, the next play with count-in will start a counting exercise</p>
+        </div>
+
+        <div id="ct-status" class="ct-status hidden"></div>
+
+        <div class="settings-buttons">
+          <button id="ct-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>
     </div>
