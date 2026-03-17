@@ -380,7 +380,11 @@ function getAnimationProgress() {
   }
 
   const now = Tone.now();
-  const beatDuration = 60 / Tone.Transport.bpm.value;
+  // Use cachedBPM (set atomically with lastBeatTime) so the beat duration
+  // matches the BPM that was active when the last beat fired.  Using the
+  // live transport BPM during a tempo ramp causes a mismatch that makes
+  // progress jump, especially in the Bluetooth delay window.
+  const beatDuration = 60 / (cachedBPM || Tone.Transport.bpm.value);
   // bluetoothDelay is in ms; subtract it so the animation reaches the beat
   // position exactly when the sound arrives at the speaker.
   const timeSinceLastBeat = now - lastBeatTime - (bluetoothDelay / 1000);
@@ -691,7 +695,8 @@ class Conductor {
     // During the delay window, animBeat has already incremented but the audio hasn't
     // reached the speaker yet — we must keep the previous waypoint pair so the hand
     // arrives at the beat waypoint exactly when the sound plays (not when it fires).
-    const beatDuration = 60 / Tone.Transport.bpm.value;
+    // Use cachedBPM so this matches the BPM active when lastBeatTime was set.
+    const beatDuration = 60 / (cachedBPM || Tone.Transport.bpm.value);
     const timeSinceLastBeat = Tone.now() - lastBeatTime - (bluetoothDelay / 1000);
 
     let progress, effectiveAnimBeat;
