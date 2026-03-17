@@ -1624,6 +1624,40 @@ function scheduleMainBeat() {
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Song mode: check for section transition BEFORE playing the beat ────
+    if (songModeEnabled && songCurrentSection >= 0 && songCurrentSection < songSections.length) {
+      var curSec = songSections[songCurrentSection];
+      // After the post-beat tracker ran last time, songMeasureInSection may
+      // have reached curSec.measures — meaning the section is done and we
+      // need to advance before playing this beat.
+      if (songMeasureInSection >= curSec.measures) {
+        songCurrentSection++;
+        songMeasureInSection = 0;
+        songBeatInMeasure = 0;
+        if (songCurrentSection < songSections.length) {
+          var next = songSections[songCurrentSection];
+          beatsPerMeasure = next.beatsPerMeasure;
+          currentBeat = 0;
+          // Set BPM at this exact audio time so the interval changes immediately
+          Tone.Transport.bpm.setValueAtTime(next.bpm, time);
+          cachedBPM = next.bpm;
+          secondsPerBeat = 1 / (next.bpm / 60);
+          Tone.Draw.schedule(function() {
+            applySongSectionUI(next);
+            updateSongProgressDisplay();
+          }, time);
+        } else {
+          // Song finished — stop
+          Tone.Draw.schedule(function() {
+            toggleTransport(false);
+            updateSongProgressDisplay();
+          }, time);
+          return; // Don't play a beat after song ends
+        }
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // ── Counting Trainer: counting phase ────────────────────────────────────
     if (ctPhase === 'counting') {
       // Play sound if user opted to keep it on
@@ -1729,47 +1763,18 @@ function scheduleMainBeat() {
     // Advance beat counter
     currentBeat = (currentBeat + 1) % beatsPerMeasure;
 
-    // ── Song mode: track measures and handle section transitions ──────────
+    // ── Song mode: advance measure/beat tracking after playing ────────────
     if (songModeEnabled && songCurrentSection >= 0 && songCurrentSection < songSections.length) {
       songBeatInMeasure++;
       if (songBeatInMeasure >= beatsPerMeasure) {
         songBeatInMeasure = 0;
         songMeasureInSection++;
-        var sec = songSections[songCurrentSection];
-        if (songMeasureInSection >= sec.measures) {
-          // Move to next section
-          songCurrentSection++;
-          songMeasureInSection = 0;
-          if (songCurrentSection < songSections.length) {
-            var next = songSections[songCurrentSection];
-            // Apply new section settings
-            beatsPerMeasure = next.beatsPerMeasure;
-            currentBeat = 0;
-            Tone.Transport.bpm.value = next.bpm;
-            cachedBPM = next.bpm;
-            secondsPerBeat = 1 / (next.bpm / 60);
-            // Sync UI controls
-            Tone.Draw.schedule(function() {
-              applySongSectionUI(next);
-              updateSongProgressDisplay();
-            }, time);
-          } else {
-            // Song finished — stop after this beat sounds
-            Tone.Draw.schedule(function() {
-              toggleTransport(false);
-              updateSongProgressDisplay();
-            }, time);
-          }
-        } else {
-          Tone.Draw.schedule(function() {
-            updateSongProgressDisplay();
-          }, time);
-        }
-      } else {
-        Tone.Draw.schedule(function() {
-          updateSongProgressDisplay();
-        }, time);
+        // Check if we've reached the end of this section — the pre-beat
+        // check at the top of the next callback will handle the transition.
       }
+      Tone.Draw.schedule(function() {
+        updateSongProgressDisplay();
+      }, time);
     }
     // ──────────────────────────────────────────────────────────────────────
   }, "4n");
