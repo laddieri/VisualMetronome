@@ -32,8 +32,9 @@ var rockBeatEnabled = false; // Rock beat drum machine (4/4 only)
 var waltzBeatEnabled = false; // Waltz beat drum machine (3/4 only)
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
-var lastBeatTime = 0; // Track when last beat fired for animation sync
-var animBeat = 0;    // Beat index for conductor animation, updated in Draw callback
+var lastBeatTime = 0;   // Track when last beat fired for animation sync
+var animBeat = 0;       // Beat index for conductor animation, updated in Draw callback
+var rampProgress = 0;   // 0 = not in a tempo ramp; 0–1 = fraction through ramp window
 var bounceDirection = 'horizontal'; // 'horizontal' or 'vertical'
 var isFullscreen = false; // Fullscreen mode state
 var bluetoothDelay = 0; // Bluetooth audio delay compensation in milliseconds (0 = no offset)
@@ -1779,6 +1780,30 @@ function scheduleMainBeat() {
     // Capture beat index before incrementing so Draw callback can use it
     const thisBeat = currentBeat;
 
+    // Compute ramp fraction for this beat so the Draw callback can expose it
+    // to the animation loop for the background tint.
+    var thisRampProgress = 0;
+    if (songModeEnabled && songCurrentSection >= 0) {
+      var _curSec  = songSections[songCurrentSection];
+      var _nextSec = songSections[songCurrentSection + 1];
+      if (_curSec && _nextSec) {
+        var _transCount = _nextSec.transitionBeats || 0;
+        if (_transCount > 0 && _nextSec.bpm !== _curSec.bpm) {
+          var _unit = _nextSec.transitionUnit || 'beats';
+          var _totalTrans = (_unit === 'measures')
+            ? _transCount * _nextSec.beatsPerMeasure
+            : _transCount;
+          var _totalBeats = _curSec.measures * _curSec.beatsPerMeasure;
+          _totalTrans = Math.min(_totalTrans, _totalBeats);
+          var _beatIdx = songMeasureInSection * _curSec.beatsPerMeasure + songBeatInMeasure;
+          var _remaining = _totalBeats - _beatIdx;
+          if (_remaining <= _totalTrans) {
+            thisRampProgress = (_totalTrans - _remaining + 1) / _totalTrans;
+          }
+        }
+      }
+    }
+
     // Reset animation timer to sync with beat
     Tone.Draw.schedule(function(){
       t = 0;
@@ -1793,6 +1818,7 @@ function scheduleMainBeat() {
         cachedBPM = currentBPM;
         secondsPerBeat = 1 / (currentBPM / 60);
       }
+      rampProgress = thisRampProgress;
     }, time);
 
     // Advance beat counter
@@ -2642,19 +2668,34 @@ function draw() {
   const isFlashing = flashEnabled && !ctHideVisual && Tone.Transport.state === 'started' && progress < 0.08;
   // Counting trainer "done" flash: green background
   const isDoneFlashing = ctPhase === 'done' && Tone.Transport.state === 'started';
+  // Compute the base background colour, blending in a warm amber tint
+  // when a tempo transition ramp is active.  rampProgress runs 0→1 over
+  // the ramp window, so the tint intensifies gradually as the change approaches.
+  const baseColor   = color(105, 105, 105);   // #696969 — normal grey
+  const rampColor   = color(180, 120,  40);   // warm amber for ramp cue
+  const bgColor = (rampProgress > 0)
+    ? lerpColor(baseColor, rampColor, rampProgress * 0.45)
+    : baseColor;
+
   if (isDoneFlashing && progress < 0.12) {
     background('#48bb78');
   } else if (isFlashing) {
     background('white');
   } else {
-    background('#696969');
+    background(bgColor);
   }
 
   // In fullscreen, also flash the overlay background so the entire screen flashes
   if (isFullscreen) {
     const overlay = document.getElementById('fullscreen-overlay');
     if (overlay) {
-      overlay.style.background = (isDoneFlashing && progress < 0.12) ? '#48bb78' : isFlashing ? 'white' : '#696969';
+      if (isDoneFlashing && progress < 0.12) {
+        overlay.style.background = '#48bb78';
+      } else if (isFlashing) {
+        overlay.style.background = 'white';
+      } else {
+        overlay.style.background = `rgb(${red(bgColor)},${green(bgColor)},${blue(bgColor)})`;
+      }
     }
   }
 
