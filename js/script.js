@@ -2570,9 +2570,7 @@ function renderSongSectionsList() {
     })(idx));
     row.appendChild(delBtn);
 
-    listEl.appendChild(row);
-
-    // Transition ramp row — shown for every section except the first
+    // Transition ramp row — shown above every section except the first
     if (idx > 0) {
       var rampRow = document.createElement('div');
       rampRow.className = 'song-section-ramp-row';
@@ -2625,6 +2623,8 @@ function renderSongSectionsList() {
 
       listEl.appendChild(rampRow);
     }
+
+    listEl.appendChild(row);
   });
 }
 // ─────────────────────────────────────────────────────────────────────────────

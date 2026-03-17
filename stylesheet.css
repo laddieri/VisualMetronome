@@ -1657,11 +1657,11 @@ footer p {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 12px 10px 28px;
+  padding: 6px 12px 4px 28px;
   font-size: 0.8rem;
   color: #888;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 2px;
+  border-top: 1px solid #eee;
+  margin-top: 2px;
 }
 
 .song-ramp-icon {
