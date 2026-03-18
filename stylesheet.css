@@ -1968,7 +1968,83 @@ footer p {
   padding: 6px 18px;
 }
 
+/* ── Custom Rhythm Editor ─────────────────────────────────────────── */
+.custom-rhythm-container {
+  max-width: 650px;
+}
+
+.custom-rhythm-notation {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px 8px;
+  margin-bottom: 16px;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.custom-rhythm-beats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.cr-beat-group {
+  background: #1e293b;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.cr-beat-label {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.cr-beat-select {
+  width: 100%;
+  padding: 8px 6px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.cr-beat-select:focus {
+  outline: none;
+  border-color: #764ba2;
+}
+
+.cr-active-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #764ba2;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 @media (max-width: 480px) {
+  .custom-rhythm-beats {
+    gap: 8px;
+  }
+  .cr-beat-group {
+    min-width: 100px;
+    padding: 8px;
+  }
   .fullscreen-exit-btn {
     top: 10px;
     right: 10px;

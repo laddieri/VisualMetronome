@@ -120,6 +120,7 @@
             </div>
 
             <div class="controls-utility">
+              <button id="custom-rhythm-btn" class="utility-btn" title="Custom Rhythm">🥁</button>
               <button id="song-sections-btn" class="utility-btn" title="Song Sections">🎶</button>
               <button id="counting-trainer-btn" class="utility-btn" title="Counting Trainer">🎯</button>
               <button id="fullscreen-btn" class="utility-btn" title="Fullscreen Mode">⛶</button>
@@ -375,6 +376,36 @@
 
         <div class="settings-buttons">
           <button id="remote-modal-close-btn" class="settings-btn-close">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Rhythm Modal -->
+    <div id="custom-rhythm-modal" class="settings-modal hidden">
+      <div class="settings-container custom-rhythm-container">
+        <h2>Custom Rhythm</h2>
+        <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
+          Build a one-measure rhythm pattern. Choose a rhythm for each beat.
+        </p>
+
+        <div id="custom-rhythm-notation" class="custom-rhythm-notation">
+          <!-- SVG notation preview rendered here -->
+        </div>
+
+        <div id="custom-rhythm-beats" class="custom-rhythm-beats">
+          <!-- Beat selectors rendered dynamically -->
+        </div>
+
+        <div class="setting-group">
+          <label class="setting-label">
+            <input type="checkbox" id="custom-rhythm-enabled">
+            Enable custom rhythm
+          </label>
+          <p class="setting-hint">Replaces the normal metronome click with your custom pattern</p>
+        </div>
+
+        <div class="settings-buttons">
+          <button id="custom-rhythm-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>
     </div>
