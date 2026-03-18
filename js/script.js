@@ -672,29 +672,29 @@ class Conductor {
     // { ictus: [x,y] = where the beat lands, control: [x,y] = rebound peak after }
     const patterns = {
       1: [
-        { ictus: [465, 440], control: [465, 235] }
+        { ictus: [465, 440], control: [465, 175] }
       ],
       2: [
         { ictus: [465, 442], control: [478, 330] },   // beat 1 (down) → rebound up-right
-        { ictus: [478, 365], control: [465, 230] }     // beat 2 (up)   → BIG rebound (prep)
+        { ictus: [478, 365], control: [465, 175] }     // beat 2 (up)   → BIG rebound (prep)
       ],
       3: [
         { ictus: [458, 442], control: [505, 325] },   // beat 1 (down)  → rebound up-right
         { ictus: [535, 435], control: [502, 320] },    // beat 2 (right) → rebound up
-        { ictus: [478, 360], control: [460, 225] }     // beat 3 (up)    → BIG rebound
+        { ictus: [478, 360], control: [460, 175] }     // beat 3 (up)    → BIG rebound
       ],
       4: [
         { ictus: [462, 445], control: [418, 330] },   // beat 1 (down)  → rebound up-left
         { ictus: [385, 438], control: [460, 325] },    // beat 2 (left)  → rebound up-right
         { ictus: [538, 435], control: [512, 320] },    // beat 3 (right) → rebound up
-        { ictus: [480, 358], control: [462, 225] }     // beat 4 (up)    → BIG rebound
+        { ictus: [480, 358], control: [462, 175] }     // beat 4 (up)    → BIG rebound
       ],
       5: [
         { ictus: [460, 445], control: [412, 335] },   // beat 1 (down)  → rebound up-left
         { ictus: [385, 440], control: [462, 330] },    // beat 2 (left)  → rebound up-center
         { ictus: [465, 442], control: [510, 328] },    // beat 3 (center)→ rebound up-right
         { ictus: [535, 434], control: [510, 320] },    // beat 4 (right) → rebound up
-        { ictus: [480, 358], control: [462, 225] }     // beat 5 (up)    → BIG rebound
+        { ictus: [480, 358], control: [462, 175] }     // beat 5 (up)    → BIG rebound
       ],
       6: [
         { ictus: [462, 445], control: [420, 340] },   // beat 1 (down)      → rebound up-left
@@ -702,7 +702,7 @@ class Conductor {
         { ictus: [402, 438], control: [468, 328] },    // beat 3 (left)      → rebound up-right
         { ictus: [530, 440], control: [522, 335] },    // beat 4 (right)     → rebound up
         { ictus: [512, 434], control: [496, 322] },    // beat 5 (right-in)  → rebound up
-        { ictus: [478, 358], control: [462, 225] }     // beat 6 (up)        → BIG rebound
+        { ictus: [478, 358], control: [462, 175] }     // beat 6 (up)        → BIG rebound
       ]
     };
 
@@ -719,7 +719,7 @@ class Conductor {
       const cy = 330 - i * 0.5;
       pts.push({ ictus: [ix, iy], control: [cx, cy] });
     }
-    pts.push({ ictus: [478, 358], control: [462, 225] });
+    pts.push({ ictus: [478, 358], control: [462, 175] });
     return pts;
   }
 
