@@ -3673,14 +3673,14 @@ function applyRemoteCommand(msg) {
 
 // Available rhythm options per beat (quarter note = 1 beat)
 var CR_OPTIONS = [
-  { value: 'q',    label: '♩ Quarter note',           subBeats: [1] },
-  { value: 'r',    label: '𝄾 Quarter rest',            subBeats: [] },
-  { value: 'ee',   label: '♫ Two eighths',             subBeats: [1, 0.5] },
-  { value: 'er',   label: '♪𝄾 Eighth + eighth rest',   subBeats: [1] },
-  { value: 're',   label: '𝄾♪ Eighth rest + eighth',   subBeats: [0.5] },
-  { value: 'ssss', label: '𝅘𝅥𝅯𝅘𝅥𝅯𝅘𝅥𝅯𝅘𝅥𝅯 Four sixteenths',     subBeats: [1, 0.75, 0.5, 0.25] },
-  { value: 'sse',  label: '𝅘𝅥𝅯𝅘𝅥𝅯♪ Two sixteenths + eighth', subBeats: [1, 0.75, 0.5] },
-  { value: 'ess',  label: '♪𝅘𝅥𝅯𝅘𝅥𝅯 Eighth + two sixteenths', subBeats: [1, 0.5, 0.25] },
+  { value: 'q',    label: '♩ Quarter note',               subBeats: [1] },
+  { value: 'r',    label: '— Quarter rest',               subBeats: [] },
+  { value: 'ee',   label: '♫ Two eighths',                subBeats: [1, 0.5] },
+  { value: 'er',   label: '♪— Eighth + eighth rest',      subBeats: [1] },
+  { value: 're',   label: '—♪ Eighth rest + eighth',      subBeats: [0.5] },
+  { value: 'ssss', label: '♬♬ Four sixteenths',           subBeats: [1, 0.75, 0.5, 0.25] },
+  { value: 'sse',  label: '♬♪ Two sixteenths + eighth',   subBeats: [1, 0.75, 0.5] },
+  { value: 'ess',  label: '♪♬ Eighth + two sixteenths',   subBeats: [1, 0.5, 0.25] },
 ];
 
 // Map option value to sub-beat positions within the beat (as fractions of beat duration).
