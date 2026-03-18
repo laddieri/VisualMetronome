@@ -738,11 +738,13 @@ class Conductor {
     const n = pattern.length;
     if (n === 0) return [this.x, this.y];
 
-    // When stopped, rest at the preparatory position (top of the big rebound
-    // after the last beat — where a conductor holds before the downbeat).
+    // When stopped, rest at a comfortable preparatory position — hands at
+    // moderate height, not as high as the rebound peak during active conducting.
     if (Tone.Transport.state !== 'started' || lastBeatTime <= 0) {
-      const rest = pattern[n - 1].control;
-      return [rest[0], rest[1]];
+      const lastCtrl = pattern[n - 1].control;
+      const lastIctus = pattern[n - 1].ictus;
+      // Rest halfway between the last ictus and its rebound peak
+      return [(lastCtrl[0] + lastIctus[0]) / 2, (lastCtrl[1] + lastIctus[1]) / 2];
     }
 
     // Compute progress and segment selection independently of getAnimationProgress()
