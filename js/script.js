@@ -76,6 +76,8 @@ var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
 // The customRhythmPattern array has one entry per beat.
 var customRhythmEnabled = false;
 var customRhythmPattern = []; // e.g. ['q', 'ee', 'ssss', 'q'] for 4/4
+var customRhythmTies = [];    // boolean per beat: true = tie this beat's last note to next beat's first note
+var customRhythmAccents = []; // array of arrays: per beat, indices of sub-notes that are accented
 
 
 // Voice counting — pre-recorded samples played through Tone.js Players for
@@ -3700,6 +3702,8 @@ function crGetSubBeats(patternValue) {
 function crCancelCustomRhythm() {
   customRhythmEnabled = false;
   customRhythmPattern = [];
+  customRhythmTies = [];
+  customRhythmAccents = [];
   var cb = document.getElementById('custom-rhythm-enabled');
   if (cb) cb.checked = false;
   var btn = document.getElementById('custom-rhythm-btn');
@@ -3713,7 +3717,21 @@ function crBuildDefaultPattern() {
   return pat;
 }
 
-// Render the beat selector dropdowns
+// Ensure ties and accents arrays match the current pattern length
+function crSyncTiesAndAccents() {
+  while (customRhythmTies.length < beatsPerMeasure) customRhythmTies.push(false);
+  customRhythmTies.length = beatsPerMeasure;
+  // Last beat can't tie (wraps around to repeat, which we allow)
+  while (customRhythmAccents.length < beatsPerMeasure) customRhythmAccents.push([]);
+  customRhythmAccents.length = beatsPerMeasure;
+}
+
+// Get the number of playable (non-rest) sub-notes in a pattern
+function crGetNoteCount(pat) {
+  return crGetSubBeats(pat).length;
+}
+
+// Render the beat selector dropdowns with tie and accent controls
 function crRenderBeatSelectors() {
   var container = document.getElementById('custom-rhythm-beats');
   if (!container) return;
@@ -3722,41 +3740,150 @@ function crRenderBeatSelectors() {
   // Ensure pattern length matches beatsPerMeasure
   while (customRhythmPattern.length < beatsPerMeasure) customRhythmPattern.push('q');
   if (customRhythmPattern.length > beatsPerMeasure) customRhythmPattern.length = beatsPerMeasure;
+  crSyncTiesAndAccents();
 
   for (var b = 0; b < beatsPerMeasure; b++) {
-    var group = document.createElement('div');
-    group.className = 'cr-beat-group';
+    (function(beatIdx) {
+      var group = document.createElement('div');
+      group.className = 'cr-beat-group';
 
-    var label = document.createElement('div');
-    label.className = 'cr-beat-label';
-    label.textContent = 'Beat ' + (b + 1);
-    group.appendChild(label);
+      var label = document.createElement('div');
+      label.className = 'cr-beat-label';
+      label.textContent = 'Beat ' + (beatIdx + 1);
+      group.appendChild(label);
 
-    var select = document.createElement('select');
-    select.className = 'cr-beat-select';
-    select.dataset.beat = b;
+      // Rhythm pattern dropdown
+      var select = document.createElement('select');
+      select.className = 'cr-beat-select';
+      select.dataset.beat = beatIdx;
 
-    for (var o = 0; o < CR_OPTIONS.length; o++) {
-      var opt = document.createElement('option');
-      opt.value = CR_OPTIONS[o].value;
-      opt.textContent = CR_OPTIONS[o].label;
-      if (customRhythmPattern[b] === CR_OPTIONS[o].value) opt.selected = true;
-      select.appendChild(opt);
-    }
+      for (var o = 0; o < CR_OPTIONS.length; o++) {
+        var opt = document.createElement('option');
+        opt.value = CR_OPTIONS[o].value;
+        opt.textContent = CR_OPTIONS[o].label;
+        if (customRhythmPattern[beatIdx] === CR_OPTIONS[o].value) opt.selected = true;
+        select.appendChild(opt);
+      }
 
-    select.addEventListener('change', function(e) {
-      var beatIdx = parseInt(e.target.dataset.beat);
-      customRhythmPattern[beatIdx] = e.target.value;
-      crRenderNotation();
-    });
+      select.addEventListener('change', function(e) {
+        var bi = parseInt(e.target.dataset.beat);
+        customRhythmPattern[bi] = e.target.value;
+        // Reset accents for this beat since sub-note count may have changed
+        customRhythmAccents[bi] = [];
+        // If pattern is now a rest, remove any tie from/to this beat
+        if (e.target.value === 'r') {
+          customRhythmTies[bi] = false;
+          if (bi > 0) customRhythmTies[bi - 1] = false;
+        }
+        crRenderBeatSelectors(); // re-render to update accent buttons
+        crRenderNotation();
+      });
 
-    group.appendChild(select);
-    container.appendChild(group);
+      group.appendChild(select);
+
+      // Accent buttons row — one per playable sub-note
+      var pat = customRhythmPattern[beatIdx];
+      var subBeats = crGetSubBeats(pat);
+      if (subBeats.length > 0) {
+        var accentRow = document.createElement('div');
+        accentRow.className = 'cr-accent-row';
+
+        var accentLabel = document.createElement('div');
+        accentLabel.className = 'cr-accent-label';
+        accentLabel.textContent = 'Accent';
+        accentRow.appendChild(accentLabel);
+
+        var accentBtns = document.createElement('div');
+        accentBtns.className = 'cr-accent-btns';
+
+        for (var n = 0; n < subBeats.length; n++) {
+          (function(noteIdx) {
+            var btn = document.createElement('button');
+            btn.className = 'cr-accent-btn';
+            btn.textContent = '>';
+            btn.title = 'Toggle accent on note ' + (noteIdx + 1);
+            if (customRhythmAccents[beatIdx] && customRhythmAccents[beatIdx].indexOf(noteIdx) !== -1) {
+              btn.classList.add('active');
+            }
+            btn.addEventListener('click', function() {
+              if (!customRhythmAccents[beatIdx]) customRhythmAccents[beatIdx] = [];
+              var idx = customRhythmAccents[beatIdx].indexOf(noteIdx);
+              if (idx === -1) {
+                customRhythmAccents[beatIdx].push(noteIdx);
+                btn.classList.add('active');
+              } else {
+                customRhythmAccents[beatIdx].splice(idx, 1);
+                btn.classList.remove('active');
+              }
+              crRenderNotation();
+            });
+            accentBtns.appendChild(btn);
+          })(n);
+        }
+        accentRow.appendChild(accentBtns);
+        group.appendChild(accentRow);
+      }
+
+      // Tie toggle — tie this beat to the next (not for rests, not for last beat if it would be meaningless)
+      if (pat !== 'r') {
+        var tieRow = document.createElement('div');
+        tieRow.className = 'cr-tie-row';
+
+        var tieLabel = document.createElement('label');
+        tieLabel.className = 'cr-tie-label';
+
+        var tieCb = document.createElement('input');
+        tieCb.type = 'checkbox';
+        tieCb.checked = customRhythmTies[beatIdx] || false;
+        tieCb.addEventListener('change', function(e) {
+          customRhythmTies[beatIdx] = e.target.checked;
+          crRenderNotation();
+        });
+
+        tieLabel.appendChild(tieCb);
+        tieLabel.appendChild(document.createTextNode(' Tie to next'));
+        tieRow.appendChild(tieLabel);
+        group.appendChild(tieRow);
+      }
+
+      container.appendChild(group);
+    })(b);
   }
 }
 
 // ── SVG Notation Rendering ──────────────────────────────────────────────────
 // Renders a simple staff-like SVG showing the rhythm pattern with standard notation.
+
+// Returns the x-positions of the first and last note heads for a given beat pattern.
+// Used for drawing ties between beats.
+function crGetNoteXPositions(pat, x, w) {
+  switch (pat) {
+    case 'q':    return { first: x + w / 2, last: x + w / 2 };
+    case 'r':    return null; // rest — no note positions
+    case 'ee':   return { first: x + w * 0.25, last: x + w * 0.75 };
+    case 'er':   return { first: x + w * 0.25, last: x + w * 0.25 };
+    case 're':   return { first: x + w * 0.7,  last: x + w * 0.7 };
+    case 'ssss': return { first: x + w * 0.12, last: x + w * 0.87 };
+    case 'sse':  return { first: x + w * 0.12, last: x + w * 0.75 };
+    case 'ess':  return { first: x + w * 0.15, last: x + w * 0.85 };
+    default:     return { first: x + w / 2, last: x + w / 2 };
+  }
+}
+
+// Returns all note head x-positions in order for a beat pattern (for accent positioning)
+function crGetAllNoteXPositions(pat, x, w) {
+  switch (pat) {
+    case 'q':    return [x + w / 2];
+    case 'r':    return [];
+    case 'ee':   return [x + w * 0.25, x + w * 0.75];
+    case 'er':   return [x + w * 0.25];
+    case 're':   return [x + w * 0.7];
+    case 'ssss': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
+    case 'sse':  return [x + w * 0.12, x + w * 0.37, x + w * 0.75];
+    case 'ess':  return [x + w * 0.15, x + w * 0.55, x + w * 0.85];
+    default:     return [x + w / 2];
+  }
+}
 
 function crRenderNotation() {
   var container = document.getElementById('custom-rhythm-notation');
@@ -3765,8 +3892,8 @@ function crRenderNotation() {
   var beatCount = customRhythmPattern.length;
   var beatWidth = 70;
   var totalWidth = beatCount * beatWidth + 40;
-  var height = 100;
-  var staffY = 50; // middle line of "staff"
+  var height = 110;
+  var staffY = 55; // middle line of "staff"
 
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + totalWidth + '" height="' + height + '" viewBox="0 0 ' + totalWidth + ' ' + height + '">';
 
@@ -3783,7 +3910,7 @@ function crRenderNotation() {
     var pat = customRhythmPattern[b];
 
     // Beat number below
-    svg += '<text x="' + (x + beatWidth / 2 - 4) + '" y="' + (staffY + 35) + '" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    svg += '<text x="' + (x + beatWidth / 2 - 4) + '" y="' + (staffY + 40) + '" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Draw barline before beat 1 equivalent
     if (b === 0) {
@@ -3791,6 +3918,39 @@ function crRenderNotation() {
     }
 
     svg += crDrawBeatPattern(pat, x, staffY, beatWidth);
+
+    // Draw accent marks (>) above accented notes
+    if (customRhythmAccents[b] && customRhythmAccents[b].length > 0) {
+      var noteXPositions = crGetAllNoteXPositions(pat, x, beatWidth);
+      for (var a = 0; a < customRhythmAccents[b].length; a++) {
+        var noteIdx = customRhythmAccents[b][a];
+        if (noteIdx < noteXPositions.length) {
+          var ax = noteXPositions[noteIdx];
+          svg += crAccentMark(ax, staffY - 33);
+        }
+      }
+    }
+
+    // Draw tie arc to next beat
+    if (customRhythmTies[b]) {
+      var thisPositions = crGetNoteXPositions(pat, x, beatWidth);
+      var nextBeatIdx = (b + 1) % beatCount;
+      var nextX = xStart + nextBeatIdx * beatWidth;
+      var nextPat = customRhythmPattern[nextBeatIdx];
+      var nextPositions = crGetNoteXPositions(nextPat, nextX, beatWidth);
+
+      if (thisPositions && nextPositions) {
+        // Tie wraps around for last beat
+        var tieEndX;
+        if (b === beatCount - 1) {
+          // Wrap-around tie: draw to just past the final barline
+          tieEndX = xStart + beatCount * beatWidth - 3;
+        } else {
+          tieEndX = nextPositions.first;
+        }
+        svg += crTieArc(thisPositions.last, tieEndX, staffY);
+      }
+    }
   }
 
   // Final barline
@@ -3924,6 +4084,21 @@ function crEighthRest(cx, cy) {
     ' c-1,3 -4,7 -5,12" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>';
 }
 
+function crTieArc(x1, x2, staffY) {
+  // Curved arc below the note heads connecting tied notes
+  var midX = (x1 + x2) / 2;
+  var arcY = staffY + 10; // below the staff
+  var cpY = staffY + 18;  // control point further below for a nice curve
+  return '<path d="M' + x1 + ',' + arcY +
+    ' Q' + midX + ',' + cpY + ' ' + x2 + ',' + arcY +
+    '" fill="none" stroke="#333" stroke-width="1.5"/>';
+}
+
+function crAccentMark(cx, cy) {
+  // Standard accent mark: > shape above the note
+  return '<text x="' + (cx - 4) + '" y="' + (cy + 4) + '" font-size="14" font-weight="bold" fill="#c0392b" font-family="serif">&gt;</text>';
+}
+
 // ── Custom Rhythm Playback ──────────────────────────────────────────────────
 // Called from scheduleMainBeat instead of normal triggerSound when enabled.
 function triggerCustomRhythmBeat(time, beatIndex) {
@@ -3934,19 +4109,35 @@ function triggerCustomRhythmBeat(time, beatIndex) {
   var beatDuration = Tone.Time("4n").toSeconds();
   var isFirstBeat = beatIndex === 0;
 
+  // Check if the previous beat ties into this one — suppress the first sub-note
+  var prevBeat = (beatIndex - 1 + beatsPerMeasure) % beatsPerMeasure;
+  var tiedFromPrev = customRhythmTies[prevBeat] || false;
+
+  // Get accent list for this beat
+  var beatAccents = (customRhythmAccents && customRhythmAccents[beatIndex]) || [];
+
   for (var i = 0; i < subBeats.length; i++) {
+    // Skip the first note if tied from previous beat
+    if (i === 0 && tiedFromPrev) continue;
+
     var sb = subBeats[i];
     var t = time + sb.offset * beatDuration;
-    var isAccent = isFirstBeat && sb.offset === 0;
 
-    if (isAccent && accentEnabled) {
+    // Check if this specific sub-note is user-accented
+    var isUserAccent = beatAccents.indexOf(i) !== -1;
+    // Default beat-1 accent
+    var isBeat1Accent = isFirstBeat && sb.offset === 0;
+
+    if ((isBeat1Accent && accentEnabled) || isUserAccent) {
       accentSynth.triggerAttackRelease("G5", "16n", t);
     }
 
     if (animalSoundEnabled) {
-      // Vary volume based on velocity
       var originalVol = circleSynth.volume.value;
-      if (sb.vel < 1.0) {
+      if (isUserAccent) {
+        // Louder for user-accented notes
+        circleSynth.triggerAttackRelease("A4", "16n", t);
+      } else if (sb.vel < 1.0) {
         // Quieter for off-beat sub-notes
         circleSynth.volume.setValueAtTime(originalVol - 6 * (1 - sb.vel), t);
         circleSynth.triggerAttackRelease("A4", "32n", t);
@@ -3970,7 +4161,10 @@ function initCustomRhythmListeners() {
       // Initialize pattern if empty
       if (customRhythmPattern.length === 0 || customRhythmPattern.length !== beatsPerMeasure) {
         customRhythmPattern = crBuildDefaultPattern();
+        customRhythmTies = [];
+        customRhythmAccents = [];
       }
+      crSyncTiesAndAccents();
       crRenderBeatSelectors();
       crRenderNotation();
       crModal.classList.remove('hidden');

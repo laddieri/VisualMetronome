@@ -2027,14 +2027,66 @@ footer p {
   border-color: #764ba2;
 }
 
-.cr-active-indicator {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #764ba2;
-  margin-left: 6px;
-  vertical-align: middle;
+.cr-accent-row {
+  margin-top: 6px;
+}
+
+.cr-accent-label {
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.cr-accent-btns {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+
+.cr-accent-btn {
+  width: 26px;
+  height: 22px;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  background: #0f172a;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.cr-accent-btn:hover {
+  border-color: #764ba2;
+  color: #e2e8f0;
+}
+
+.cr-accent-btn.active {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: #fff;
+}
+
+.cr-tie-row {
+  margin-top: 6px;
+}
+
+.cr-tie-label {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+}
+
+.cr-tie-label input[type="checkbox"] {
+  accent-color: #764ba2;
 }
 
 @media (max-width: 480px) {
