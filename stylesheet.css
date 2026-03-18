@@ -1971,6 +1971,8 @@ footer p {
 /* ── Custom Rhythm Editor ─────────────────────────────────────────── */
 .custom-rhythm-container {
   max-width: 650px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 
 .custom-rhythm-notation {
@@ -2087,6 +2089,144 @@ footer p {
 
 .cr-tie-label input[type="checkbox"] {
   accent-color: #764ba2;
+}
+
+/* ── Custom Rhythm Save/Load ──────────────────────────────────────── */
+.cr-save-section {
+  border-top: 1px solid #374151;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.cr-save-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.cr-name-input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+}
+
+.cr-name-input:focus {
+  outline: none;
+  border-color: #764ba2;
+}
+
+.cr-name-input::placeholder {
+  color: #4b5563;
+}
+
+.cr-save-btn {
+  padding: 8px 16px;
+  background: #764ba2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.cr-save-btn:hover {
+  background: #6a3d96;
+}
+
+.cr-saved-label {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.cr-saved-empty {
+  color: #4b5563;
+  font-size: 0.8rem;
+  font-style: italic;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.cr-saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.cr-saved-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #1e293b;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.cr-saved-name {
+  flex: 1;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cr-saved-meta {
+  color: #64748b;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.cr-saved-load-btn {
+  padding: 4px 10px;
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cr-saved-load-btn:hover {
+  background: #1e40af;
+}
+
+.cr-saved-del-btn {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.cr-saved-del-btn:hover {
+  background: #7f1d1d;
+  border-color: #7f1d1d;
+  color: #fff;
 }
 
 @media (max-width: 480px) {
