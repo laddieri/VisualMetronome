@@ -1726,6 +1726,79 @@ footer p {
   white-space: nowrap;
 }
 
+/* Ritardando row (slowdown at end of section) */
+.song-section-rit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 6px 28px;
+  font-size: 0.8rem;
+  color: #888;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 2px;
+  flex-wrap: wrap;
+}
+
+.song-rit-checkbox {
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #2b82a8;
+}
+
+.song-rit-icon {
+  font-size: 1rem;
+  color: #2b82a8;
+  flex-shrink: 0;
+}
+
+.song-rit-label {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.song-rit-fields {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  transition: opacity 0.15s;
+}
+
+.song-rit-fields.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.song-rit-input {
+  width: 52px;
+  padding: 3px 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.song-rit-input::-webkit-outer-spin-button,
+.song-rit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.song-rit-input:focus {
+  outline: none;
+  border-color: #2b82a8;
+}
+
+.song-rit-select {
+  padding: 3px 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: white;
+  cursor: pointer;
+}
+
 /* Song title input */
 .song-title-row {
   margin-bottom: 12px;

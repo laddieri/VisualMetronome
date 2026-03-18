@@ -34,7 +34,8 @@ var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
 var lastBeatTime = 0;   // Track when last beat fired for animation sync
 var animBeat = 0;       // Beat index for conductor animation, updated in Draw callback
-var rampProgress = 0;   // 0 = not in a tempo ramp; 0–1 = fraction through ramp window
+var rampProgress = 0;         // 0 = not in a tempo ramp; 0–1 = fraction through ramp window
+var ritardandoProgress = 0;   // 0 = not in a ritardando; 0–1 = fraction through ritardando zone
 var bounceDirection = 'horizontal'; // 'horizontal' or 'vertical'
 var isFullscreen = false; // Fullscreen mode state
 var bluetoothDelay = 0; // Bluetooth audio delay compensation in milliseconds (0 = no offset)
@@ -52,7 +53,7 @@ var ctSoundOn = false;               // Keep metronome sound on during counting 
 var ctVisualOn = true;               // Keep visual animation on during counting phase
 
 // Song Sections (multi-section playback)
-var songSections = [];           // Array of {measures, beatsPerMeasure, bpm, transitionBeats, transitionUnit}
+var songSections = [];           // Array of {measures, beatsPerMeasure, bpm, transitionBeats, transitionUnit, ritardandoEnabled, ritardandoBeats, ritardandoUnit, ritardandoPercent}
 var songTitle = '';              // Current song title (used when saving)
 var songModeEnabled = false;     // Whether song mode is active
 var songCurrentSection = -1;     // Index of currently playing section (-1 = not playing)
@@ -1719,34 +1720,61 @@ function scheduleMainBeat() {
           return; // Don't play a beat after song ends
         }
       } else {
-        // Still within the current section — check whether we should be
-        // ramping the tempo toward the next section's BPM.
-        var nextSec = songSections[songCurrentSection + 1];
-        if (nextSec) {
-          var transCount = nextSec.transitionBeats || 0;
-          if (transCount > 0 && nextSec.bpm !== curSec.bpm) {
-            var transUnit = nextSec.transitionUnit || 'beats';
-            var totalTransBeats = (transUnit === 'measures')
-              ? transCount * nextSec.beatsPerMeasure
-              : transCount;
-            var totalBeatsInSection = curSec.measures * curSec.beatsPerMeasure;
-            // Never let the ramp be longer than the section itself
-            totalTransBeats = Math.min(totalTransBeats, totalBeatsInSection);
-            var currentBeatIndex = songMeasureInSection * curSec.beatsPerMeasure + songBeatInMeasure;
-            var beatsRemaining = totalBeatsInSection - currentBeatIndex; // incl. this beat
-            if (beatsRemaining <= totalTransBeats) {
-              // This beat falls inside the ramp window — interpolate BPM
-              var beatsIntoRamp = totalTransBeats - beatsRemaining; // 0-indexed step
-              var rampBPM = curSec.bpm +
-                (nextSec.bpm - curSec.bpm) * (beatsIntoRamp + 1) / totalTransBeats;
-              rampBPM = Math.max(30, Math.min(300, rampBPM));
-              Tone.Transport.bpm.setValueAtTime(rampBPM, time);
-              // Do NOT update cachedBPM here: the scheduler fires look-ahead
-              // (~100ms early) so updating cachedBPM now changes beatDuration
-              // while lastBeatTime still belongs to the previous beat.  When
-              // slowing down this makes progress jump backward, causing a
-              // visible stutter.  Tone.Draw.schedule updates cachedBPM
-              // atomically with lastBeatTime at the correct moment.
+        // Still within the current section — check for ritardando and/or
+        // a transition ramp toward the next section's BPM.
+        var totalBeatsInSection = curSec.measures * curSec.beatsPerMeasure;
+        var currentBeatIndex = songMeasureInSection * curSec.beatsPerMeasure + songBeatInMeasure;
+        var beatsRemaining = totalBeatsInSection - currentBeatIndex; // incl. this beat
+
+        // ── Ritardando: smooth slowdown at the end of this section ──────────
+        var ritardandoApplied = false;
+        if (curSec.ritardandoEnabled && (curSec.ritardandoBeats || 0) > 0) {
+          var ritUnit = curSec.ritardandoUnit || 'beats';
+          var totalRitBeats = (ritUnit === 'measures')
+            ? curSec.ritardandoBeats * curSec.beatsPerMeasure
+            : curSec.ritardandoBeats;
+          // Never let the ritardando be longer than the section itself
+          totalRitBeats = Math.min(totalRitBeats, totalBeatsInSection);
+          if (beatsRemaining <= totalRitBeats) {
+            var beatsIntoRit = totalRitBeats - beatsRemaining; // 0-indexed step
+            // Target BPM = section BPM reduced by ritardandoPercent
+            var ritTargetBPM = curSec.bpm * (1 - (curSec.ritardandoPercent || 30) / 100);
+            ritTargetBPM = Math.max(30, ritTargetBPM);
+            var ritBPM = curSec.bpm + (ritTargetBPM - curSec.bpm) * (beatsIntoRit + 1) / totalRitBeats;
+            ritBPM = Math.max(30, Math.min(300, ritBPM));
+            Tone.Transport.bpm.setValueAtTime(ritBPM, time);
+            // Do NOT update cachedBPM here — same reason as for transition ramp;
+            // Tone.Draw.schedule updates it atomically with lastBeatTime.
+            ritardandoApplied = true;
+          }
+        }
+
+        // ── Transition ramp: only when no ritardando is active ──────────────
+        if (!ritardandoApplied) {
+          var nextSec = songSections[songCurrentSection + 1];
+          if (nextSec) {
+            var transCount = nextSec.transitionBeats || 0;
+            if (transCount > 0 && nextSec.bpm !== curSec.bpm) {
+              var transUnit = nextSec.transitionUnit || 'beats';
+              var totalTransBeats = (transUnit === 'measures')
+                ? transCount * nextSec.beatsPerMeasure
+                : transCount;
+              // Never let the ramp be longer than the section itself
+              totalTransBeats = Math.min(totalTransBeats, totalBeatsInSection);
+              if (beatsRemaining <= totalTransBeats) {
+                // This beat falls inside the ramp window — interpolate BPM
+                var beatsIntoRamp = totalTransBeats - beatsRemaining; // 0-indexed step
+                var rampBPM = curSec.bpm +
+                  (nextSec.bpm - curSec.bpm) * (beatsIntoRamp + 1) / totalTransBeats;
+                rampBPM = Math.max(30, Math.min(300, rampBPM));
+                Tone.Transport.bpm.setValueAtTime(rampBPM, time);
+                // Do NOT update cachedBPM here: the scheduler fires look-ahead
+                // (~100ms early) so updating cachedBPM now changes beatDuration
+                // while lastBeatTime still belongs to the previous beat.  When
+                // slowing down this makes progress jump backward, causing a
+                // visible stutter.  Tone.Draw.schedule updates cachedBPM
+                // atomically with lastBeatTime at the correct moment.
+              }
             }
           }
         }
@@ -1840,25 +1868,44 @@ function scheduleMainBeat() {
     // Capture beat index before incrementing so Draw callback can use it
     const thisBeat = currentBeat;
 
-    // Compute ramp fraction for this beat so the Draw callback can expose it
-    // to the animation loop for the background tint.
+    // Compute ramp/ritardando fraction for this beat so the Draw callback can
+    // expose it to the animation loop for the background tint.
     var thisRampProgress = 0;
+    var thisRitardandoProgress = 0;
     if (songModeEnabled && songCurrentSection >= 0) {
       var _curSec  = songSections[songCurrentSection];
-      var _nextSec = songSections[songCurrentSection + 1];
-      if (_curSec && _nextSec) {
-        var _transCount = _nextSec.transitionBeats || 0;
-        if (_transCount > 0 && _nextSec.bpm !== _curSec.bpm) {
-          var _unit = _nextSec.transitionUnit || 'beats';
-          var _totalTrans = (_unit === 'measures')
-            ? _transCount * _nextSec.beatsPerMeasure
-            : _transCount;
-          var _totalBeats = _curSec.measures * _curSec.beatsPerMeasure;
-          _totalTrans = Math.min(_totalTrans, _totalBeats);
-          var _beatIdx = songMeasureInSection * _curSec.beatsPerMeasure + songBeatInMeasure;
-          var _remaining = _totalBeats - _beatIdx;
-          if (_remaining <= _totalTrans) {
-            thisRampProgress = (_totalTrans - _remaining + 1) / _totalTrans;
+      if (_curSec) {
+        var _totalBeats = _curSec.measures * _curSec.beatsPerMeasure;
+        var _beatIdx = songMeasureInSection * _curSec.beatsPerMeasure + songBeatInMeasure;
+        var _remaining = _totalBeats - _beatIdx;
+
+        // Ritardando progress (takes priority over transition ramp for tint)
+        if (_curSec.ritardandoEnabled && (_curSec.ritardandoBeats || 0) > 0) {
+          var _ritUnit = _curSec.ritardandoUnit || 'beats';
+          var _totalRit = (_ritUnit === 'measures')
+            ? _curSec.ritardandoBeats * _curSec.beatsPerMeasure
+            : _curSec.ritardandoBeats;
+          _totalRit = Math.min(_totalRit, _totalBeats);
+          if (_remaining <= _totalRit) {
+            thisRitardandoProgress = (_totalRit - _remaining + 1) / _totalRit;
+          }
+        }
+
+        // Transition ramp progress (only when not in ritardando)
+        if (thisRitardandoProgress === 0) {
+          var _nextSec = songSections[songCurrentSection + 1];
+          if (_nextSec) {
+            var _transCount = _nextSec.transitionBeats || 0;
+            if (_transCount > 0 && _nextSec.bpm !== _curSec.bpm) {
+              var _unit = _nextSec.transitionUnit || 'beats';
+              var _totalTrans = (_unit === 'measures')
+                ? _transCount * _nextSec.beatsPerMeasure
+                : _transCount;
+              _totalTrans = Math.min(_totalTrans, _totalBeats);
+              if (_remaining <= _totalTrans) {
+                thisRampProgress = (_totalTrans - _remaining + 1) / _totalTrans;
+              }
+            }
           }
         }
       }
@@ -1879,6 +1926,7 @@ function scheduleMainBeat() {
         secondsPerBeat = 1 / (currentBPM / 60);
       }
       rampProgress = thisRampProgress;
+      ritardandoProgress = thisRitardandoProgress;
     }, time);
 
     // Advance beat counter
@@ -2650,7 +2698,11 @@ function initSongSectionsListeners() {
         beatsPerMeasure: beatsPerMeasure,
         bpm: cachedBPM,
         transitionBeats: 0,
-        transitionUnit: 'beats'
+        transitionUnit: 'beats',
+        ritardandoEnabled: false,
+        ritardandoBeats: 4,
+        ritardandoUnit: 'beats',
+        ritardandoPercent: 30
       });
       renderSongSectionsList();
     });
@@ -2817,6 +2869,97 @@ function renderSongSectionsList() {
     }
 
     listEl.appendChild(row);
+
+    // ── Ritardando row — shown for every section ──────────────────────────
+    var ritRow = document.createElement('div');
+    ritRow.className = 'song-section-rit-row';
+
+    var ritCheckbox = document.createElement('input');
+    ritCheckbox.type = 'checkbox';
+    ritCheckbox.className = 'song-rit-checkbox';
+    ritCheckbox.checked = sec.ritardandoEnabled || false;
+    ritCheckbox.title = 'Enable ritardando at end of this section';
+    ritCheckbox.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].ritardandoEnabled = e.target.checked;
+        var fields = e.target.closest('.song-section-rit-row').querySelector('.song-rit-fields');
+        if (fields) fields.classList.toggle('disabled', !e.target.checked);
+      };
+    })(idx));
+    ritRow.appendChild(ritCheckbox);
+
+    var ritIcon = document.createElement('span');
+    ritIcon.className = 'song-rit-icon';
+    ritIcon.textContent = '\u21D8'; // ⇘ — slowing-down arrow
+    ritRow.appendChild(ritIcon);
+
+    var ritLabel = document.createElement('span');
+    ritLabel.className = 'song-rit-label';
+    ritLabel.textContent = 'Ritardando:';
+    ritRow.appendChild(ritLabel);
+
+    // Fields container (visually disabled when checkbox is off)
+    var ritFields = document.createElement('div');
+    ritFields.className = 'song-rit-fields' + (sec.ritardandoEnabled ? '' : ' disabled');
+
+    var ritDurationInput = document.createElement('input');
+    ritDurationInput.type = 'number';
+    ritDurationInput.className = 'song-rit-input';
+    ritDurationInput.min = 1;
+    ritDurationInput.max = 999;
+    ritDurationInput.value = sec.ritardandoBeats || 4;
+    ritDurationInput.title = 'Duration of slowdown in beats or measures';
+    ritDurationInput.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].ritardandoBeats = Math.max(1, Math.min(999, parseInt(e.target.value) || 4));
+        e.target.value = songSections[i].ritardandoBeats;
+      };
+    })(idx));
+    ritFields.appendChild(ritDurationInput);
+
+    var ritUnitSelect = document.createElement('select');
+    ritUnitSelect.className = 'song-rit-select';
+    ['beats', 'measures'].forEach(function(unit) {
+      var o = document.createElement('option');
+      o.value = unit;
+      o.textContent = unit;
+      if (unit === (sec.ritardandoUnit || 'beats')) o.selected = true;
+      ritUnitSelect.appendChild(o);
+    });
+    ritUnitSelect.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].ritardandoUnit = e.target.value;
+      };
+    })(idx));
+    ritFields.appendChild(ritUnitSelect);
+
+    var ritSlowByLabel = document.createElement('span');
+    ritSlowByLabel.className = 'song-rit-label';
+    ritSlowByLabel.textContent = 'slow by';
+    ritFields.appendChild(ritSlowByLabel);
+
+    var ritPercentInput = document.createElement('input');
+    ritPercentInput.type = 'number';
+    ritPercentInput.className = 'song-rit-input';
+    ritPercentInput.min = 1;
+    ritPercentInput.max = 99;
+    ritPercentInput.value = sec.ritardandoPercent || 30;
+    ritPercentInput.title = 'How much to slow down (%)';
+    ritPercentInput.addEventListener('change', (function(i) {
+      return function(e) {
+        songSections[i].ritardandoPercent = Math.max(1, Math.min(99, parseInt(e.target.value) || 30));
+        e.target.value = songSections[i].ritardandoPercent;
+      };
+    })(idx));
+    ritFields.appendChild(ritPercentInput);
+
+    var ritPctLabel = document.createElement('span');
+    ritPctLabel.className = 'song-rit-label';
+    ritPctLabel.textContent = '%';
+    ritFields.appendChild(ritPctLabel);
+
+    ritRow.appendChild(ritFields);
+    listEl.appendChild(ritRow);
   });
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2834,11 +2977,14 @@ function draw() {
   // the ramp window; inverting it (1 - rampProgress) makes the tint
   // brightest at the first ramp beat and fades to normal as the new tempo
   // is reached.
-  const baseColor   = color(105, 105, 105);   // #696969 — normal grey
-  const rampColor   = color(180, 120,  40);   // warm amber for ramp cue
-  const bgColor = (rampProgress > 0)
-    ? lerpColor(baseColor, rampColor, (1 - rampProgress) * 0.45)
-    : baseColor;
+  const baseColor        = color(105, 105, 105);   // #696969 — normal grey
+  const rampColor        = color(180, 120,  40);   // warm amber for transition ramp
+  const ritardandoColor  = color( 40, 140, 180);   // teal blue for ritardando
+  const bgColor = (ritardandoProgress > 0)
+    ? lerpColor(baseColor, ritardandoColor, (1 - ritardandoProgress) * 0.45)
+    : (rampProgress > 0)
+      ? lerpColor(baseColor, rampColor, (1 - rampProgress) * 0.45)
+      : baseColor;
 
   if (isDoneFlashing && progress < 0.12) {
     background('#48bb78');
