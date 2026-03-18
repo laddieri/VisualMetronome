@@ -2071,6 +2071,9 @@ footer p {
   background: #c0392b;
   border-color: #c0392b;
   color: #fff;
+  position: static;
+  height: 22px;
+  width: 26px;
 }
 
 .cr-tie-row {
