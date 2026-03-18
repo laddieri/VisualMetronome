@@ -3894,22 +3894,34 @@ function crBeam(x1, x2, y) {
 }
 
 function crFlag(x, y) {
-  // Simple flag curve for single eighth notes
+  // Flag for a single eighth note — a curved pennant extending right from the stem top.
+  // Starts at the top of the stem and sweeps outward and downward.
   var sx = x + 4.5, sy = y - 25;
-  return '<path d="M' + sx + ',' + sy + ' q4,6 2,14 q-1,-4 -2,-6" fill="#333" stroke="none"/>';
+  return '<path d="M' + sx + ',' + sy +
+    ' c1,3 8,5 6,14' +   // outward curve down
+    ' c-2,-2 -5,-4 -6,-6' + // inward curve back
+    '" fill="#333" stroke="none"/>';
 }
 
 function crQuarterRest(cx, cy) {
-  // Simplified quarter rest glyph
-  var x = cx - 3;
-  return '<path d="M' + (x + 2) + ',' + (cy - 10) +
-    ' l4,5 l-4,5 l4,5 l-4,5" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  // Quarter rest — the classic zigzag lightning-bolt shape used in music notation.
+  // Drawn as a filled path so it reads as a solid glyph at small sizes.
+  var x = cx;
+  return '<path d="' +
+    'M' + (x - 2) + ',' + (cy - 12) +       // top-left start
+    ' l5,5' +                                  // slash down-right
+    ' l-5,5' +                                 // slash down-left to middle
+    ' c2,0 5,2 3,6' +                         // curve into lower bump
+    ' c-1,2 -3,4 -1,6' +                      // curve to bottom
+    '" fill="none" stroke="#333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
 }
 
 function crEighthRest(cx, cy) {
-  // Simplified eighth rest
-  return '<circle cx="' + (cx + 2) + '" cy="' + (cy - 4) + '" r="2" fill="#333"/>' +
-    '<line x1="' + (cx + 2) + '" y1="' + (cy - 4) + '" x2="' + (cx - 1) + '" y2="' + (cy + 8) + '" stroke="#333" stroke-width="1.5"/>';
+  // Eighth rest — a dot with a curved tail descending to the right.
+  var dotX = cx + 3, dotY = cy - 5;
+  return '<circle cx="' + dotX + '" cy="' + dotY + '" r="2.2" fill="#333"/>' +
+    '<path d="M' + (dotX + 0.5) + ',' + (dotY + 1) +
+    ' c-1,3 -4,7 -5,12" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>';
 }
 
 // ── Custom Rhythm Playback ──────────────────────────────────────────────────
