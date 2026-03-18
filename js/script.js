@@ -4150,6 +4150,91 @@ function triggerCustomRhythmBeat(time, beatIndex) {
 }
 
 // ── Custom Rhythm UI Listeners ──────────────────────────────────────────────
+// ── Custom Rhythm Save / Load ─────────────────────────────────────────────────
+var _VM_RHYTHMS_KEY = 'vm_saved_rhythms';
+
+function crGetSavedRhythms() {
+  try { return JSON.parse(localStorage.getItem(_VM_RHYTHMS_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function crSaveRhythm() {
+  var nameInput = document.getElementById('cr-rhythm-name');
+  var name = (nameInput ? nameInput.value : '').trim() || 'Untitled Rhythm';
+  var rhythms = crGetSavedRhythms();
+  rhythms.push({
+    id: Date.now(),
+    name: name,
+    pattern: customRhythmPattern.slice(),
+    ties: customRhythmTies.slice(),
+    accents: customRhythmAccents.map(function(a) { return a ? a.slice() : []; }),
+    beats: beatsPerMeasure,
+    savedAt: new Date().toLocaleDateString()
+  });
+  localStorage.setItem(_VM_RHYTHMS_KEY, JSON.stringify(rhythms));
+  if (nameInput) nameInput.value = '';
+  crRenderSavedRhythmsList();
+}
+
+function crLoadRhythm(id) {
+  var rhythms = crGetSavedRhythms();
+  var entry = rhythms.find(function(r) { return r.id === id; });
+  if (!entry) return;
+  customRhythmPattern = entry.pattern.slice();
+  customRhythmTies = entry.ties.slice();
+  customRhythmAccents = entry.accents.map(function(a) { return a ? a.slice() : []; });
+  crSyncTiesAndAccents();
+  crRenderBeatSelectors();
+  crRenderNotation();
+}
+
+function crDeleteRhythm(id) {
+  var rhythms = crGetSavedRhythms().filter(function(r) { return r.id !== id; });
+  localStorage.setItem(_VM_RHYTHMS_KEY, JSON.stringify(rhythms));
+  crRenderSavedRhythmsList();
+}
+
+function crRenderSavedRhythmsList() {
+  var container = document.getElementById('cr-saved-list');
+  if (!container) return;
+  var rhythms = crGetSavedRhythms();
+  container.innerHTML = '';
+  if (rhythms.length === 0) {
+    container.innerHTML = '<p class="cr-saved-empty">No saved rhythms yet.</p>';
+    return;
+  }
+  rhythms.slice().reverse().forEach(function(entry) {
+    var row = document.createElement('div');
+    row.className = 'cr-saved-row';
+
+    var nameEl = document.createElement('span');
+    nameEl.className = 'cr-saved-name';
+    nameEl.textContent = entry.name;
+    nameEl.title = entry.name;
+
+    var metaEl = document.createElement('span');
+    metaEl.className = 'cr-saved-meta';
+    metaEl.textContent = entry.beats + ' beats · ' + entry.savedAt;
+
+    var loadBtn = document.createElement('button');
+    loadBtn.className = 'cr-saved-load-btn';
+    loadBtn.textContent = 'Load';
+    loadBtn.addEventListener('click', function() { crLoadRhythm(entry.id); });
+
+    var delBtn = document.createElement('button');
+    delBtn.className = 'cr-saved-del-btn';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete';
+    delBtn.addEventListener('click', function() { crDeleteRhythm(entry.id); });
+
+    row.appendChild(nameEl);
+    row.appendChild(metaEl);
+    row.appendChild(loadBtn);
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
+}
+
 function initCustomRhythmListeners() {
   var crBtn = document.getElementById('custom-rhythm-btn');
   var crModal = document.getElementById('custom-rhythm-modal');
@@ -4167,8 +4252,14 @@ function initCustomRhythmListeners() {
       crSyncTiesAndAccents();
       crRenderBeatSelectors();
       crRenderNotation();
+      crRenderSavedRhythmsList();
       crModal.classList.remove('hidden');
     });
+  }
+
+  var crSaveBtn = document.getElementById('cr-save-btn');
+  if (crSaveBtn) {
+    crSaveBtn.addEventListener('click', crSaveRhythm);
   }
 
   if (crCloseBtn) {
