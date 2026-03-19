@@ -2268,3 +2268,129 @@ footer p {
     transform: scale(1.2);
   }
 }
+
+/* ── Two-Measure Pattern modal ─────────────────────────────────────────── */
+
+#two-measure-btn.ct-active {
+  background: #fffbeb;
+  border-color: #d69e2e;
+  box-shadow: 0 0 0 2px rgba(214, 158, 46, 0.3);
+}
+
+.tmp-container {
+  max-width: 480px;
+}
+
+.tmp-measure-block {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.tmp-measure-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.tmp-row {
+  margin-bottom: 10px;
+}
+
+.tmp-row:last-child {
+  margin-bottom: 0;
+}
+
+.tmp-row-inline {
+  display: flex;
+  gap: 16px;
+}
+
+.tmp-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tmp-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.tmp-tempo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tmp-bpm-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  outline: none;
+  cursor: pointer;
+}
+
+.tmp-bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+}
+
+.tmp-bpm-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  border: none;
+}
+
+.tmp-bpm-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.tmp-bpm-input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: right;
+  color: #2d3748;
+  background: white;
+}
+
+.tmp-bpm-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.tmp-bpm-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #a0aec0;
+}
+/* ─────────────────────────────────────────────────────────────────────── */

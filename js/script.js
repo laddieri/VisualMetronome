@@ -61,6 +61,14 @@ var songMeasureInSection = 0;    // Current measure within the current section (
 var songBeatInMeasure = 0;       // Current beat within the current measure (0-based, for section tracking)
 var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
 
+// Two-Measure Pattern state
+var twoMeasurePatternEnabled = false;
+var twoMeasurePattern = [
+  { beatsPerMeasure: 4, subdivision: 'none', bpm: 96 },
+  { beatsPerMeasure: 3, subdivision: 'eighth', bpm: 96 }
+];
+var twoMeasureCurrentMeasure = 0; // 0 or 1 — which measure we're currently playing
+
 // Custom Rhythm state
 // Each beat in the measure is represented by a pattern string:
 //   'q'        = quarter note
@@ -1708,6 +1716,15 @@ function scheduleMainBeat() {
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Two-measure pattern: apply measure settings at start of each measure ─
+    if (twoMeasurePatternEnabled && !songModeEnabled && currentBeat === 0) {
+      var mpCfg = twoMeasurePattern[twoMeasureCurrentMeasure];
+      beatsPerMeasure = mpCfg.beatsPerMeasure;
+      subdivision = mpCfg.subdivision;
+      Tone.Transport.bpm.setValueAtTime(mpCfg.bpm, time);
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // ── Song mode: check for section transition BEFORE playing the beat ────
     if (songModeEnabled && songCurrentSection >= 0 && songCurrentSection < songSections.length) {
       var curSec = songSections[songCurrentSection];
@@ -1955,6 +1972,12 @@ function scheduleMainBeat() {
     // Advance beat counter
     currentBeat = (currentBeat + 1) % beatsPerMeasure;
 
+    // ── Two-measure pattern: advance to next measure when this one wraps ──
+    if (twoMeasurePatternEnabled && !songModeEnabled && currentBeat === 0) {
+      twoMeasureCurrentMeasure = (twoMeasureCurrentMeasure + 1) % 2;
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     // ── Song mode: advance measure/beat tracking after playing ────────────
     if (songModeEnabled && songCurrentSection >= 0 && songCurrentSection < songSections.length) {
       songBeatInMeasure++;
@@ -2089,6 +2112,8 @@ function toggleTransport(withCountIn) {
     songMeasureInSection = 0;
     songBeatInMeasure = 0;
     hideSongProgressDisplay();
+    // Reset two-measure pattern state
+    twoMeasureCurrentMeasure = 0;
     _countIn1Btn.classList.remove('active');
     _countInBtn.classList.remove('active');
     _setPlayTogglePlaying(false);
@@ -2122,6 +2147,17 @@ function toggleTransport(withCountIn) {
       songMeasureInSection = 0;
       songBeatInMeasure = 0;
       hideSongProgressDisplay();
+    }
+    // Reset two-measure pattern to start from measure 1
+    twoMeasureCurrentMeasure = 0;
+    // If two-measure mode is active, apply measure 1 settings immediately
+    if (twoMeasurePatternEnabled && !songModeEnabled) {
+      var _mp0 = twoMeasurePattern[0];
+      beatsPerMeasure = _mp0.beatsPerMeasure;
+      subdivision = _mp0.subdivision;
+      Tone.Transport.bpm.value = _mp0.bpm;
+      cachedBPM = _mp0.bpm;
+      secondsPerBeat = 1 / (_mp0.bpm / 60);
     }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
@@ -4300,3 +4336,118 @@ if (document.readyState === 'loading') {
 } else {
   initSongSectionsListeners();
 }
+
+// ── Two-Measure Pattern ────────────────────────────────────────────────────
+
+function tmpUpdateMeasureUI(measureIndex) {
+  var cfg = twoMeasurePattern[measureIndex];
+  var prefix = 'tmp-m' + (measureIndex + 1) + '-';
+
+  var bpmSlider = document.getElementById(prefix + 'bpm-slider');
+  var bpmInput  = document.getElementById(prefix + 'bpm-input');
+  var bpmLabel  = document.getElementById(prefix + 'bpm-label');
+  var timeSig   = document.getElementById(prefix + 'time-sig');
+  var subdiv    = document.getElementById(prefix + 'subdivision');
+
+  if (bpmSlider) bpmSlider.value = cfg.bpm;
+  if (bpmInput)  bpmInput.value  = cfg.bpm;
+  if (bpmLabel)  bpmLabel.textContent = cfg.bpm;
+  if (timeSig)   timeSig.value   = cfg.beatsPerMeasure;
+  if (subdiv)    subdiv.value    = cfg.subdivision;
+}
+
+function initTwoMeasurePatternListeners() {
+  var tmpBtn      = document.getElementById('two-measure-btn');
+  var tmpModal    = document.getElementById('two-measure-modal');
+  var tmpCloseBtn = document.getElementById('tmp-close-btn');
+  var tmpEnabled  = document.getElementById('tmp-enabled');
+
+  if (!tmpBtn || !tmpModal) return;
+
+  // Open modal
+  tmpBtn.addEventListener('click', function() {
+    tmpUpdateMeasureUI(0);
+    tmpUpdateMeasureUI(1);
+    if (tmpEnabled) tmpEnabled.checked = twoMeasurePatternEnabled;
+    tmpModal.classList.remove('hidden');
+  });
+
+  // Close modal
+  if (tmpCloseBtn) {
+    tmpCloseBtn.addEventListener('click', function() {
+      tmpModal.classList.add('hidden');
+    });
+  }
+
+  // Backdrop click closes
+  tmpModal.addEventListener('click', function(e) {
+    if (e.target === tmpModal) tmpModal.classList.add('hidden');
+  });
+
+  // Enable/disable checkbox
+  if (tmpEnabled) {
+    tmpEnabled.addEventListener('change', function(e) {
+      twoMeasurePatternEnabled = e.target.checked;
+      tmpBtn.classList.toggle('ct-active', twoMeasurePatternEnabled);
+      // If enabling and playing, apply measure 1 settings immediately
+      if (twoMeasurePatternEnabled && Tone.Transport.state === 'started' && !songModeEnabled) {
+        twoMeasureCurrentMeasure = 0;
+        var mp0 = twoMeasurePattern[0];
+        beatsPerMeasure = mp0.beatsPerMeasure;
+        subdivision = mp0.subdivision;
+        applyBPM(mp0.bpm);
+      }
+      sendStateUpdate();
+    });
+  }
+
+  // Wire up controls for each measure (1 and 2 → indices 0 and 1)
+  [0, 1].forEach(function(idx) {
+    var prefix = 'tmp-m' + (idx + 1) + '-';
+
+    var bpmSlider = document.getElementById(prefix + 'bpm-slider');
+    var bpmInput  = document.getElementById(prefix + 'bpm-input');
+    var bpmLabel  = document.getElementById(prefix + 'bpm-label');
+    var timeSig   = document.getElementById(prefix + 'time-sig');
+    var subdiv    = document.getElementById(prefix + 'subdivision');
+
+    function applyMeasureBpm(val) {
+      val = Math.max(30, Math.min(300, Math.round(val)));
+      twoMeasurePattern[idx].bpm = val;
+      if (bpmSlider) bpmSlider.value = val;
+      if (bpmInput)  bpmInput.value  = val;
+      if (bpmLabel)  bpmLabel.textContent = val;
+    }
+
+    if (bpmSlider) {
+      bpmSlider.addEventListener('input', function() {
+        applyMeasureBpm(parseInt(this.value));
+      });
+    }
+
+    if (bpmInput) {
+      bpmInput.addEventListener('change', function() {
+        applyMeasureBpm(parseInt(this.value) || twoMeasurePattern[idx].bpm);
+      });
+    }
+
+    if (timeSig) {
+      timeSig.addEventListener('change', function() {
+        twoMeasurePattern[idx].beatsPerMeasure = parseInt(this.value);
+      });
+    }
+
+    if (subdiv) {
+      subdiv.addEventListener('change', function() {
+        twoMeasurePattern[idx].subdivision = this.value;
+      });
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initTwoMeasurePatternListeners);
+} else {
+  initTwoMeasurePatternListeners();
+}
+// ──────────────────────────────────────────────────────────────────────────
