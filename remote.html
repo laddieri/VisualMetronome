@@ -366,6 +366,7 @@
           <option value="pig">Pig</option>
           <option value="selfie">Selfie</option>
           <option value="conductor">Conductor</option>
+          <option value="conductor3d">3D Conductor</option>
         </select>
       </div>
 
@@ -553,8 +554,8 @@
     // Update visibility of conditional settings (direction, color, rock beat)
     function updateConditionalUI() {
       var anim = rAnimation.value;
-      // Direction hidden for conductor
-      rDirectionRow.style.display = (anim === 'conductor') ? 'none' : '';
+      // Direction hidden for conductor modes
+      rDirectionRow.style.display = (anim === 'conductor' || anim === 'conductor3d') ? 'none' : '';
       // Color shown only for circle
       rColorRow.style.display = (anim === 'circle') ? '' : 'none';
       // Rock beat shown only when beats = 4; waltz beat shown only when beats = 3
