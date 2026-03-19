@@ -2395,4 +2395,29 @@ footer p {
   font-weight: 600;
   color: #a0aec0;
 }
+
+.tmp-beat-unit-select {
+  padding: 3px 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4a5568;
+  background: white;
+  cursor: pointer;
+}
+
+.tmp-beat-unit-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.tmp-eighth-readout {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #667eea;
+  letter-spacing: 0.3px;
+}
 /* ─────────────────────────────────────────────────────────────────────── */

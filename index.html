@@ -400,9 +400,15 @@
               <input type="range" id="tmp-m1-bpm-slider" class="tmp-bpm-slider" min="30" max="300" value="96" step="1">
               <div class="tmp-bpm-display">
                 <input type="number" id="tmp-m1-bpm-input" class="tmp-bpm-input" min="30" max="300" value="96">
-                <span class="tmp-bpm-label">BPM</span>
+                <select id="tmp-m1-beat-unit" class="tmp-beat-unit-select">
+                  <option value="quarter">♩ BPM</option>
+                  <option value="dotted-quarter">♩. BPM</option>
+                  <option value="eighth">♪ BPM</option>
+                  <option value="half">&#119132; BPM</option>
+                </select>
               </div>
             </div>
+            <div class="tmp-eighth-readout" id="tmp-m1-eighth-readout">♪ = 192/min</div>
           </div>
 
           <div class="tmp-row tmp-row-inline">
@@ -442,9 +448,15 @@
               <input type="range" id="tmp-m2-bpm-slider" class="tmp-bpm-slider" min="30" max="300" value="96" step="1">
               <div class="tmp-bpm-display">
                 <input type="number" id="tmp-m2-bpm-input" class="tmp-bpm-input" min="30" max="300" value="96">
-                <span class="tmp-bpm-label">BPM</span>
+                <select id="tmp-m2-beat-unit" class="tmp-beat-unit-select">
+                  <option value="quarter">♩ BPM</option>
+                  <option value="dotted-quarter">♩. BPM</option>
+                  <option value="eighth">♪ BPM</option>
+                  <option value="half">&#119132; BPM</option>
+                </select>
               </div>
             </div>
+            <div class="tmp-eighth-readout" id="tmp-m2-eighth-readout">♪ = 192/min</div>
           </div>
 
           <div class="tmp-row tmp-row-inline">

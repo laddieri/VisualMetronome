@@ -64,10 +64,22 @@ var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
 // Two-Measure Pattern state
 var twoMeasurePatternEnabled = false;
 var twoMeasurePattern = [
-  { beatsPerMeasure: 4, subdivision: 'none', bpm: 96 },
-  { beatsPerMeasure: 3, subdivision: 'eighth', bpm: 96 }
+  { beatsPerMeasure: 4, subdivision: 'none', bpm: 96, beatUnit: 'quarter' },
+  { beatsPerMeasure: 3, subdivision: 'eighth', bpm: 96, beatUnit: 'quarter' }
 ];
 var twoMeasureCurrentMeasure = 0; // 0 or 1 — which measure we're currently playing
+
+// Beat-unit → quarter-note multiplier (transport BPM is always in quarter notes/min)
+var TMP_BEAT_UNIT_MULT = { 'half': 2, 'quarter': 1, 'dotted-quarter': 1.5, 'eighth': 0.5 };
+
+function tmpTransportBPM(cfg) {
+  var mult = TMP_BEAT_UNIT_MULT[cfg.beatUnit || 'quarter'] || 1;
+  return cfg.bpm * mult;
+}
+
+function tmpEighthRate(cfg) {
+  return Math.round(tmpTransportBPM(cfg) * 2);
+}
 
 // Custom Rhythm state
 // Each beat in the measure is represented by a pattern string:
@@ -1721,7 +1733,7 @@ function scheduleMainBeat() {
       var mpCfg = twoMeasurePattern[twoMeasureCurrentMeasure];
       beatsPerMeasure = mpCfg.beatsPerMeasure;
       subdivision = mpCfg.subdivision;
-      Tone.Transport.bpm.setValueAtTime(mpCfg.bpm, time);
+      Tone.Transport.bpm.setValueAtTime(tmpTransportBPM(mpCfg), time);
     }
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -2155,9 +2167,10 @@ function toggleTransport(withCountIn) {
       var _mp0 = twoMeasurePattern[0];
       beatsPerMeasure = _mp0.beatsPerMeasure;
       subdivision = _mp0.subdivision;
-      Tone.Transport.bpm.value = _mp0.bpm;
-      cachedBPM = _mp0.bpm;
-      secondsPerBeat = 1 / (_mp0.bpm / 60);
+      var _mp0transportBPM = tmpTransportBPM(_mp0);
+      Tone.Transport.bpm.value = _mp0transportBPM;
+      cachedBPM = _mp0transportBPM;
+      secondsPerBeat = 1 / (_mp0transportBPM / 60);
     }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
@@ -4343,17 +4356,21 @@ function tmpUpdateMeasureUI(measureIndex) {
   var cfg = twoMeasurePattern[measureIndex];
   var prefix = 'tmp-m' + (measureIndex + 1) + '-';
 
-  var bpmSlider = document.getElementById(prefix + 'bpm-slider');
-  var bpmInput  = document.getElementById(prefix + 'bpm-input');
-  var bpmLabel  = document.getElementById(prefix + 'bpm-label');
-  var timeSig   = document.getElementById(prefix + 'time-sig');
-  var subdiv    = document.getElementById(prefix + 'subdivision');
+  var bpmSlider     = document.getElementById(prefix + 'bpm-slider');
+  var bpmInput      = document.getElementById(prefix + 'bpm-input');
+  var bpmLabel      = document.getElementById(prefix + 'bpm-label');
+  var timeSig       = document.getElementById(prefix + 'time-sig');
+  var subdiv        = document.getElementById(prefix + 'subdivision');
+  var beatUnitSel   = document.getElementById(prefix + 'beat-unit');
+  var eighthReadout = document.getElementById(prefix + 'eighth-readout');
 
-  if (bpmSlider) bpmSlider.value = cfg.bpm;
-  if (bpmInput)  bpmInput.value  = cfg.bpm;
-  if (bpmLabel)  bpmLabel.textContent = cfg.bpm;
-  if (timeSig)   timeSig.value   = cfg.beatsPerMeasure;
-  if (subdiv)    subdiv.value    = cfg.subdivision;
+  if (bpmSlider)     bpmSlider.value = cfg.bpm;
+  if (bpmInput)      bpmInput.value  = cfg.bpm;
+  if (bpmLabel)      bpmLabel.textContent = cfg.bpm;
+  if (timeSig)       timeSig.value   = cfg.beatsPerMeasure;
+  if (subdiv)        subdiv.value    = cfg.subdivision;
+  if (beatUnitSel)   beatUnitSel.value = cfg.beatUnit || 'quarter';
+  if (eighthReadout) eighthReadout.textContent = '♪ = ' + tmpEighthRate(cfg) + '/min';
 }
 
 function initTwoMeasurePatternListeners() {
@@ -4395,7 +4412,7 @@ function initTwoMeasurePatternListeners() {
         var mp0 = twoMeasurePattern[0];
         beatsPerMeasure = mp0.beatsPerMeasure;
         subdivision = mp0.subdivision;
-        applyBPM(mp0.bpm);
+        applyBPM(tmpTransportBPM(mp0));
       }
       sendStateUpdate();
     });
@@ -4405,11 +4422,19 @@ function initTwoMeasurePatternListeners() {
   [0, 1].forEach(function(idx) {
     var prefix = 'tmp-m' + (idx + 1) + '-';
 
-    var bpmSlider = document.getElementById(prefix + 'bpm-slider');
-    var bpmInput  = document.getElementById(prefix + 'bpm-input');
-    var bpmLabel  = document.getElementById(prefix + 'bpm-label');
-    var timeSig   = document.getElementById(prefix + 'time-sig');
-    var subdiv    = document.getElementById(prefix + 'subdivision');
+    var bpmSlider     = document.getElementById(prefix + 'bpm-slider');
+    var bpmInput      = document.getElementById(prefix + 'bpm-input');
+    var bpmLabel      = document.getElementById(prefix + 'bpm-label');
+    var timeSig       = document.getElementById(prefix + 'time-sig');
+    var subdiv        = document.getElementById(prefix + 'subdivision');
+    var beatUnitSel   = document.getElementById(prefix + 'beat-unit');
+    var eighthReadout = document.getElementById(prefix + 'eighth-readout');
+
+    function refreshEighthReadout() {
+      if (eighthReadout) {
+        eighthReadout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[idx]) + '/min';
+      }
+    }
 
     function applyMeasureBpm(val) {
       val = Math.max(30, Math.min(300, Math.round(val)));
@@ -4417,6 +4442,7 @@ function initTwoMeasurePatternListeners() {
       if (bpmSlider) bpmSlider.value = val;
       if (bpmInput)  bpmInput.value  = val;
       if (bpmLabel)  bpmLabel.textContent = val;
+      refreshEighthReadout();
     }
 
     if (bpmSlider) {
@@ -4440,6 +4466,13 @@ function initTwoMeasurePatternListeners() {
     if (subdiv) {
       subdiv.addEventListener('change', function() {
         twoMeasurePattern[idx].subdivision = this.value;
+      });
+    }
+
+    if (beatUnitSel) {
+      beatUnitSel.addEventListener('change', function() {
+        twoMeasurePattern[idx].beatUnit = this.value;
+        refreshEighthReadout();
       });
     }
   });
