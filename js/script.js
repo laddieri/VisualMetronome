@@ -703,7 +703,7 @@ class Conductor {
       ],
       2: [
         { ictus: [465, 442], control: [478, 330] },   // beat 1 (down) → rebound up-right
-        { ictus: [478, 365], control: [465, 175] }     // beat 2 (up)   → BIG rebound (prep)
+        { ictus: [478, 436], control: [465, 175] }     // beat 2 (up)   → BIG rebound (prep)
       ],
       3: [
         { ictus: [458, 442], control: [505, 325] },   // beat 1 (down)  → rebound up-right
