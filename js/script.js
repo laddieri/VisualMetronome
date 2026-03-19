@@ -2241,13 +2241,14 @@ function updateColorPickerVisibility() {
   if (colorPickerGroup) {
     colorPickerGroup.style.display = (animalType === 'circle') ? '' : 'none';
   }
+  const isConductor = (animalType === 'conductor' || animalType === 'conductor3d');
   const conductorSelfieBtn = document.getElementById('conductor-selfie-btn');
   if (conductorSelfieBtn) {
     conductorSelfieBtn.style.display = (animalType === 'conductor') ? '' : 'none';
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = (animalType === 'conductor') ? 'none' : '';
+    directionGroup.style.display = isConductor ? 'none' : '';
   }
 }
 
@@ -2270,10 +2271,32 @@ function createAnimals() {
       animal1 = new Conductor(1);  // right hand
       animal2 = new Conductor(-1); // left hand
       break;
+    case 'conductor3d':
+      // 3D conductor uses its own Three.js rendering; animals are unused
+      animal1 = new Circle(1);
+      animal2 = new Circle(-1);
+      break;
     default:
       animal1 = new Circle(1);
       animal2 = new Circle(-1);
       break;
+  }
+}
+
+// ── 3D Conductor lifecycle ──────────────────────────────────────────────────
+function _sync3DConductor() {
+  if (animalType === 'conductor3d') {
+    if (!conductor3dInstance) {
+      conductor3dInstance = new Conductor3D();
+    }
+    if (!conductor3dInstance.initialized) {
+      conductor3dInstance.init('.canvas-wrapper');
+    }
+    conductor3dInstance.start();
+  } else {
+    if (conductor3dInstance) {
+      conductor3dInstance.stop();
+    }
   }
 }
 
@@ -2453,6 +2476,7 @@ function setup() {
     }
 
     createAnimals(); // Recreate animals when selection changes
+    _sync3DConductor();
     sendStateUpdate();
   });
 
@@ -2492,6 +2516,9 @@ function windowResized() {
   canvasHeight = size.height;
   canvasScale = size.scale;
   resizeCanvas(canvasWidth, canvasHeight);
+  if (conductor3dInstance && conductor3dInstance.initialized) {
+    conductor3dInstance.resize();
+  }
 }
 
 
@@ -3090,6 +3117,8 @@ function draw() {
 
   if (ctHideVisual) {
     // Skip animal rendering — canvas stays blank (just background)
+  } else if (animalType === 'conductor3d') {
+    // 3D conductor is rendered by its own Three.js loop — nothing to draw on p5 canvas
   } else if (animalType === 'conductor') {
     // Conductor mode: both hands move in a 2D beat pattern regardless of direction setting
     animal1.pigmove();
@@ -3507,12 +3536,13 @@ function applyRemoteCommand(msg) {
 
     case 'setAnimation': {
       var val = msg.value;
-      if (['circle', 'pig', 'selfie', 'conductor'].indexOf(val) === -1) break;
+      if (['circle', 'pig', 'selfie', 'conductor', 'conductor3d'].indexOf(val) === -1) break;
       animalType = val;
       var selector = document.getElementById('animal-selector');
       if (selector) selector.value = val;
       updateColorPickerVisibility();
       createAnimals();
+      _sync3DConductor();
       sendStateUpdate();
       break;
     }
