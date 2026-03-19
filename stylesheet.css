@@ -2279,6 +2279,8 @@ footer p {
 
 .tmp-container {
   max-width: 480px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 
 .tmp-measure-block {
