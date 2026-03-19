@@ -120,6 +120,7 @@
             </div>
 
             <div class="controls-utility">
+              <button id="two-measure-btn" class="utility-btn" title="Two-Measure Pattern">⚡</button>
               <button id="custom-rhythm-btn" class="utility-btn" title="Custom Rhythm">🥁</button>
               <button id="song-sections-btn" class="utility-btn" title="Song Sections">🎶</button>
               <button id="counting-trainer-btn" class="utility-btn" title="Counting Trainer">🎯</button>
@@ -376,6 +377,113 @@
 
         <div class="settings-buttons">
           <button id="remote-modal-close-btn" class="settings-btn-close">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-Measure Pattern Modal -->
+    <div id="two-measure-modal" class="settings-modal hidden">
+      <div class="settings-container tmp-container">
+        <h2>Two-Measure Pattern</h2>
+        <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
+          Define two measures that repeat continuously. Each measure can have its own
+          beats per measure, subdivision, and tempo.
+        </p>
+
+        <!-- Measure 1 -->
+        <div class="tmp-measure-block">
+          <div class="tmp-measure-header">Measure 1</div>
+
+          <div class="tmp-row">
+            <label class="tmp-label">Tempo</label>
+            <div class="tmp-tempo-row">
+              <input type="range" id="tmp-m1-bpm-slider" class="tmp-bpm-slider" min="30" max="300" value="96" step="1">
+              <div class="tmp-bpm-display">
+                <input type="number" id="tmp-m1-bpm-input" class="tmp-bpm-input" min="30" max="300" value="96">
+                <span class="tmp-bpm-label">BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tmp-row tmp-row-inline">
+            <div class="tmp-field">
+              <label class="tmp-label" for="tmp-m1-time-sig">Beats / Measure</label>
+              <select id="tmp-m1-time-sig" class="control-dropdown">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+              </select>
+            </div>
+            <div class="tmp-field">
+              <label class="tmp-label" for="tmp-m1-subdivision">Subdivision</label>
+              <select id="tmp-m1-subdivision" class="control-dropdown">
+                <option value="none">None</option>
+                <option value="eighth">8th notes</option>
+                <option value="triplet">Triplets</option>
+                <option value="sixteenth">16th notes</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Measure 2 -->
+        <div class="tmp-measure-block">
+          <div class="tmp-measure-header">Measure 2</div>
+
+          <div class="tmp-row">
+            <label class="tmp-label">Tempo</label>
+            <div class="tmp-tempo-row">
+              <input type="range" id="tmp-m2-bpm-slider" class="tmp-bpm-slider" min="30" max="300" value="96" step="1">
+              <div class="tmp-bpm-display">
+                <input type="number" id="tmp-m2-bpm-input" class="tmp-bpm-input" min="30" max="300" value="96">
+                <span class="tmp-bpm-label">BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tmp-row tmp-row-inline">
+            <div class="tmp-field">
+              <label class="tmp-label" for="tmp-m2-time-sig">Beats / Measure</label>
+              <select id="tmp-m2-time-sig" class="control-dropdown">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+              </select>
+            </div>
+            <div class="tmp-field">
+              <label class="tmp-label" for="tmp-m2-subdivision">Subdivision</label>
+              <select id="tmp-m2-subdivision" class="control-dropdown">
+                <option value="none">None</option>
+                <option value="eighth" selected>8th notes</option>
+                <option value="triplet">Triplets</option>
+                <option value="sixteenth">16th notes</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group" style="margin-top:16px;">
+          <label class="setting-label">
+            <input type="checkbox" id="tmp-enabled">
+            Enable two-measure pattern
+          </label>
+          <p class="setting-hint">Overrides the main beats/measure, subdivision, and tempo controls while active</p>
+        </div>
+
+        <div class="settings-buttons">
+          <button id="tmp-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>
     </div>
