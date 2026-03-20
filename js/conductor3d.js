@@ -284,7 +284,7 @@ class Conductor3D {
 
     // Shoulder joint group
     const shoulderGroup = new THREE.Group();
-    shoulderGroup.position.set(shoulderX, 1.28, 0);
+    shoulderGroup.position.set(shoulderX, 1.28, 0.1);
     parent.add(shoulderGroup);
 
     // Shoulder pad
@@ -494,7 +494,7 @@ class Conductor3D {
     const lowerLen = 0.27;
     const shoulderX = side * 0.25;
     const shoulderY = 1.28;
-    const shoulderZ = 0;
+    const shoulderZ = 0.1;
 
     const dx = targetX - shoulderX;
     const dy = targetY - shoulderY;
