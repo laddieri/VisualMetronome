@@ -567,7 +567,7 @@ class Conductor3D {
     upperArm.rotation.y = -ik.shoulderYaw * side * 0.4;
 
     elbow.rotation.set(0, 0, 0);
-    elbow.rotation.x = ik.elbowAngle * 0.7;
+    elbow.rotation.x = -ik.elbowAngle * 0.7;
 
     if (wrist) {
       wrist.rotation.x = -0.2 + (side === 1 ? 0.1 : 0);
