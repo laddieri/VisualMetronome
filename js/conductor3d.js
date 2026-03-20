@@ -130,8 +130,8 @@ class Conductor3D {
     this.scene.add(bodyGroup);
 
     // ── Torso ─────────────────────────────────────────────────────────
-    // Use a simple box with beveled edges for the jacket body
-    const torsoGeo = new THREE.BoxGeometry(0.42, 0.55, 0.24, 2, 2, 2);
+    // Narrower and shallower to prevent arm clipping
+    const torsoGeo = new THREE.BoxGeometry(0.34, 0.55, 0.18, 2, 2, 2);
     const torsoMesh = new THREE.Mesh(torsoGeo, this._mat(tuxBody, { roughness: 0.85 }));
     torsoMesh.position.set(0, 1.05, 0);
     torsoMesh.castShadow = true;
@@ -140,17 +140,17 @@ class Conductor3D {
 
     // Shirt front (visible V)
     const shirtMat = this._mat(shirt, { roughness: 0.5, side: THREE.DoubleSide });
-    const shirtGeo = new THREE.PlaneGeometry(0.12, 0.28);
+    const shirtGeo = new THREE.PlaneGeometry(0.10, 0.28);
     const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
-    shirtMesh.position.set(0, 1.12, 0.122);
+    shirtMesh.position.set(0, 1.12, 0.092);
     bodyGroup.add(shirtMesh);
 
     // Lapels
     const lapelMat = this._mat(lapel, { roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide });
     for (const side of [-1, 1]) {
-      const lapelGeo = new THREE.PlaneGeometry(0.06, 0.22);
+      const lapelGeo = new THREE.PlaneGeometry(0.055, 0.22);
       const lMesh = new THREE.Mesh(lapelGeo, lapelMat);
-      lMesh.position.set(side * 0.065, 1.14, 0.123);
+      lMesh.position.set(side * 0.055, 1.14, 0.093);
       lMesh.rotation.y = side * 0.15;
       bodyGroup.add(lMesh);
     }
@@ -159,7 +159,7 @@ class Conductor3D {
     const btGeo = new THREE.SphereGeometry(0.022, 8, 6);
     btGeo.scale(1.8, 0.7, 0.5);
     const btMesh = new THREE.Mesh(btGeo, this._mat(bowtie, { roughness: 0.4 }));
-    btMesh.position.set(0, 1.29, 0.125);
+    btMesh.position.set(0, 1.29, 0.095);
     bodyGroup.add(btMesh);
 
     // Collar points
@@ -167,7 +167,7 @@ class Conductor3D {
     for (const side of [-1, 1]) {
       const collarGeo = new THREE.PlaneGeometry(0.04, 0.035);
       const cMesh = new THREE.Mesh(collarGeo, collarMat);
-      cMesh.position.set(side * 0.035, 1.305, 0.124);
+      cMesh.position.set(side * 0.035, 1.305, 0.094);
       cMesh.rotation.z = side * -0.4;
       bodyGroup.add(cMesh);
     }
@@ -280,16 +280,16 @@ class Conductor3D {
 
   _buildArm(parent, side, skinColor, jacketColor) {
     // side: 1 = right (baton hand), -1 = left
-    const shoulderX = side * 0.25;
+    const shoulderX = side * 0.22;
 
-    // Shoulder joint group
+    // Shoulder joint group — positioned outside and in front of torso
     const shoulderGroup = new THREE.Group();
-    shoulderGroup.position.set(shoulderX, 1.28, 0.1);
+    shoulderGroup.position.set(shoulderX, 1.28, 0.12);
     parent.add(shoulderGroup);
 
     // Shoulder pad
-    const padGeo = new THREE.SphereGeometry(0.055, 12, 10);
-    padGeo.scale(1, 0.8, 0.9);
+    const padGeo = new THREE.SphereGeometry(0.05, 12, 10);
+    padGeo.scale(1.1, 0.8, 0.9);
     const pad = new THREE.Mesh(padGeo, this._mat(jacketColor, { roughness: 0.85 }));
     shoulderGroup.add(pad);
 
@@ -297,8 +297,8 @@ class Conductor3D {
     const upperArmGroup = new THREE.Group();
     shoulderGroup.add(upperArmGroup);
 
-    // Upper arm (jacket sleeve)
-    const uaGeo = new THREE.CylinderGeometry(0.042, 0.038, 0.28, 10);
+    // Upper arm (jacket sleeve) — slimmer to avoid clipping
+    const uaGeo = new THREE.CylinderGeometry(0.035, 0.032, 0.28, 10);
     const ua = new THREE.Mesh(uaGeo, this._mat(jacketColor, { roughness: 0.85 }));
     ua.position.y = -0.14;
     ua.castShadow = true;
@@ -310,7 +310,7 @@ class Conductor3D {
     upperArmGroup.add(elbowGroup);
 
     // Forearm (jacket sleeve)
-    const faGeo = new THREE.CylinderGeometry(0.036, 0.032, 0.26, 10);
+    const faGeo = new THREE.CylinderGeometry(0.030, 0.027, 0.26, 10);
     const fa = new THREE.Mesh(faGeo, this._mat(jacketColor, { roughness: 0.85 }));
     fa.position.y = -0.13;
     fa.castShadow = true;
@@ -492,9 +492,9 @@ class Conductor3D {
   _solveArmIK(side, targetX, targetY, targetZ) {
     const upperLen = 0.28;
     const lowerLen = 0.27;
-    const shoulderX = side * 0.25;
+    const shoulderX = side * 0.22;
     const shoulderY = 1.28;
-    const shoulderZ = 0.1;
+    const shoulderZ = 0.12;
 
     const dx = targetX - shoulderX;
     const dy = targetY - shoulderY;
@@ -546,10 +546,10 @@ class Conductor3D {
     }
 
     // Right arm (baton hand) — follows conducting pattern
-    this._poseArm(1, pos[0] + 0.25, pos[1] + 1.28, pos[2]);
+    this._poseArm(1, pos[0] + 0.22, pos[1] + 1.28, pos[2] + 0.12);
 
     // Left arm — mirrors with reduced amplitude
-    this._poseArm(-1, -pos[0] - 0.25, pos[1] * 0.6 + 1.28 + 0.05, pos[2] * 0.5);
+    this._poseArm(-1, -pos[0] - 0.22, pos[1] * 0.6 + 1.28 + 0.05, pos[2] * 0.5 + 0.12);
   }
 
   _poseArm(side, tx, ty, tz) {
