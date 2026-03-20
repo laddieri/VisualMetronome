@@ -4446,3 +4446,41 @@ if (document.readyState === 'loading') {
   initTwoMeasurePatternListeners();
 }
 // ──────────────────────────────────────────────────────────────────────────
+
+// ── 6/8 ↔ 3/4 preset button ───────────────────────────────────────────────
+// Loads a two-measure pattern where the eighth note stays constant:
+//   Measure 1: 2 beats, subdivision 3  (6/8 — dotted-quarter beat)
+//   Measure 2: 3 beats, subdivision 2  (3/4 — quarter beat)
+// Sets tempo to ♩=100 and engages TMP with "keep subdivision speed" mode.
+(function() {
+  var presetBtn = document.getElementById('tmp-6834-preset-btn');
+  var tmpBtn    = document.getElementById('two-measure-btn');
+  if (!presetBtn) return;
+
+  presetBtn.addEventListener('click', function() {
+    // Configure the two-measure pattern
+    twoMeasurePattern[0].beatsPerMeasure = 2;
+    twoMeasurePattern[0].subdivision     = '3';
+    twoMeasurePattern[1].beatsPerMeasure = 3;
+    twoMeasurePattern[1].subdivision     = '2';
+    tmpLinkMode = 'subdivision';
+
+    // Enable TMP, then set tempo — applyBPM will sync M1/M2 BPMs via tmpCalcM2BPM
+    twoMeasurePatternEnabled = true;
+    applyBPM(100);
+
+    // Reflect active state on both the preset button and the TMP button
+    presetBtn.classList.add('ct-active');
+    if (tmpBtn) tmpBtn.classList.add('ct-active');
+
+    // If already playing, restart from measure 1 with the new settings
+    if (Tone.Transport.state === 'started' && !songModeEnabled) {
+      twoMeasureCurrentMeasure = 0;
+      beatsPerMeasure = twoMeasurePattern[0].beatsPerMeasure;
+      subdivision     = twoMeasurePattern[0].subdivision;
+    }
+
+    sendStateUpdate();
+  });
+})();
+// ──────────────────────────────────────────────────────────────────────────

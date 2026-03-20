@@ -2271,7 +2271,8 @@ footer p {
 
 /* ── Two-Measure Pattern modal ─────────────────────────────────────────── */
 
-#two-measure-btn.ct-active {
+#two-measure-btn.ct-active,
+#tmp-6834-preset-btn.ct-active {
   background: #fffbeb;
   border-color: #d69e2e;
   box-shadow: 0 0 0 2px rgba(214, 158, 46, 0.3);
