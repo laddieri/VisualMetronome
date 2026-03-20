@@ -1745,7 +1745,7 @@ function scheduleMainBeat() {
       var mpCfg = twoMeasurePattern[twoMeasureCurrentMeasure];
       beatsPerMeasure = mpCfg.beatsPerMeasure;
       subdivision = mpCfg.subdivision;
-      Tone.Transport.bpm.setValueAtTime(mpCfg.bpm, time);
+      Tone.Transport.bpm.value = mpCfg.bpm;
     }
     // ──────────────────────────────────────────────────────────────────────────
 
