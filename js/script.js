@@ -440,11 +440,12 @@ function getAnimationProgress() {
   }
 
   const now = Tone.now();
-  // Use cachedBPM (set atomically with lastBeatTime) so the beat duration
-  // matches the BPM that was active when the last beat fired.  Using the
-  // live transport BPM during a tempo ramp causes a mismatch that makes
-  // progress jump, especially in the Bluetooth delay window.
-  const beatDuration = 60 / (cachedBPM || Tone.Transport.bpm.value);
+  // Use secondsPerBeat (set atomically with lastBeatTime in Tone.Draw.schedule)
+  // so the beat duration matches the BPM that was active when the last beat
+  // fired.  Using the live transport BPM during a tempo ramp or TMP M2 cycle
+  // causes a mismatch that makes progress jump, especially in the Bluetooth
+  // delay window.
+  const beatDuration = secondsPerBeat || (60 / (Tone.Transport.bpm.value || 96));
   // bluetoothDelay is in ms; subtract it so the animation reaches the beat
   // position exactly when the sound arrives at the speaker.
   const timeSinceLastBeat = now - lastBeatTime - (bluetoothDelay / 1000);
@@ -809,7 +810,7 @@ class Conductor {
     // During the delay window, animBeat has already incremented but the audio hasn't
     // reached the speaker yet — we must keep the previous segment so the hand
     // arrives at the ictus exactly when the sound plays (not when it fires).
-    const beatDuration = 60 / (cachedBPM || Tone.Transport.bpm.value);
+    const beatDuration = secondsPerBeat || (60 / (Tone.Transport.bpm.value || 96));
     const timeSinceLastBeat = Tone.now() - lastBeatTime - (bluetoothDelay / 1000);
 
     let progress, effectiveAnimBeat;
@@ -1989,11 +1990,14 @@ function scheduleMainBeat() {
       // Advance animBeat here so it changes atomically with lastBeatTime,
       // preventing the conductor hand from jumping when progress resets to 0.
       animBeat = (thisBeat + 1) % beatsPerMeasure;
-      // Update cached BPM only if it changed
+      // Update secondsPerBeat every beat for accurate animation timing.
+      // Only update cachedBPM when TMP is not active — while TMP cycles between
+      // M1 and M2, the transport BPM alternates and must not overwrite the
+      // user-facing main (M1) tempo stored in cachedBPM.
       const currentBPM = Tone.Transport.bpm.value;
-      if (cachedBPM !== currentBPM) {
+      secondsPerBeat = 1 / (currentBPM / 60);
+      if (!twoMeasurePatternEnabled && cachedBPM !== currentBPM) {
         cachedBPM = currentBPM;
-        secondsPerBeat = 1 / (currentBPM / 60);
       }
       rampProgress = thisRampProgress;
       ritardandoProgress = thisRitardandoProgress;
@@ -2173,7 +2177,10 @@ function toggleTransport(withCountIn) {
       twoMeasurePattern[1].bpm = tmpCalcM2BPM();
       beatsPerMeasure = twoMeasurePattern[0].beatsPerMeasure;
       subdivision = twoMeasurePattern[0].subdivision;
-      // Transport BPM is already cachedBPM; secondsPerBeat is already set above
+      // Explicitly reset transport to M1 BPM — a previous session may have left
+      // it at M2's BPM, which would make the count-in play at the wrong speed.
+      Tone.Transport.bpm.value = cachedBPM;
+      secondsPerBeat = 1 / (cachedBPM / 60);
     }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
