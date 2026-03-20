@@ -4432,6 +4432,11 @@ function initTwoMeasurePatternListeners() {
     tmpEnabled.addEventListener('change', function(e) {
       twoMeasurePatternEnabled = e.target.checked;
       tmpBtn.classList.toggle('ct-active', twoMeasurePatternEnabled);
+      // If TMP is turned off, also clear the preset button active state
+      if (!twoMeasurePatternEnabled) {
+        var presetBtn = document.getElementById('tmp-6834-preset-btn');
+        if (presetBtn) presetBtn.classList.remove('ct-active');
+      }
       if (twoMeasurePatternEnabled && Tone.Transport.state === 'started' && !songModeEnabled) {
         twoMeasureCurrentMeasure = 0;
         twoMeasurePattern[0].bpm = cachedBPM;
@@ -4495,6 +4500,15 @@ if (document.readyState === 'loading') {
   if (!presetBtn) return;
 
   presetBtn.addEventListener('click', function() {
+    // Toggle: if already active, disable TMP and clear both buttons
+    if (presetBtn.classList.contains('ct-active')) {
+      twoMeasurePatternEnabled = false;
+      presetBtn.classList.remove('ct-active');
+      if (tmpBtn) tmpBtn.classList.remove('ct-active');
+      sendStateUpdate();
+      return;
+    }
+
     // Configure the two-measure pattern
     twoMeasurePattern[0].beatsPerMeasure = 2;
     twoMeasurePattern[0].subdivision     = '3';
