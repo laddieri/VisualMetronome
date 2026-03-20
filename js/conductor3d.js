@@ -374,57 +374,64 @@ class Conductor3D {
     const n = beatsPerMeasure;
 
     const patterns = {
+      // Standard conducting patterns: x = left/right, y = up/down, z = forward/back
+      // Beat ictus points should be spread on a horizontal plane
       1: [
-        { pos: [0, -0.35, 0.15], rebound: [0, 0.1, 0.05], sway: 0, nod: 0.08 }
+        { pos: [0, -0.35, 0.15], rebound: [0, -0.05, 0.08], sway: 0, nod: 0.08 }
       ],
       2: [
-        { pos: [0, -0.35, 0.15], rebound: [0.05, -0.05, 0.08], sway: 0.02, nod: 0.08 },
-        { pos: [0.05, -0.2, 0.1], rebound: [0, 0.15, -0.05], sway: -0.02, nod: -0.04 }
+        // 1: down-center, 2: up-center
+        { pos: [0, -0.35, 0.15], rebound: [0.08, -0.15, 0.1], sway: 0.02, nod: 0.08 },
+        { pos: [0.1, -0.15, 0.1], rebound: [0, 0.05, 0.05], sway: -0.02, nod: -0.04 }
       ],
       3: [
-        { pos: [0, -0.35, 0.15], rebound: [0.12, -0.08, 0.05], sway: 0.03, nod: 0.1 },
-        { pos: [0.2, -0.28, 0.08], rebound: [0.12, -0.05, 0.0], sway: 0.05, nod: 0.02 },
-        { pos: [0.05, -0.15, 0.05], rebound: [0, 0.2, -0.08], sway: -0.03, nod: -0.06 }
+        // 1: down-center, 2: out-right, 3: up-center
+        { pos: [0, -0.35, 0.15], rebound: [0.15, -0.2, 0.1], sway: 0.03, nod: 0.1 },
+        { pos: [0.30, -0.30, 0.12], rebound: [0.18, -0.15, 0.08], sway: 0.05, nod: 0.02 },
+        { pos: [0.05, -0.12, 0.08], rebound: [0, 0.05, 0.05], sway: -0.03, nod: -0.06 }
       ],
       4: [
-        { pos: [0, -0.35, 0.18], rebound: [-0.08, -0.08, 0.06], sway: -0.02, nod: 0.1 },
-        { pos: [-0.15, -0.3, 0.1], rebound: [0.05, -0.05, 0.05], sway: -0.04, nod: 0.03 },
-        { pos: [0.2, -0.28, 0.08], rebound: [0.12, -0.02, 0.0], sway: 0.04, nod: 0.02 },
-        { pos: [0.05, -0.12, 0.05], rebound: [0, 0.22, -0.1], sway: -0.02, nod: -0.07 }
+        // 1: down-center, 2: in-left, 3: out-right, 4: up-center
+        { pos: [0, -0.35, 0.18], rebound: [-0.12, -0.2, 0.1], sway: -0.02, nod: 0.1 },
+        { pos: [-0.22, -0.30, 0.14], rebound: [0.05, -0.18, 0.1], sway: -0.04, nod: 0.03 },
+        { pos: [0.30, -0.28, 0.12], rebound: [0.18, -0.12, 0.06], sway: 0.04, nod: 0.02 },
+        { pos: [0.05, -0.10, 0.08], rebound: [0, 0.05, 0.05], sway: -0.02, nod: -0.07 }
       ],
       5: [
-        { pos: [0, -0.35, 0.18], rebound: [-0.08, -0.08, 0.06], sway: -0.02, nod: 0.1 },
-        { pos: [-0.15, -0.3, 0.1], rebound: [0.05, -0.05, 0.05], sway: -0.04, nod: 0.03 },
-        { pos: [0.02, -0.3, 0.12], rebound: [0.1, -0.06, 0.03], sway: 0.0, nod: 0.04 },
-        { pos: [0.2, -0.26, 0.08], rebound: [0.12, -0.02, 0.0], sway: 0.05, nod: 0.02 },
-        { pos: [0.05, -0.12, 0.05], rebound: [0, 0.22, -0.1], sway: -0.02, nod: -0.07 }
+        // 1: down, 2: in-left, 3: center, 4: out-right, 5: up
+        { pos: [0, -0.35, 0.18], rebound: [-0.12, -0.2, 0.1], sway: -0.02, nod: 0.1 },
+        { pos: [-0.22, -0.30, 0.14], rebound: [0, -0.18, 0.1], sway: -0.04, nod: 0.03 },
+        { pos: [0.05, -0.30, 0.14], rebound: [0.15, -0.18, 0.08], sway: 0.0, nod: 0.04 },
+        { pos: [0.30, -0.26, 0.12], rebound: [0.18, -0.10, 0.06], sway: 0.05, nod: 0.02 },
+        { pos: [0.05, -0.10, 0.08], rebound: [0, 0.05, 0.05], sway: -0.02, nod: -0.07 }
       ],
       6: [
-        { pos: [0, -0.35, 0.18], rebound: [-0.06, -0.1, 0.06], sway: -0.02, nod: 0.1 },
-        { pos: [-0.12, -0.32, 0.1], rebound: [-0.1, -0.08, 0.05], sway: -0.03, nod: 0.04 },
-        { pos: [-0.08, -0.3, 0.08], rebound: [0.08, -0.05, 0.04], sway: -0.01, nod: 0.03 },
-        { pos: [0.18, -0.3, 0.1], rebound: [0.15, -0.06, 0.03], sway: 0.04, nod: 0.03 },
-        { pos: [0.14, -0.26, 0.08], rebound: [0.1, -0.02, 0.0], sway: 0.03, nod: 0.02 },
-        { pos: [0.05, -0.12, 0.05], rebound: [0, 0.22, -0.1], sway: -0.02, nod: -0.07 }
+        // 1: down, 2: in-left-low, 3: in-left-high, 4: out-right-low, 5: out-right-high, 6: up
+        { pos: [0, -0.35, 0.18], rebound: [-0.10, -0.22, 0.1], sway: -0.02, nod: 0.1 },
+        { pos: [-0.20, -0.32, 0.14], rebound: [-0.15, -0.20, 0.1], sway: -0.03, nod: 0.04 },
+        { pos: [-0.12, -0.26, 0.12], rebound: [0.10, -0.18, 0.08], sway: -0.01, nod: 0.03 },
+        { pos: [0.25, -0.30, 0.14], rebound: [0.20, -0.18, 0.08], sway: 0.04, nod: 0.03 },
+        { pos: [0.20, -0.24, 0.12], rebound: [0.12, -0.10, 0.06], sway: 0.03, nod: 0.02 },
+        { pos: [0.05, -0.10, 0.08], rebound: [0, 0.05, 0.05], sway: -0.02, nod: -0.07 }
       ]
     };
 
     if (patterns[n]) return patterns[n];
 
-    // Fallback for 7+ beats
-    const pts = [{ pos: [0, -0.35, 0.18], rebound: [-0.08, -0.08, 0.06], sway: -0.02, nod: 0.1 }];
+    // Fallback for 7+ beats — alternate left and right with horizontal spread
+    const pts = [{ pos: [0, -0.35, 0.18], rebound: [-0.12, -0.2, 0.1], sway: -0.02, nod: 0.1 }];
     for (let i = 1; i < n - 1; i++) {
-      const isInner = i % 2 === 1;
-      const x = isInner ? -0.12 : 0.18;
-      const y = -0.32 + i * 0.015;
+      const isLeft = i % 2 === 1;
+      const x = isLeft ? -0.18 : 0.25;
+      const y = -0.30;
       pts.push({
-        pos: [x, y, 0.1 - i * 0.005],
-        rebound: [x * 0.6, y + 0.15, 0.03],
-        sway: x * 0.2,
+        pos: [x, y, 0.14],
+        rebound: [x * 0.6, y + 0.1, 0.08],
+        sway: x * 0.15,
         nod: 0.03
       });
     }
-    pts.push({ pos: [0.05, -0.12, 0.05], rebound: [0, 0.22, -0.1], sway: -0.02, nod: -0.07 });
+    pts.push({ pos: [0.05, -0.10, 0.08], rebound: [0, 0.05, 0.05], sway: -0.02, nod: -0.07 });
     return pts;
   }
 
@@ -510,12 +517,13 @@ class Conductor3D {
     cosElbow = Math.max(-1, Math.min(1, cosElbow));
     const elbowAngle = Math.PI - Math.acos(cosElbow);
 
-    const planarDist = Math.sqrt(dx * dx + dz * dz);
-    const shoulderPitch = -Math.atan2(-dy, planarDist);
-    const shoulderYaw = Math.atan2(dz, dx * side);
+    // shoulderRoll: swing arm left/right in the coronal plane (XY)
     const shoulderRoll = Math.atan2(dx * side, -dy);
+    // shoulderPitch: tilt arm forward/back — angle of dz relative to arm length in XY plane
+    const xyDist = Math.sqrt(dx * dx + dy * dy);
+    const shoulderPitch = Math.atan2(dz, xyDist);
 
-    return { shoulderPitch, shoulderYaw, shoulderRoll, elbowAngle };
+    return { shoulderPitch, shoulderRoll, elbowAngle };
   }
 
   // ── Apply pose to skeleton ─────────────────────────────────────────────
@@ -561,13 +569,16 @@ class Conductor3D {
 
     const ik = this._solveArmIK(side, tx, ty, tz);
 
+    // Point the upper arm toward the target using proper rotations.
+    // Default arm orientation is -Y (straight down).
+    // shoulderRoll swings the arm sideways (Z-axis rotation).
+    // shoulderPitch tilts the arm forward/back (X-axis rotation).
     upperArm.rotation.set(0, 0, 0);
     upperArm.rotation.z = side * (ik.shoulderRoll - Math.PI / 2);
-    upperArm.rotation.x = ik.shoulderPitch * 0.3;
-    upperArm.rotation.y = -ik.shoulderYaw * side * 0.4;
+    upperArm.rotation.x = ik.shoulderPitch;
 
     elbow.rotation.set(0, 0, 0);
-    elbow.rotation.x = -ik.elbowAngle * 0.7;
+    elbow.rotation.x = -ik.elbowAngle;
 
     if (wrist) {
       wrist.rotation.x = -0.2 + (side === 1 ? 0.1 : 0);
