@@ -64,48 +64,33 @@ var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
 // Two-Measure Pattern state
 var twoMeasurePatternEnabled = false;
 var twoMeasurePattern = [
-  { beatsPerMeasure: 4, subdivision: 'none', bpm: 96, beatUnit: 'quarter' },
-  { beatsPerMeasure: 3, subdivision: '2',    bpm: 96, beatUnit: 'quarter' }
+  { beatsPerMeasure: 4, subdivision: 'none', bpm: 96 },
+  { beatsPerMeasure: 3, subdivision: '2',    bpm: 96 }
 ];
 var twoMeasureCurrentMeasure = 0; // 0 or 1 — which measure we're currently playing
 // 'beat': M2 BPM = M1 BPM (beat tempo stays the same)
 // 'subdivision': M2 BPM = M1 BPM × S1/S2 (subdivision note speed stays the same)
 var tmpLinkMode = 'beat';
 
-// Beat-unit → quarter-note multiplier (transport BPM is always in quarter notes/min)
-var TMP_BEAT_UNIT_MULT = { 'half': 2, 'quarter': 1, 'dotted-quarter': 1.5, 'eighth': 0.5 };
-
-function tmpTransportBPM(cfg) {
-  var mult = TMP_BEAT_UNIT_MULT[cfg.beatUnit || 'quarter'] || 1;
-  return cfg.bpm * mult;
-}
-
-function tmpEighthRate(cfg) {
-  return Math.round(tmpTransportBPM(cfg) * 2);
-}
-
-// Calculate M2 BPM from M1 settings + link mode, clamped to 30–300.
+// Calculate M2 BPM from M1 + link mode, clamped to 30–300.
 function tmpCalcM2BPM() {
   var m1 = twoMeasurePattern[0];
   var s1 = parseInt(m1.subdivision) || 0;
   var s2 = parseInt(twoMeasurePattern[1].subdivision) || 0;
-  var b2;
-  if (tmpLinkMode === 'subdivision' && s1 > 0 && s2 > 0) {
-    b2 = m1.bpm * s1 / s2;
-  } else {
-    b2 = m1.bpm;
-  }
+  var b2 = (tmpLinkMode === 'subdivision' && s1 > 0 && s2 > 0)
+    ? m1.bpm * s1 / s2
+    : m1.bpm;
   return Math.max(30, Math.min(300, Math.round(b2)));
 }
 
-// Recalculate M2 BPM, store it, and refresh the auto display.
-function tmpSyncM2() {
-  var bpm = tmpCalcM2BPM();
-  twoMeasurePattern[1].bpm = bpm;
-  var display = document.getElementById('tmp-m2-auto-bpm');
-  if (display) display.textContent = bpm;
-  var readout = document.getElementById('tmp-m2-eighth-readout');
-  if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[1]) + '/min';
+// Sync M1 BPM from main tempo, recalculate M2, and refresh ♪ readouts.
+function tmpSyncAll() {
+  twoMeasurePattern[0].bpm = cachedBPM;
+  twoMeasurePattern[1].bpm = tmpCalcM2BPM();
+  var r1 = document.getElementById('tmp-m1-eighth-readout');
+  if (r1) r1.textContent = '♪ = ' + Math.round(twoMeasurePattern[0].bpm * 2) + '/min';
+  var r2 = document.getElementById('tmp-m2-eighth-readout');
+  if (r2) r2.textContent = '♪ = ' + Math.round(twoMeasurePattern[1].bpm * 2) + '/min';
 }
 
 // Custom Rhythm state
@@ -1760,7 +1745,7 @@ function scheduleMainBeat() {
       var mpCfg = twoMeasurePattern[twoMeasureCurrentMeasure];
       beatsPerMeasure = mpCfg.beatsPerMeasure;
       subdivision = mpCfg.subdivision;
-      Tone.Transport.bpm.setValueAtTime(tmpTransportBPM(mpCfg), time);
+      Tone.Transport.bpm.setValueAtTime(mpCfg.bpm, time);
     }
     // ──────────────────────────────────────────────────────────────────────────
 
@@ -2178,13 +2163,11 @@ function toggleTransport(withCountIn) {
     twoMeasureCurrentMeasure = 0;
     // If two-measure mode is active, apply measure 1 settings immediately
     if (twoMeasurePatternEnabled && !songModeEnabled) {
-      var _mp0 = twoMeasurePattern[0];
-      beatsPerMeasure = _mp0.beatsPerMeasure;
-      subdivision = _mp0.subdivision;
-      var _mp0transportBPM = tmpTransportBPM(_mp0);
-      Tone.Transport.bpm.value = _mp0transportBPM;
-      cachedBPM = _mp0transportBPM;
-      secondsPerBeat = 1 / (_mp0transportBPM / 60);
+      twoMeasurePattern[0].bpm = cachedBPM;
+      twoMeasurePattern[1].bpm = tmpCalcM2BPM();
+      beatsPerMeasure = twoMeasurePattern[0].beatsPerMeasure;
+      subdivision = twoMeasurePattern[0].subdivision;
+      // Transport BPM is already cachedBPM; secondsPerBeat is already set above
     }
     // withCountIn: false/0 = no count-in, 1 = 1-bar, 2/true = 2-bar
     countInMeasures = withCountIn ? (withCountIn === 1 ? 1 : 2) : 0;
@@ -2228,6 +2211,12 @@ function applyBPM(bpm) {
   if (numInput) numInput.value = bpm;
   if (fsSlider) fsSlider.value = bpm;
   if (fsBpmVal) fsBpmVal.textContent = bpm;
+
+  // Keep TMP measures in sync with the main tempo
+  if (twoMeasurePatternEnabled) {
+    twoMeasurePattern[0].bpm = bpm;
+    twoMeasurePattern[1].bpm = tmpCalcM2BPM();
+  }
 
   sendStateUpdate();
 }
@@ -4366,32 +4355,6 @@ if (document.readyState === 'loading') {
 
 // ── Two-Measure Pattern ────────────────────────────────────────────────────
 
-function tmpUpdateMeasureUI(measureIndex) {
-  var cfg = twoMeasurePattern[measureIndex];
-  var prefix = 'tmp-m' + (measureIndex + 1) + '-';
-
-  var timeSig     = document.getElementById(prefix + 'time-sig');
-  var subdiv      = document.getElementById(prefix + 'subdivision');
-  var beatUnitSel = document.getElementById(prefix + 'beat-unit');
-
-  if (timeSig)     timeSig.value             = cfg.beatsPerMeasure;
-  if (subdiv)      subdiv.value              = cfg.subdivision;
-  if (beatUnitSel) beatUnitSel.value         = cfg.beatUnit || 'quarter';
-
-  if (measureIndex === 0) {
-    // M1 has its own BPM slider + input
-    var bpmSlider = document.getElementById('tmp-m1-bpm-slider');
-    var bpmInput  = document.getElementById('tmp-m1-bpm-input');
-    if (bpmSlider) bpmSlider.value = cfg.bpm;
-    if (bpmInput)  bpmInput.value  = cfg.bpm;
-    var readout = document.getElementById('tmp-m1-eighth-readout');
-    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(cfg) + '/min';
-  } else {
-    // M2 BPM is always auto-calculated
-    tmpSyncM2();
-  }
-}
-
 function initTwoMeasurePatternListeners() {
   var tmpBtn      = document.getElementById('two-measure-btn');
   var tmpModal    = document.getElementById('two-measure-modal');
@@ -4400,40 +4363,39 @@ function initTwoMeasurePatternListeners() {
 
   if (!tmpBtn || !tmpModal) return;
 
-  // Open modal
+  // Open modal: sync dropdowns and ♪ readouts from current state
   tmpBtn.addEventListener('click', function() {
-    tmpUpdateMeasureUI(0);
-    tmpUpdateMeasureUI(1);
-    // Sync link-mode radios
+    var m1ts = document.getElementById('tmp-m1-time-sig');
+    var m1sd = document.getElementById('tmp-m1-subdivision');
+    var m2ts = document.getElementById('tmp-m2-time-sig');
+    var m2sd = document.getElementById('tmp-m2-subdivision');
+    if (m1ts) m1ts.value = twoMeasurePattern[0].beatsPerMeasure;
+    if (m1sd) m1sd.value = twoMeasurePattern[0].subdivision;
+    if (m2ts) m2ts.value = twoMeasurePattern[1].beatsPerMeasure;
+    if (m2sd) m2sd.value = twoMeasurePattern[1].subdivision;
     var linkRadio = document.querySelector('input[name="tmp-link-mode"][value="' + tmpLinkMode + '"]');
     if (linkRadio) linkRadio.checked = true;
     if (tmpEnabled) tmpEnabled.checked = twoMeasurePatternEnabled;
+    tmpSyncAll(); // refresh ♪ readouts with current cachedBPM
     tmpModal.classList.remove('hidden');
   });
 
-  // Close modal
-  if (tmpCloseBtn) {
-    tmpCloseBtn.addEventListener('click', function() {
-      tmpModal.classList.add('hidden');
-    });
-  }
+  // Close
+  if (tmpCloseBtn) tmpCloseBtn.addEventListener('click', function() { tmpModal.classList.add('hidden'); });
+  tmpModal.addEventListener('click', function(e) { if (e.target === tmpModal) tmpModal.classList.add('hidden'); });
 
-  // Backdrop click closes
-  tmpModal.addEventListener('click', function(e) {
-    if (e.target === tmpModal) tmpModal.classList.add('hidden');
-  });
-
-  // Enable/disable checkbox
+  // Enable/disable
   if (tmpEnabled) {
     tmpEnabled.addEventListener('change', function(e) {
       twoMeasurePatternEnabled = e.target.checked;
       tmpBtn.classList.toggle('ct-active', twoMeasurePatternEnabled);
       if (twoMeasurePatternEnabled && Tone.Transport.state === 'started' && !songModeEnabled) {
         twoMeasureCurrentMeasure = 0;
-        var mp0 = twoMeasurePattern[0];
-        beatsPerMeasure = mp0.beatsPerMeasure;
-        subdivision = mp0.subdivision;
-        applyBPM(tmpTransportBPM(mp0));
+        twoMeasurePattern[0].bpm = cachedBPM;
+        twoMeasurePattern[1].bpm = tmpCalcM2BPM();
+        beatsPerMeasure = twoMeasurePattern[0].beatsPerMeasure;
+        subdivision = twoMeasurePattern[0].subdivision;
+        // Transport is already at cachedBPM; scheduler will handle M2 at next boundary
       }
       sendStateUpdate();
     });
@@ -4443,27 +4405,11 @@ function initTwoMeasurePatternListeners() {
   document.querySelectorAll('input[name="tmp-link-mode"]').forEach(function(radio) {
     radio.addEventListener('change', function() {
       tmpLinkMode = this.value;
-      tmpSyncM2();
+      tmpSyncAll();
     });
   });
 
-  // ── Measure 1 controls ───────────────────────────────────────────────────
-  var m1BpmSlider = document.getElementById('tmp-m1-bpm-slider');
-  var m1BpmInput  = document.getElementById('tmp-m1-bpm-input');
-
-  function applyM1Bpm(val) {
-    val = Math.max(30, Math.min(300, Math.round(val)));
-    twoMeasurePattern[0].bpm = val;
-    if (m1BpmSlider) m1BpmSlider.value = val;
-    if (m1BpmInput)  m1BpmInput.value  = val;
-    var readout = document.getElementById('tmp-m1-eighth-readout');
-    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[0]) + '/min';
-    tmpSyncM2();
-  }
-
-  if (m1BpmSlider) m1BpmSlider.addEventListener('input',  function() { applyM1Bpm(parseInt(this.value)); });
-  if (m1BpmInput)  m1BpmInput.addEventListener('change', function() { applyM1Bpm(parseInt(this.value) || twoMeasurePattern[0].bpm); });
-
+  // Measure 1 — beats and subdivision only (BPM comes from main slider)
   var m1TimeSig = document.getElementById('tmp-m1-time-sig');
   if (m1TimeSig) m1TimeSig.addEventListener('change', function() {
     twoMeasurePattern[0].beatsPerMeasure = parseInt(this.value);
@@ -4472,19 +4418,10 @@ function initTwoMeasurePatternListeners() {
   var m1Subdiv = document.getElementById('tmp-m1-subdivision');
   if (m1Subdiv) m1Subdiv.addEventListener('change', function() {
     twoMeasurePattern[0].subdivision = this.value;
-    var readout = document.getElementById('tmp-m1-eighth-readout');
-    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[0]) + '/min';
-    tmpSyncM2(); // M2 BPM depends on S1 in subdivision-link mode
+    tmpSyncAll(); // M2 BPM may depend on S1 (subdivision-link mode)
   });
 
-  var m1BeatUnit = document.getElementById('tmp-m1-beat-unit');
-  if (m1BeatUnit) m1BeatUnit.addEventListener('change', function() {
-    twoMeasurePattern[0].beatUnit = this.value;
-    var readout = document.getElementById('tmp-m1-eighth-readout');
-    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[0]) + '/min';
-  });
-
-  // ── Measure 2 controls (no manual BPM — auto-calculated) ─────────────────
+  // Measure 2 — beats and subdivision only (BPM auto-calculated)
   var m2TimeSig = document.getElementById('tmp-m2-time-sig');
   if (m2TimeSig) m2TimeSig.addEventListener('change', function() {
     twoMeasurePattern[1].beatsPerMeasure = parseInt(this.value);
@@ -4493,13 +4430,7 @@ function initTwoMeasurePatternListeners() {
   var m2Subdiv = document.getElementById('tmp-m2-subdivision');
   if (m2Subdiv) m2Subdiv.addEventListener('change', function() {
     twoMeasurePattern[1].subdivision = this.value;
-    tmpSyncM2(); // M2 BPM depends on S2 in subdivision-link mode
-  });
-
-  var m2BeatUnit = document.getElementById('tmp-m2-beat-unit');
-  if (m2BeatUnit) m2BeatUnit.addEventListener('change', function() {
-    twoMeasurePattern[1].beatUnit = this.value;
-    tmpSyncM2(); // update ♪ readout (beat unit affects 8th note rate display)
+    tmpSyncAll(); // recalculate M2 BPM and update ♪ readout
   });
 }
 

@@ -389,30 +389,13 @@
       <div class="settings-container tmp-container">
         <h2>Two-Measure Pattern</h2>
         <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
-          Define two measures that repeat. Measure 2 tempo is auto-calculated.
+          Define two measures that repeat. Tempo is set by the main BPM slider.
           Subdivision is a divisor: 2 = 8th notes, 3 = triplets, 4 = 16th notes, etc.
         </p>
 
         <!-- Measure 1 -->
         <div class="tmp-measure-block">
           <div class="tmp-measure-header">Measure 1</div>
-
-          <div class="tmp-row">
-            <label class="tmp-label">Tempo</label>
-            <div class="tmp-tempo-row">
-              <input type="range" id="tmp-m1-bpm-slider" class="tmp-bpm-slider" min="30" max="300" value="96" step="1">
-              <div class="tmp-bpm-display">
-                <input type="number" id="tmp-m1-bpm-input" class="tmp-bpm-input" min="30" max="300" value="96">
-                <select id="tmp-m1-beat-unit" class="tmp-beat-unit-select">
-                  <option value="quarter">♩ BPM</option>
-                  <option value="dotted-quarter">♩. BPM</option>
-                  <option value="eighth">♪ BPM</option>
-                  <option value="half">&#119132; BPM</option>
-                </select>
-              </div>
-            </div>
-            <div class="tmp-eighth-readout" id="tmp-m1-eighth-readout">♪ = 192/min</div>
-          </div>
 
           <div class="tmp-row tmp-row-inline">
             <div class="tmp-field">
@@ -442,11 +425,12 @@
               </select>
             </div>
           </div>
+          <div class="tmp-eighth-readout" id="tmp-m1-eighth-readout">♪ = 192/min</div>
         </div>
 
         <!-- Tempo Link -->
         <div class="tmp-link-block">
-          <label class="tmp-label">Tempo Link — Measure 2 BPM is auto-calculated</label>
+          <label class="tmp-label">Tempo Link</label>
           <div class="tmp-link-options">
             <label class="tmp-link-opt">
               <input type="radio" name="tmp-link-mode" id="tmp-link-beat" value="beat" checked>
@@ -468,20 +452,6 @@
         <!-- Measure 2 -->
         <div class="tmp-measure-block">
           <div class="tmp-measure-header">Measure 2</div>
-
-          <div class="tmp-row">
-            <label class="tmp-label">Tempo (auto)</label>
-            <div class="tmp-auto-tempo-row">
-              <span class="tmp-auto-bpm-value" id="tmp-m2-auto-bpm">96</span>
-              <select id="tmp-m2-beat-unit" class="tmp-beat-unit-select">
-                <option value="quarter">♩ BPM</option>
-                <option value="dotted-quarter">♩. BPM</option>
-                <option value="eighth">♪ BPM</option>
-                <option value="half">&#119132; BPM</option>
-              </select>
-            </div>
-            <div class="tmp-eighth-readout" id="tmp-m2-eighth-readout">♪ = 192/min</div>
-          </div>
 
           <div class="tmp-row tmp-row-inline">
             <div class="tmp-field">
@@ -511,6 +481,7 @@
               </select>
             </div>
           </div>
+          <div class="tmp-eighth-readout" id="tmp-m2-eighth-readout">♪ = 192/min</div>
         </div>
 
         <div class="setting-group" style="margin-top:16px;">
@@ -518,7 +489,7 @@
             <input type="checkbox" id="tmp-enabled">
             Enable two-measure pattern
           </label>
-          <p class="setting-hint">Overrides the main beats/measure, subdivision, and tempo controls while active</p>
+          <p class="setting-hint">Overrides the main beats/measure and subdivision controls while active; tempo follows the main BPM slider</p>
         </div>
 
         <div class="settings-buttons">
