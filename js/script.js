@@ -4481,7 +4481,7 @@ if (document.readyState === 'loading') {
 // Loads a two-measure pattern where the eighth note stays constant:
 //   Measure 1: 2 beats, subdivision 3  (6/8 — dotted-quarter beat)
 //   Measure 2: 3 beats, subdivision 2  (3/4 — quarter beat)
-// Sets tempo to ♩=100 and engages TMP with "keep subdivision speed" mode.
+// Sets tempo to ♩=110 and engages TMP with "keep subdivision speed" mode.
 (function() {
   var presetBtn = document.getElementById('tmp-6834-preset-btn');
   var tmpBtn    = document.getElementById('two-measure-btn');
@@ -4497,7 +4497,7 @@ if (document.readyState === 'loading') {
 
     // Enable TMP, then set tempo — applyBPM will sync M1/M2 BPMs via tmpCalcM2BPM
     twoMeasurePatternEnabled = true;
-    applyBPM(100);
+    applyBPM(110);
 
     // Reflect active state on both the preset button and the TMP button
     presetBtn.classList.add('ct-active');
