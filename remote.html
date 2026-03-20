@@ -408,9 +408,12 @@
         <span class="setting-label">Subdivision</span>
         <select id="r-subdivision" class="setting-select">
           <option value="none">None</option>
-          <option value="eighth">8th notes</option>
-          <option value="triplet">Triplets</option>
-          <option value="sixteenth">16th notes</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
         </select>
       </div>
 
@@ -563,7 +566,7 @@
       rRockbeatRow.style.display  = (beats === 4) ? '' : 'none';
       rWaltzBeatRow.style.display = (beats === 3) ? '' : 'none';
       // Swing shown only when subdivision is eighth
-      rSwingRow.style.display = (rSubdivision.value === 'eighth') ? '' : 'none';
+      rSwingRow.style.display = (rSubdivision.value === '2') ? '' : 'none';
     }
 
     function onStateUpdate(msg) {
@@ -577,7 +580,7 @@
       if (msg.beatsPerMeasure !== undefined) rBeats.value       = msg.beatsPerMeasure;
       if (msg.subdivision !== undefined) {
         rSubdivision.value = msg.subdivision;
-        rSwingRow.style.display = (msg.subdivision === 'eighth') ? '' : 'none';
+        rSwingRow.style.display = (msg.subdivision === '2') ? '' : 'none';
       }
       if (msg.swingEnabled !== undefined)    rSwing.checked     = msg.swingEnabled;
       if (msg.soundEnabled !== undefined)    rSound.checked     = msg.soundEnabled;
@@ -786,7 +789,7 @@
     rSubdivision.addEventListener('change', function () {
       send({ type: 'setSubdivision', value: this.value });
       rSwingRow.style.display = (this.value === 'eighth') ? '' : 'none';
-      if (this.value !== 'eighth') rSwing.checked = false;
+      if (this.value !== '2') rSwing.checked = false;
     });
 
     // Swing

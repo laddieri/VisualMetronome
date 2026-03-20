@@ -65,9 +65,12 @@ var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
 var twoMeasurePatternEnabled = false;
 var twoMeasurePattern = [
   { beatsPerMeasure: 4, subdivision: 'none', bpm: 96, beatUnit: 'quarter' },
-  { beatsPerMeasure: 3, subdivision: 'eighth', bpm: 96, beatUnit: 'quarter' }
+  { beatsPerMeasure: 3, subdivision: '2',    bpm: 96, beatUnit: 'quarter' }
 ];
 var twoMeasureCurrentMeasure = 0; // 0 or 1 — which measure we're currently playing
+// 'beat': M2 BPM = M1 BPM (beat tempo stays the same)
+// 'subdivision': M2 BPM = M1 BPM × S1/S2 (subdivision note speed stays the same)
+var tmpLinkMode = 'beat';
 
 // Beat-unit → quarter-note multiplier (transport BPM is always in quarter notes/min)
 var TMP_BEAT_UNIT_MULT = { 'half': 2, 'quarter': 1, 'dotted-quarter': 1.5, 'eighth': 0.5 };
@@ -79,6 +82,30 @@ function tmpTransportBPM(cfg) {
 
 function tmpEighthRate(cfg) {
   return Math.round(tmpTransportBPM(cfg) * 2);
+}
+
+// Calculate M2 BPM from M1 settings + link mode, clamped to 30–300.
+function tmpCalcM2BPM() {
+  var m1 = twoMeasurePattern[0];
+  var s1 = parseInt(m1.subdivision) || 0;
+  var s2 = parseInt(twoMeasurePattern[1].subdivision) || 0;
+  var b2;
+  if (tmpLinkMode === 'subdivision' && s1 > 0 && s2 > 0) {
+    b2 = m1.bpm * s1 / s2;
+  } else {
+    b2 = m1.bpm;
+  }
+  return Math.max(30, Math.min(300, Math.round(b2)));
+}
+
+// Recalculate M2 BPM, store it, and refresh the auto display.
+function tmpSyncM2() {
+  var bpm = tmpCalcM2BPM();
+  twoMeasurePattern[1].bpm = bpm;
+  var display = document.getElementById('tmp-m2-auto-bpm');
+  if (display) display.textContent = bpm;
+  var readout = document.getElementById('tmp-m2-eighth-readout');
+  if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[1]) + '/min';
 }
 
 // Custom Rhythm state
@@ -1308,10 +1335,10 @@ function initSettingsListeners() {
   function updateSwingVisibility() {
     var swingGroup = document.getElementById('swing-group');
     if (swingGroup) {
-      swingGroup.style.display = (subdivision === 'eighth') ? '' : 'none';
+      swingGroup.style.display = (subdivision === '2') ? '' : 'none';
     }
-    // Auto-disable swing if subdivision changes away from eighth
-    if (subdivision !== 'eighth' && swingEnabled) {
+    // Auto-disable swing if subdivision changes away from ÷2
+    if (subdivision !== '2' && swingEnabled) {
       swingEnabled = false;
       var swingCb = document.getElementById('swing-enabled');
       if (swingCb) swingCb.checked = false;
@@ -2007,32 +2034,19 @@ function scheduleMainBeat() {
   }, "4n");
 }
 
-// Schedule subdivisions for a single beat
-// Uses direct synth triggering with audio context time for precise timing
+// Schedule subdivisions for a single beat.
+// `subdivision` is a numeric string '2'–'7': the beat is divided into that many equal parts.
+// Swing only applies when subdivision === '2' (shifts the single midpoint click to 2/3).
 function scheduleSubdivisionsForBeat(beatTime) {
-  if (subdivision === 'none') return;
+  var n = parseInt(subdivision);
+  if (!n || n < 2) return;
 
-  const beatDuration = Tone.Time("4n").toSeconds();
-
-  switch(subdivision) {
-    case 'eighth':
-      // One subdivision — straight at 50%, or swung to 66.7% (triplet feel)
-      var eighthOffset = swingEnabled ? (beatDuration * 2) / 3 : beatDuration / 2;
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + eighthOffset);
-      break;
-
-    case 'triplet':
-      // Two subdivisions dividing beat into thirds
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + beatDuration / 3);
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + (beatDuration * 2) / 3);
-      break;
-
-    case 'sixteenth':
-      // Three subdivisions dividing beat into quarters
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + beatDuration / 4);
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + beatDuration / 2);
-      subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + (beatDuration * 3) / 4);
-      break;
+  var beatDuration = Tone.Time("4n").toSeconds();
+  for (var i = 1; i < n; i++) {
+    var offset = (n === 2 && swingEnabled && i === 1)
+      ? (beatDuration * 2) / 3   // Swing: 66.7% instead of 50%
+      : beatDuration * i / n;
+    subdivisionSynth.triggerAttackRelease("C5", "32n", beatTime + offset);
   }
 }
 
@@ -3586,14 +3600,14 @@ function applyRemoteCommand(msg) {
 
     case 'setSubdivision': {
       var sub = msg.value;
-      if (['none', 'eighth', 'triplet', 'sixteenth'].indexOf(sub) === -1) break;
+      if (['none', '2', '3', '4', '5', '6', '7'].indexOf(sub) === -1) break;
       subdivision = sub;
       var subSel = document.getElementById('subdivision');
       if (subSel) subSel.value = sub;
-      // Update swing visibility and auto-disable if leaving eighth
+      // Update swing visibility and auto-disable if leaving ÷2
       var swingGrp = document.getElementById('swing-group');
-      if (swingGrp) swingGrp.style.display = (sub === 'eighth') ? '' : 'none';
-      if (sub !== 'eighth' && swingEnabled) {
+      if (swingGrp) swingGrp.style.display = (sub === '2') ? '' : 'none';
+      if (sub !== '2' && swingEnabled) {
         swingEnabled = false;
         var swCb = document.getElementById('swing-enabled');
         if (swCb) swCb.checked = false;
@@ -4386,21 +4400,26 @@ function tmpUpdateMeasureUI(measureIndex) {
   var cfg = twoMeasurePattern[measureIndex];
   var prefix = 'tmp-m' + (measureIndex + 1) + '-';
 
-  var bpmSlider     = document.getElementById(prefix + 'bpm-slider');
-  var bpmInput      = document.getElementById(prefix + 'bpm-input');
-  var bpmLabel      = document.getElementById(prefix + 'bpm-label');
-  var timeSig       = document.getElementById(prefix + 'time-sig');
-  var subdiv        = document.getElementById(prefix + 'subdivision');
-  var beatUnitSel   = document.getElementById(prefix + 'beat-unit');
-  var eighthReadout = document.getElementById(prefix + 'eighth-readout');
+  var timeSig     = document.getElementById(prefix + 'time-sig');
+  var subdiv      = document.getElementById(prefix + 'subdivision');
+  var beatUnitSel = document.getElementById(prefix + 'beat-unit');
 
-  if (bpmSlider)     bpmSlider.value = cfg.bpm;
-  if (bpmInput)      bpmInput.value  = cfg.bpm;
-  if (bpmLabel)      bpmLabel.textContent = cfg.bpm;
-  if (timeSig)       timeSig.value   = cfg.beatsPerMeasure;
-  if (subdiv)        subdiv.value    = cfg.subdivision;
-  if (beatUnitSel)   beatUnitSel.value = cfg.beatUnit || 'quarter';
-  if (eighthReadout) eighthReadout.textContent = '♪ = ' + tmpEighthRate(cfg) + '/min';
+  if (timeSig)     timeSig.value             = cfg.beatsPerMeasure;
+  if (subdiv)      subdiv.value              = cfg.subdivision;
+  if (beatUnitSel) beatUnitSel.value         = cfg.beatUnit || 'quarter';
+
+  if (measureIndex === 0) {
+    // M1 has its own BPM slider + input
+    var bpmSlider = document.getElementById('tmp-m1-bpm-slider');
+    var bpmInput  = document.getElementById('tmp-m1-bpm-input');
+    if (bpmSlider) bpmSlider.value = cfg.bpm;
+    if (bpmInput)  bpmInput.value  = cfg.bpm;
+    var readout = document.getElementById('tmp-m1-eighth-readout');
+    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(cfg) + '/min';
+  } else {
+    // M2 BPM is always auto-calculated
+    tmpSyncM2();
+  }
 }
 
 function initTwoMeasurePatternListeners() {
@@ -4415,6 +4434,9 @@ function initTwoMeasurePatternListeners() {
   tmpBtn.addEventListener('click', function() {
     tmpUpdateMeasureUI(0);
     tmpUpdateMeasureUI(1);
+    // Sync link-mode radios
+    var linkRadio = document.querySelector('input[name="tmp-link-mode"][value="' + tmpLinkMode + '"]');
+    if (linkRadio) linkRadio.checked = true;
     if (tmpEnabled) tmpEnabled.checked = twoMeasurePatternEnabled;
     tmpModal.classList.remove('hidden');
   });
@@ -4436,7 +4458,6 @@ function initTwoMeasurePatternListeners() {
     tmpEnabled.addEventListener('change', function(e) {
       twoMeasurePatternEnabled = e.target.checked;
       tmpBtn.classList.toggle('ct-active', twoMeasurePatternEnabled);
-      // If enabling and playing, apply measure 1 settings immediately
       if (twoMeasurePatternEnabled && Tone.Transport.state === 'started' && !songModeEnabled) {
         twoMeasureCurrentMeasure = 0;
         var mp0 = twoMeasurePattern[0];
@@ -4448,63 +4469,67 @@ function initTwoMeasurePatternListeners() {
     });
   }
 
-  // Wire up controls for each measure (1 and 2 → indices 0 and 1)
-  [0, 1].forEach(function(idx) {
-    var prefix = 'tmp-m' + (idx + 1) + '-';
+  // Link-mode radios
+  document.querySelectorAll('input[name="tmp-link-mode"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      tmpLinkMode = this.value;
+      tmpSyncM2();
+    });
+  });
 
-    var bpmSlider     = document.getElementById(prefix + 'bpm-slider');
-    var bpmInput      = document.getElementById(prefix + 'bpm-input');
-    var bpmLabel      = document.getElementById(prefix + 'bpm-label');
-    var timeSig       = document.getElementById(prefix + 'time-sig');
-    var subdiv        = document.getElementById(prefix + 'subdivision');
-    var beatUnitSel   = document.getElementById(prefix + 'beat-unit');
-    var eighthReadout = document.getElementById(prefix + 'eighth-readout');
+  // ── Measure 1 controls ───────────────────────────────────────────────────
+  var m1BpmSlider = document.getElementById('tmp-m1-bpm-slider');
+  var m1BpmInput  = document.getElementById('tmp-m1-bpm-input');
 
-    function refreshEighthReadout() {
-      if (eighthReadout) {
-        eighthReadout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[idx]) + '/min';
-      }
-    }
+  function applyM1Bpm(val) {
+    val = Math.max(30, Math.min(300, Math.round(val)));
+    twoMeasurePattern[0].bpm = val;
+    if (m1BpmSlider) m1BpmSlider.value = val;
+    if (m1BpmInput)  m1BpmInput.value  = val;
+    var readout = document.getElementById('tmp-m1-eighth-readout');
+    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[0]) + '/min';
+    tmpSyncM2();
+  }
 
-    function applyMeasureBpm(val) {
-      val = Math.max(30, Math.min(300, Math.round(val)));
-      twoMeasurePattern[idx].bpm = val;
-      if (bpmSlider) bpmSlider.value = val;
-      if (bpmInput)  bpmInput.value  = val;
-      if (bpmLabel)  bpmLabel.textContent = val;
-      refreshEighthReadout();
-    }
+  if (m1BpmSlider) m1BpmSlider.addEventListener('input',  function() { applyM1Bpm(parseInt(this.value)); });
+  if (m1BpmInput)  m1BpmInput.addEventListener('change', function() { applyM1Bpm(parseInt(this.value) || twoMeasurePattern[0].bpm); });
 
-    if (bpmSlider) {
-      bpmSlider.addEventListener('input', function() {
-        applyMeasureBpm(parseInt(this.value));
-      });
-    }
+  var m1TimeSig = document.getElementById('tmp-m1-time-sig');
+  if (m1TimeSig) m1TimeSig.addEventListener('change', function() {
+    twoMeasurePattern[0].beatsPerMeasure = parseInt(this.value);
+  });
 
-    if (bpmInput) {
-      bpmInput.addEventListener('change', function() {
-        applyMeasureBpm(parseInt(this.value) || twoMeasurePattern[idx].bpm);
-      });
-    }
+  var m1Subdiv = document.getElementById('tmp-m1-subdivision');
+  if (m1Subdiv) m1Subdiv.addEventListener('change', function() {
+    twoMeasurePattern[0].subdivision = this.value;
+    var readout = document.getElementById('tmp-m1-eighth-readout');
+    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[0]) + '/min';
+    tmpSyncM2(); // M2 BPM depends on S1 in subdivision-link mode
+  });
 
-    if (timeSig) {
-      timeSig.addEventListener('change', function() {
-        twoMeasurePattern[idx].beatsPerMeasure = parseInt(this.value);
-      });
-    }
+  var m1BeatUnit = document.getElementById('tmp-m1-beat-unit');
+  if (m1BeatUnit) m1BeatUnit.addEventListener('change', function() {
+    twoMeasurePattern[0].beatUnit = this.value;
+    var readout = document.getElementById('tmp-m1-eighth-readout');
+    if (readout) readout.textContent = '♪ = ' + tmpEighthRate(twoMeasurePattern[0]) + '/min';
+  });
 
-    if (subdiv) {
-      subdiv.addEventListener('change', function() {
-        twoMeasurePattern[idx].subdivision = this.value;
-      });
-    }
+  // ── Measure 2 controls (no manual BPM — auto-calculated) ─────────────────
+  var m2TimeSig = document.getElementById('tmp-m2-time-sig');
+  if (m2TimeSig) m2TimeSig.addEventListener('change', function() {
+    twoMeasurePattern[1].beatsPerMeasure = parseInt(this.value);
+  });
 
-    if (beatUnitSel) {
-      beatUnitSel.addEventListener('change', function() {
-        twoMeasurePattern[idx].beatUnit = this.value;
-        refreshEighthReadout();
-      });
-    }
+  var m2Subdiv = document.getElementById('tmp-m2-subdivision');
+  if (m2Subdiv) m2Subdiv.addEventListener('change', function() {
+    twoMeasurePattern[1].subdivision = this.value;
+    tmpSyncM2(); // M2 BPM depends on S2 in subdivision-link mode
+  });
+
+  var m2BeatUnit = document.getElementById('tmp-m2-beat-unit');
+  if (m2BeatUnit) m2BeatUnit.addEventListener('change', function() {
+    twoMeasurePattern[1].beatUnit = this.value;
+    tmpSyncM2(); // update ♪ readout (beat unit affects 8th note rate display)
   });
 }
 
