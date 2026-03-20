@@ -85,7 +85,13 @@ function tmpCalcM2BPM() {
 
 // Sync M1 BPM from main tempo, recalculate M2, and refresh ♪ readouts.
 function tmpSyncAll() {
-  twoMeasurePattern[0].bpm = cachedBPM;
+  // While TMP is actively playing, twoMeasurePattern[0].bpm is the
+  // authoritative M1 tempo.  cachedBPM may have been updated to M2's BPM
+  // by the Tone.Draw beat callback, so overwriting M1 from it would corrupt
+  // the pattern.  Only sync from cachedBPM when TMP is not currently running.
+  if (!(twoMeasurePatternEnabled && Tone.Transport.state === 'started')) {
+    twoMeasurePattern[0].bpm = cachedBPM;
+  }
   twoMeasurePattern[1].bpm = tmpCalcM2BPM();
   var r1 = document.getElementById('tmp-m1-eighth-readout');
   if (r1) r1.textContent = '♪ = ' + Math.round(twoMeasurePattern[0].bpm * 2) + '/min';
