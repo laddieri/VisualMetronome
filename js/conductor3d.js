@@ -22,8 +22,6 @@ class Conductor3D {
     // Sway / nod state
     this.currentSway = 0;
     this.currentNod = 0;
-    this.targetSway = 0;
-    this.targetNod = 0;
   }
 
   // ── Initialization ───────────────────────────────────────────────────────
@@ -31,13 +29,14 @@ class Conductor3D {
   init(parentSelector) {
     if (this.initialized) return;
 
+    const wrapper = document.querySelector(parentSelector || '.canvas-wrapper');
+    if (!wrapper) return;
+
     // Create container div overlaying the p5 canvas
     this.container = document.createElement('div');
     this.container.id = 'conductor3d-container';
     this.container.style.cssText =
-      'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;';
-    const wrapper = document.querySelector(parentSelector || '.canvas-wrapper');
-    wrapper.style.position = 'relative';
+      'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;display:flex;align-items:center;justify-content:center;';
     wrapper.appendChild(this.container);
 
     // Scene
@@ -51,13 +50,19 @@ class Conductor3D {
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    this.renderer.setClearColor(0x000000, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    if (this.renderer.outputEncoding !== undefined) {
+      this.renderer.outputEncoding = THREE.sRGBEncoding;
+    }
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
+
+    // Size the renderer to match the p5 canvas
     this._updateSize();
+    this.renderer.domElement.style.borderRadius = '12px';
     this.container.appendChild(this.renderer.domElement);
 
     // Lighting
@@ -125,8 +130,8 @@ class Conductor3D {
     this.scene.add(bodyGroup);
 
     // ── Torso ─────────────────────────────────────────────────────────
-    // Jacket body
-    const torsoGeo = this._roundedBox(0.42, 0.55, 0.24, 0.04);
+    // Use a simple box with beveled edges for the jacket body
+    const torsoGeo = new THREE.BoxGeometry(0.42, 0.55, 0.24, 2, 2, 2);
     const torsoMesh = new THREE.Mesh(torsoGeo, this._mat(tuxBody, { roughness: 0.85 }));
     torsoMesh.position.set(0, 1.05, 0);
     torsoMesh.castShadow = true;
@@ -134,13 +139,14 @@ class Conductor3D {
     this.meshes.torso = torsoMesh;
 
     // Shirt front (visible V)
+    const shirtMat = this._mat(shirt, { roughness: 0.5, side: THREE.DoubleSide });
     const shirtGeo = new THREE.PlaneGeometry(0.12, 0.28);
-    const shirtMesh = new THREE.Mesh(shirtGeo, this._mat(shirt, { roughness: 0.5 }));
+    const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
     shirtMesh.position.set(0, 1.12, 0.122);
     bodyGroup.add(shirtMesh);
 
     // Lapels
-    const lapelMat = this._mat(lapel, { roughness: 0.3, metalness: 0.1 });
+    const lapelMat = this._mat(lapel, { roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide });
     for (const side of [-1, 1]) {
       const lapelGeo = new THREE.PlaneGeometry(0.06, 0.22);
       const lMesh = new THREE.Mesh(lapelGeo, lapelMat);
@@ -157,9 +163,10 @@ class Conductor3D {
     bodyGroup.add(btMesh);
 
     // Collar points
+    const collarMat = this._mat(shirt, { roughness: 0.4, side: THREE.DoubleSide });
     for (const side of [-1, 1]) {
       const collarGeo = new THREE.PlaneGeometry(0.04, 0.035);
-      const cMesh = new THREE.Mesh(collarGeo, this._mat(shirt, { roughness: 0.4 }));
+      const cMesh = new THREE.Mesh(collarGeo, collarMat);
       cMesh.position.set(side * 0.035, 1.305, 0.124);
       cMesh.rotation.z = side * -0.4;
       bodyGroup.add(cMesh);
@@ -251,11 +258,7 @@ class Conductor3D {
       headGroup.add(ear);
     }
 
-    // ── Shoulders & Arms ─────────────────────────────────────────────
-    this._buildArm(bodyGroup, 1, skin, tuxBody);  // right
-    this._buildArm(bodyGroup, -1, skin, tuxBody);  // left
-
-    // ── Baton (in right hand) ────────────────────────────────────────
+    // ── Baton (created BEFORE arms so it can be attached) ────────────
     const batonGroup = new THREE.Group();
     // Shaft
     const shaftGeo = new THREE.CylinderGeometry(0.005, 0.004, 0.38, 8);
@@ -269,7 +272,10 @@ class Conductor3D {
     grip.position.y = -0.01;
     batonGroup.add(grip);
     this.meshes.baton = batonGroup;
-    // Will be attached to right hand in _buildArm
+
+    // ── Shoulders & Arms (after baton so it can be attached) ─────────
+    this._buildArm(bodyGroup, 1, skin, tuxBody);  // right (baton)
+    this._buildArm(bodyGroup, -1, skin, tuxBody);  // left
   }
 
   _buildArm(parent, side, skinColor, jacketColor) {
@@ -346,7 +352,7 @@ class Conductor3D {
     wristGroup.add(thumb);
 
     // Attach baton to right hand
-    if (side === 1) {
+    if (side === 1 && this.meshes.baton) {
       wristGroup.add(this.meshes.baton);
       this.meshes.baton.rotation.x = -0.2;
     }
@@ -357,28 +363,6 @@ class Conductor3D {
     this.bones['upperArm' + sideKey] = upperArmGroup;
     this.bones['elbow' + sideKey] = elbowGroup;
     this.bones['wrist' + sideKey] = wristGroup;
-  }
-
-  // ── Rounded box helper ─────────────────────────────────────────────────
-
-  _roundedBox(w, h, d, r) {
-    const shape = new THREE.Shape();
-    const hw = w / 2 - r;
-    const hh = h / 2 - r;
-    shape.moveTo(-hw, -h / 2);
-    shape.lineTo(hw, -h / 2);
-    shape.quadraticCurveTo(w / 2, -h / 2, w / 2, -hh);
-    shape.lineTo(w / 2, hh);
-    shape.quadraticCurveTo(w / 2, h / 2, hw, h / 2);
-    shape.lineTo(-hw, h / 2);
-    shape.quadraticCurveTo(-w / 2, h / 2, -w / 2, hh);
-    shape.lineTo(-w / 2, -hh);
-    shape.quadraticCurveTo(-w / 2, -h / 2, -hw, -h / 2);
-
-    const extrudeSettings = { depth: d, bevelEnabled: true, bevelThickness: r, bevelSize: r, bevelSegments: 3 };
-    const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geo.translate(0, 0, -d / 2);
-    return geo;
   }
 
   // ── Enhanced 3D conducting patterns ────────────────────────────────────
@@ -467,7 +451,7 @@ class Conductor3D {
     const beatDuration = 60 / (cachedBPM || Tone.Transport.bpm.value);
     const timeSinceLastBeat = Tone.now() - lastBeatTime - (bluetoothDelay / 1000);
 
-    let progress, effectiveAnimBeat;
+    var progress, effectiveAnimBeat;
     if (timeSinceLastBeat < 0) {
       progress = (timeSinceLastBeat + beatDuration) / beatDuration;
       if (progress < 0) progress = 0;
@@ -504,7 +488,6 @@ class Conductor3D {
   }
 
   // ── Inverse kinematics for arm ─────────────────────────────────────────
-  // Given a target hand position in body-local coords, solve shoulder & elbow angles
 
   _solveArmIK(side, targetX, targetY, targetZ) {
     const upperLen = 0.28;
@@ -513,31 +496,23 @@ class Conductor3D {
     const shoulderY = 1.28;
     const shoulderZ = 0;
 
-    // Target relative to shoulder
     const dx = targetX - shoulderX;
     const dy = targetY - shoulderY;
     const dz = targetZ - shoulderZ;
     const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    // Clamp reach
     const maxReach = upperLen + lowerLen - 0.02;
     const minReach = 0.08;
     const reach = Math.max(minReach, Math.min(dist, maxReach));
 
-    // Elbow angle via law of cosines
-    let cosElbow = (upperLen * upperLen + lowerLen * lowerLen - reach * reach) /
+    var cosElbow = (upperLen * upperLen + lowerLen * lowerLen - reach * reach) /
                    (2 * upperLen * lowerLen);
     cosElbow = Math.max(-1, Math.min(1, cosElbow));
     const elbowAngle = Math.PI - Math.acos(cosElbow);
 
-    // Shoulder pitch (up/down in YZ plane relative to direction)
     const planarDist = Math.sqrt(dx * dx + dz * dz);
     const shoulderPitch = -Math.atan2(-dy, planarDist);
-
-    // Shoulder yaw (left/right)
     const shoulderYaw = Math.atan2(dz, dx * side);
-
-    // Shoulder roll (how much the arm extends outward)
     const shoulderRoll = Math.atan2(dx * side, -dy);
 
     return { shoulderPitch, shoulderYaw, shoulderRoll, elbowAngle };
@@ -546,7 +521,9 @@ class Conductor3D {
   // ── Apply pose to skeleton ─────────────────────────────────────────────
 
   _applyPose(state) {
-    const { pos, sway, nod } = state;
+    const pos = state.pos;
+    const sway = state.sway;
+    const nod = state.nod;
 
     // Smooth sway & nod for natural motion
     this.currentSway += (sway - this.currentSway) * 0.08;
@@ -565,50 +542,33 @@ class Conductor3D {
     // Head nod
     if (this.meshes.headGroup) {
       this.meshes.headGroup.rotation.x = this.currentNod;
-      // Slight head turn following baton
       this.meshes.headGroup.rotation.y = -this.currentSway * 0.5;
     }
 
     // Right arm (baton hand) — follows conducting pattern
-    const rTarget = {
-      x: pos[0] + 0.25,  // offset from center to right shoulder
-      y: pos[1] + 1.28,  // offset to shoulder height
-      z: pos[2]
-    };
-    this._poseArm(1, rTarget.x, rTarget.y, rTarget.z);
+    this._poseArm(1, pos[0] + 0.25, pos[1] + 1.28, pos[2]);
 
-    // Left arm — mirrors with reduced amplitude and slight delay feel
-    const lTarget = {
-      x: -pos[0] - 0.25,
-      y: pos[1] * 0.6 + 1.28 + 0.05,  // Less vertical travel
-      z: pos[2] * 0.5
-    };
-    this._poseArm(-1, lTarget.x, lTarget.y, lTarget.z);
+    // Left arm — mirrors with reduced amplitude
+    this._poseArm(-1, -pos[0] - 0.25, pos[1] * 0.6 + 1.28 + 0.05, pos[2] * 0.5);
   }
 
   _poseArm(side, tx, ty, tz) {
     const sideKey = side === 1 ? 'R' : 'L';
-    const shoulder = this.bones['shoulder' + sideKey];
     const upperArm = this.bones['upperArm' + sideKey];
     const elbow = this.bones['elbow' + sideKey];
     const wrist = this.bones['wrist' + sideKey];
-    if (!shoulder || !upperArm || !elbow) return;
+    if (!upperArm || !elbow) return;
 
     const ik = this._solveArmIK(side, tx, ty, tz);
 
-    // Apply rotations
     upperArm.rotation.set(0, 0, 0);
-    // Shoulder pitch — primary up/down
     upperArm.rotation.z = side * (ik.shoulderRoll - Math.PI / 2);
     upperArm.rotation.x = ik.shoulderPitch * 0.3;
-    // Forward reach
     upperArm.rotation.y = -ik.shoulderYaw * side * 0.4;
 
-    // Elbow bend
     elbow.rotation.set(0, 0, 0);
     elbow.rotation.x = ik.elbowAngle * 0.7;
 
-    // Wrist — slight flex to keep baton at good angle
     if (wrist) {
       wrist.rotation.x = -0.2 + (side === 1 ? 0.1 : 0);
     }
@@ -619,18 +579,21 @@ class Conductor3D {
   update() {
     if (!this.initialized) return;
 
-    const state = this._getConductingState();
+    var state = this._getConductingState();
     this._applyPose(state);
-
     this.renderer.render(this.scene, this.camera);
   }
 
   // Start the render loop
   start() {
     if (!this.initialized) return;
-    this._updateSize();
+    if (this.animationFrameId) return; // already running
     this.container.style.display = '';
-    this._loop();
+    // Defer size update to next frame so container has layout dimensions
+    requestAnimationFrame(() => {
+      this._updateSize();
+      this._loop();
+    });
   }
 
   _loop() {
@@ -652,9 +615,18 @@ class Conductor3D {
   // ── Resize handling ────────────────────────────────────────────────────
 
   _updateSize() {
-    if (!this.container || !this.renderer) return;
-    const w = this.container.clientWidth || 640;
-    const h = this.container.clientHeight || 480;
+    if (!this.renderer) return;
+    // Match the p5 canvas size
+    var p5Canvas = document.querySelector('.canvas-wrapper canvas');
+    var w, h;
+    if (p5Canvas) {
+      w = p5Canvas.clientWidth;
+      h = p5Canvas.clientHeight;
+    } else {
+      w = this.container ? this.container.clientWidth : 640;
+      h = this.container ? this.container.clientHeight : 480;
+    }
+    if (w <= 0 || h <= 0) { w = 640; h = 480; }
     this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
