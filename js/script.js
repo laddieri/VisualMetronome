@@ -4535,3 +4535,79 @@ if (document.readyState === 'loading') {
   });
 })();
 // ──────────────────────────────────────────────────────────────────────────
+
+// ── Reset settings button ──────────────────────────────────────────────────
+document.getElementById('reset-settings-btn').addEventListener('click', function() {
+  // Stop transport first so changes don't jar mid-playback
+  if (Tone.Transport.state === 'started') {
+    toggleTransport(false);
+  }
+
+  // BPM → 96
+  applyBPM(96);
+  var tempoMarking = document.getElementById('tempo-marking');
+  if (tempoMarking) tempoMarking.value = '';
+
+  // Time signature → 4
+  beatsPerMeasure = 4;
+  currentBeat = 0;
+  var tsSel = document.getElementById('time-signature');
+  if (tsSel) tsSel.value = '4';
+
+  // Subdivision → none
+  subdivision = 'none';
+  var subSel = document.getElementById('subdivision');
+  if (subSel) subSel.value = 'none';
+
+  // Swing (requires subdivision ÷2 to be active, so clear it)
+  swingEnabled = false;
+  var swingCb = document.getElementById('swing-enabled');
+  if (swingCb) swingCb.checked = false;
+  var swingGrp = document.getElementById('swing-group');
+  if (swingGrp) swingGrp.style.display = 'none';
+
+  // Rock beat → off; show its group since we're back to 4/4
+  rockBeatEnabled = false;
+  var rockCb = document.getElementById('rock-beat-enabled');
+  if (rockCb) rockCb.checked = false;
+  var rockGroup = document.getElementById('rock-beat-setting-group');
+  if (rockGroup) rockGroup.style.display = '';
+
+  // Waltz beat → off; hide its group (not 3/4)
+  waltzBeatEnabled = false;
+  var waltzCb = document.getElementById('waltz-beat-enabled');
+  if (waltzCb) waltzCb.checked = false;
+  var waltzGroup = document.getElementById('waltz-beat-setting-group');
+  if (waltzGroup) waltzGroup.style.display = 'none';
+
+  // Voice count → off
+  voiceCountEnabled = false;
+  var voiceCb = document.getElementById('voice-count-enabled');
+  if (voiceCb) voiceCb.checked = false;
+
+  // Two-measure pattern → disabled, restore defaults
+  twoMeasurePatternEnabled = false;
+  twoMeasurePattern[0] = { beatsPerMeasure: 4, subdivision: 'none', bpm: 96 };
+  twoMeasurePattern[1] = { beatsPerMeasure: 3, subdivision: '2',    bpm: 96 };
+  tmpLinkMode = 'beat';
+  twoMeasureCurrentMeasure = 0;
+  var tmpBtn    = document.getElementById('two-measure-btn');
+  var presetBtn = document.getElementById('tmp-6834-preset-btn');
+  var tmpEnabledCb = document.getElementById('tmp-enabled');
+  if (tmpBtn)    tmpBtn.classList.remove('ct-active');
+  if (presetBtn) presetBtn.classList.remove('ct-active');
+  if (tmpEnabledCb) tmpEnabledCb.checked = false;
+
+  // Custom rhythm → off
+  crCancelCustomRhythm();
+
+  // Counting trainer → off
+  countingTrainerEnabled = false;
+  var ctCb  = document.getElementById('ct-enabled');
+  var ctBtn = document.getElementById('counting-trainer-btn');
+  if (ctCb)  ctCb.checked = false;
+  if (ctBtn) ctBtn.classList.remove('ct-active');
+
+  sendStateUpdate();
+});
+// ──────────────────────────────────────────────────────────────────────────
