@@ -514,6 +514,18 @@ tone-play-toggle {
   transition: all 0.2s ease;
 }
 
+#reset-settings-btn {
+  font-size: 1.1rem;
+  opacity: 0.6;
+  border-color: #cbd5e0;
+}
+
+#reset-settings-btn:hover {
+  opacity: 1;
+  border-color: #e53e3e;
+  color: #e53e3e;
+}
+
 .toggle:hover {
   transform: scale(1.15);
 }
