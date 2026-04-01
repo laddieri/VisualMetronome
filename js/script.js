@@ -1701,20 +1701,17 @@ var beepSynth = new Tone.Synth({
 }).toMaster();
 beepSynth.volume.value = 4;
 
-// Cowbell synth - metallic, resonant clang
-var cowbellSynth = new Tone.MetalSynth({
-  frequency: 550,
+// Cowbell synth - metallic, resonant clang using a detuned synth pair
+var cowbellSynth = new Tone.Synth({
+  oscillator: { type: "square" },
   envelope: {
     attack: 0.001,
-    decay: 0.4,
-    release: 0.2
-  },
-  harmonicity: 5.1,
-  modulationIndex: 16,
-  resonance: 3500,
-  octaves: 0.5
+    decay: 0.35,
+    sustain: 0,
+    release: 0.1
+  }
 }).toMaster();
-cowbellSynth.volume.value = -4;
+cowbellSynth.volume.value = 0;
 
 // Rimshot synth - snappy noise burst
 var rimshotSynth = new Tone.NoiseSynth({
@@ -1741,7 +1738,7 @@ function triggerClickSound(time) {
       beepSynth.triggerAttackRelease("C5", "16n", time);
       break;
     case 'cowbell':
-      cowbellSynth.triggerAttackRelease("16n", time);
+      cowbellSynth.triggerAttackRelease("Bb5", "16n", time);
       break;
     case 'rimshot':
       rimshotSynth.triggerAttackRelease("16n", time);
@@ -1780,7 +1777,7 @@ function triggerClickSoundVel(time, vel, short) {
     case 'cowbell': {
       var v = cowbellSynth.volume.value;
       cowbellSynth.volume.setValueAtTime(v + dbOffset, time);
-      cowbellSynth.triggerAttackRelease(dur, time);
+      cowbellSynth.triggerAttackRelease("Bb5", dur, time);
       cowbellSynth.volume.setValueAtTime(v, time + 0.05);
       break;
     }
