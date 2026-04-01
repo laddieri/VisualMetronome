@@ -10,6 +10,7 @@ var circleColor = '#000000'; // Color for circle animation
 
 // Selfie capture variables
 var selfieImage = null;
+var selfieImageDataURL = null; // Raw data URL of current selfie for saving
 var conductorSelfieImage = null; // Selfie for the conductor's face (optional)
 var cameraTarget = 'selfie'; // 'selfie' or 'conductor' — controls where capturePhoto() stores the result
 var cameraStream = null;
@@ -947,6 +948,7 @@ function openCamera() {
   const video = document.getElementById('camera-video');
 
   modal.classList.remove('hidden');
+  renderSavedSelfiesList();
 
   // Request camera access
   navigator.mediaDevices.getUserMedia({
@@ -1004,6 +1006,7 @@ function capturePhoto() {
   if (cameraTarget === 'conductor') {
     conductorSelfieImage = loadImage(dataURL);
   } else {
+    selfieImageDataURL = dataURL;
     selfieImage = loadImage(dataURL, () => {
       // Image loaded, recreate animals to use it
       createAnimals();
@@ -1239,6 +1242,99 @@ function toggleRecording() {
   }
 }
 
+// ── Saved Selfies (localStorage) ──────────────────────────────────────────────
+var _VM_SELFIES_KEY = 'vm_saved_selfies';
+
+function getSavedSelfies() {
+  try { return JSON.parse(localStorage.getItem(_VM_SELFIES_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function saveSelfieToStorage(name, imageDataURL, soundDataURL) {
+  var selfies = getSavedSelfies();
+  selfies.push({
+    id: Date.now(),
+    name: name,
+    image: imageDataURL,
+    sound: soundDataURL || null,
+    savedAt: new Date().toLocaleDateString()
+  });
+  localStorage.setItem(_VM_SELFIES_KEY, JSON.stringify(selfies));
+}
+
+function deleteSavedSelfie(id) {
+  var selfies = getSavedSelfies().filter(function(s) { return s.id !== id; });
+  localStorage.setItem(_VM_SELFIES_KEY, JSON.stringify(selfies));
+}
+
+function renderSavedSelfiesList() {
+  var listEl = document.getElementById('saved-selfies-list');
+  if (!listEl) return;
+  var selfies = getSavedSelfies();
+  if (selfies.length === 0) {
+    listEl.innerHTML = '<p class="no-saved-selfies">No saved selfies yet.</p>';
+    return;
+  }
+  listEl.innerHTML = selfies.map(function(s) {
+    return '<div class="saved-selfie-item" data-id="' + s.id + '">' +
+      '<img src="' + s.image + '" class="saved-selfie-thumb" alt="' + s.name + '">' +
+      '<div class="saved-selfie-info">' +
+        '<span class="saved-selfie-name">' + s.name + '</span>' +
+        '<span class="saved-selfie-date">' + s.savedAt + '</span>' +
+        (s.sound ? '<span class="saved-selfie-has-sound">&#127908; sound</span>' : '') +
+      '</div>' +
+      '<div class="saved-selfie-actions">' +
+        '<button class="load-selfie-btn camera-btn" data-id="' + s.id + '">Load</button>' +
+        '<button class="delete-selfie-btn camera-btn cancel" data-id="' + s.id + '">&#128465;</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Attach listeners
+  listEl.querySelectorAll('.load-selfie-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = parseInt(btn.getAttribute('data-id'), 10);
+      loadSavedSelfie(id);
+    });
+  });
+  listEl.querySelectorAll('.delete-selfie-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = parseInt(btn.getAttribute('data-id'), 10);
+      deleteSavedSelfie(id);
+      renderSavedSelfiesList();
+    });
+  });
+}
+
+function loadSavedSelfie(id) {
+  var selfies = getSavedSelfies();
+  var entry = selfies.find(function(s) { return s.id === id; });
+  if (!entry) return;
+
+  // Load image into p5
+  selfieImageDataURL = entry.image;
+  selfieImage = loadImage(entry.image, function() {
+    createAnimals();
+  });
+
+  // Load sound if present
+  if (entry.sound) {
+    recordedSoundURL = entry.sound;
+    if (recordedSoundPlayer) {
+      recordedSoundPlayer.dispose();
+      recordedSoundPlayer = null;
+    }
+    recordedSoundPlayer = new Tone.Player(entry.sound).toMaster();
+    recordedSoundPlayer.volume.value = 6;
+  }
+
+  // Switch to selfie mode and close modal
+  animalType = 'selfie';
+  var selector = document.getElementById('animal-selector');
+  if (selector) selector.value = 'selfie';
+  closeCamera();
+}
+
 // Initialize camera button listeners
 function initCameraListeners() {
   const captureBtn = document.getElementById('capture-btn');
@@ -1268,6 +1364,23 @@ function initCameraListeners() {
   if (mirrorCheckbox) {
     mirrorCheckbox.addEventListener('change', (e) => {
       mirrorSelfies = e.target.checked;
+    });
+  }
+
+  // Save selfie button
+  const saveSelfieBtn = document.getElementById('save-selfie-btn');
+  if (saveSelfieBtn) {
+    saveSelfieBtn.addEventListener('click', function() {
+      if (!selfieImageDataURL) {
+        alert('Take a selfie first before saving.');
+        return;
+      }
+      var nameInput = document.getElementById('selfie-name-input');
+      var name = nameInput ? nameInput.value.trim() : '';
+      if (!name) name = 'Selfie ' + new Date().toLocaleDateString();
+      saveSelfieToStorage(name, selfieImageDataURL, recordedSoundURL || null);
+      if (nameInput) nameInput.value = '';
+      renderSavedSelfiesList();
     });
   }
 }
@@ -1447,6 +1560,14 @@ function initSettingsListeners() {
       sendStateUpdate();
     });
   }
+
+  // Metronome click sound selector
+  const metronomeSoundSelect = document.getElementById('metronome-sound-select');
+  if (metronomeSoundSelect) {
+    metronomeSoundSelect.addEventListener('change', (e) => {
+      metronomeSound = e.target.value;
+    });
+  }
 }
 
 // Robust AudioContext resume handling
@@ -1529,6 +1650,9 @@ var selfieSynth = new Tone.NoiseSynth({
 }).toMaster();
 selfieSynth.volume.value = 6;
 
+// Metronome click sound selection
+var metronomeSound = 'click'; // 'click', 'woodblock', 'claves', 'beep', 'cowbell', 'rimshot'
+
 // Circle click synth - clean metronome tick
 var circleSynth = new Tone.Synth({
   oscillator: { type: "sine" },
@@ -1540,6 +1664,141 @@ var circleSynth = new Tone.Synth({
   }
 }).toMaster();
 circleSynth.volume.value = 6;
+
+// Woodblock synth - short, pitched, hollow knock
+var woodblockSynth = new Tone.Synth({
+  oscillator: { type: "square" },
+  envelope: {
+    attack: 0.001,
+    decay: 0.06,
+    sustain: 0,
+    release: 0.04
+  }
+}).toMaster();
+woodblockSynth.volume.value = 3;
+
+// Claves synth - very sharp, bright, high-pitched crack
+var clavesSynth = new Tone.Synth({
+  oscillator: { type: "triangle" },
+  envelope: {
+    attack: 0.001,
+    decay: 0.04,
+    sustain: 0,
+    release: 0.02
+  }
+}).toMaster();
+clavesSynth.volume.value = 5;
+
+// Beep synth - clean electronic beep
+var beepSynth = new Tone.Synth({
+  oscillator: { type: "sine" },
+  envelope: {
+    attack: 0.001,
+    decay: 0.15,
+    sustain: 0,
+    release: 0.05
+  }
+}).toMaster();
+beepSynth.volume.value = 4;
+
+// Cowbell synth - metallic, resonant clang
+var cowbellSynth = new Tone.MetalSynth({
+  frequency: 550,
+  envelope: {
+    attack: 0.001,
+    decay: 0.4,
+    release: 0.2
+  },
+  harmonicity: 5.1,
+  modulationIndex: 16,
+  resonance: 3500,
+  octaves: 0.5
+}).toMaster();
+cowbellSynth.volume.value = -4;
+
+// Rimshot synth - snappy noise burst
+var rimshotSynth = new Tone.NoiseSynth({
+  noise: { type: "white" },
+  envelope: {
+    attack: 0.001,
+    decay: 0.05,
+    sustain: 0,
+    release: 0.02
+  }
+}).toMaster();
+rimshotSynth.volume.value = 4;
+
+// Play the selected click sound
+function triggerClickSound(time) {
+  switch (metronomeSound) {
+    case 'woodblock':
+      woodblockSynth.triggerAttackRelease("G5", "32n", time);
+      break;
+    case 'claves':
+      clavesSynth.triggerAttackRelease("C6", "32n", time);
+      break;
+    case 'beep':
+      beepSynth.triggerAttackRelease("C5", "16n", time);
+      break;
+    case 'cowbell':
+      cowbellSynth.triggerAttackRelease("16n", time);
+      break;
+    case 'rimshot':
+      rimshotSynth.triggerAttackRelease("16n", time);
+      break;
+    default: // 'click'
+      circleSynth.triggerAttackRelease("A4", "16n", time);
+  }
+}
+
+// Play click sound with velocity scaling (for custom rhythm sub-notes)
+function triggerClickSoundVel(time, vel, short) {
+  var dur = short ? "32n" : "16n";
+  var dbOffset = vel < 1.0 ? -6 * (1 - vel) : 0;
+  switch (metronomeSound) {
+    case 'woodblock': {
+      var v = woodblockSynth.volume.value;
+      woodblockSynth.volume.setValueAtTime(v + dbOffset, time);
+      woodblockSynth.triggerAttackRelease("G5", dur, time);
+      woodblockSynth.volume.setValueAtTime(v, time + 0.05);
+      break;
+    }
+    case 'claves': {
+      var v = clavesSynth.volume.value;
+      clavesSynth.volume.setValueAtTime(v + dbOffset, time);
+      clavesSynth.triggerAttackRelease("C6", dur, time);
+      clavesSynth.volume.setValueAtTime(v, time + 0.05);
+      break;
+    }
+    case 'beep': {
+      var v = beepSynth.volume.value;
+      beepSynth.volume.setValueAtTime(v + dbOffset, time);
+      beepSynth.triggerAttackRelease("C5", dur, time);
+      beepSynth.volume.setValueAtTime(v, time + 0.05);
+      break;
+    }
+    case 'cowbell': {
+      var v = cowbellSynth.volume.value;
+      cowbellSynth.volume.setValueAtTime(v + dbOffset, time);
+      cowbellSynth.triggerAttackRelease(dur, time);
+      cowbellSynth.volume.setValueAtTime(v, time + 0.05);
+      break;
+    }
+    case 'rimshot': {
+      var v = rimshotSynth.volume.value;
+      rimshotSynth.volume.setValueAtTime(v + dbOffset, time);
+      rimshotSynth.triggerAttackRelease(dur, time);
+      rimshotSynth.volume.setValueAtTime(v, time + 0.05);
+      break;
+    }
+    default: { // 'click'
+      var v = circleSynth.volume.value;
+      circleSynth.volume.setValueAtTime(v + dbOffset, time);
+      circleSynth.triggerAttackRelease("A4", dur, time);
+      circleSynth.volume.setValueAtTime(v, time + 0.05);
+    }
+  }
+}
 
 // Subdivision click synth - soft tick for subdivisions
 var subdivisionSynth = new Tone.Synth({
@@ -1615,7 +1874,7 @@ function triggerSound(time, isAccent = false){
 
   switch(animalType) {
     case 'circle':
-      circleSynth.triggerAttackRelease("A4", "16n", time);
+      triggerClickSound(time);
       break;
     case 'pig':
       // Stop any currently playing instance before retriggering to prevent
@@ -1637,7 +1896,7 @@ function triggerSound(time, isAccent = false){
       }
       break;
     case 'conductor':
-      circleSynth.triggerAttackRelease("A4", "16n", time);
+      triggerClickSound(time);
       break;
     default:
       if (pigPlayer.state === 'started') {
@@ -4228,17 +4487,12 @@ function triggerCustomRhythmBeat(time, beatIndex) {
     }
 
     if (animalSoundEnabled) {
-      var originalVol = circleSynth.volume.value;
       if (isUserAccent) {
-        // Louder for user-accented notes
-        circleSynth.triggerAttackRelease("A4", "16n", t);
+        triggerClickSoundVel(t, 1.0, false);
       } else if (sb.vel < 1.0) {
-        // Quieter for off-beat sub-notes
-        circleSynth.volume.setValueAtTime(originalVol - 6 * (1 - sb.vel), t);
-        circleSynth.triggerAttackRelease("A4", "32n", t);
-        circleSynth.volume.setValueAtTime(originalVol, t + 0.05);
+        triggerClickSoundVel(t, sb.vel, true);
       } else {
-        circleSynth.triggerAttackRelease("A4", "16n", t);
+        triggerClickSoundVel(t, 1.0, false);
       }
     }
   }
