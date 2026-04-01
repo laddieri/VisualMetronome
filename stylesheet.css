@@ -1081,6 +1081,145 @@ footer p {
   transform: scale(1.1);
 }
 
+/* Selfie Save Section */
+.selfie-save-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.selfie-save-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.selfie-name-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #2d3748;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.selfie-name-input:focus {
+  border-color: #667eea;
+}
+
+.camera-btn.save-selfie {
+  background: #667eea;
+  color: white;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+
+.camera-btn.save-selfie:hover {
+  background: #5a67d8;
+}
+
+/* Saved Selfies List */
+.saved-selfies-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.saved-selfies-list {
+  margin-top: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.no-saved-selfies {
+  font-size: 0.85rem;
+  color: #a0aec0;
+  margin: 0;
+}
+
+.saved-selfie-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.saved-selfie-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #667eea;
+  flex-shrink: 0;
+}
+
+.saved-selfie-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.saved-selfie-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2d3748;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-selfie-date {
+  font-size: 0.75rem;
+  color: #a0aec0;
+}
+
+.saved-selfie-has-sound {
+  font-size: 0.75rem;
+  color: #48bb78;
+}
+
+.saved-selfie-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.saved-selfie-actions .load-selfie-btn {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background: #667eea;
+  color: white;
+}
+
+.saved-selfie-actions .load-selfie-btn:hover {
+  background: #5a67d8;
+}
+
+.saved-selfie-actions .delete-selfie-btn {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+/* Metronome sound selector in settings */
+#metronome-sound-group .control-dropdown {
+  width: 100%;
+  margin-top: 6px;
+}
+
 @media (max-width: 480px) {
   .camera-container {
     padding: 16px;

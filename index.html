@@ -156,6 +156,19 @@
           </label>
         </div>
 
+        <div class="setting-group" id="metronome-sound-group">
+          <label class="setting-label" for="metronome-sound-select">Click sound</label>
+          <select id="metronome-sound-select" class="control-dropdown">
+            <option value="click">Click</option>
+            <option value="woodblock">Woodblock</option>
+            <option value="claves">Claves</option>
+            <option value="beep">Beep</option>
+            <option value="cowbell">Cowbell</option>
+            <option value="rimshot">Rimshot</option>
+          </select>
+          <p class="setting-hint">Sound used for the main beat click</p>
+        </div>
+
         <div class="setting-group">
           <label class="setting-label">
             <input type="checkbox" id="accent-enabled" checked>
@@ -253,6 +266,19 @@
             <input type="checkbox" id="mirror-selfies" checked>
             Mirror images (face each other)
           </label>
+        </div>
+        <div class="selfie-save-section">
+          <p class="sound-record-label">Save current selfie</p>
+          <div class="selfie-save-row">
+            <input type="text" id="selfie-name-input" class="selfie-name-input" placeholder="Name this selfie..." maxlength="40">
+            <button id="save-selfie-btn" class="camera-btn save-selfie">💾 Save</button>
+          </div>
+        </div>
+        <div class="saved-selfies-section" id="saved-selfies-section">
+          <p class="sound-record-label">Saved selfies</p>
+          <div id="saved-selfies-list" class="saved-selfies-list">
+            <!-- Populated dynamically -->
+          </div>
         </div>
       </div>
     </div>
