@@ -69,6 +69,37 @@ main {
   gap: 24px;
 }
 
+/* WebGPU demo strip */
+.webgpu-ball-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.webgpu-ball-wrapper canvas {
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  max-width: 100%;
+  display: block;
+}
+
+.webgpu-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #999;
+  margin: 0;
+}
+
+.webgpu-unsupported {
+  font-size: 13px;
+  color: #e53e3e;
+  margin: 0;
+}
+
 /* Canvas wrapper */
 .canvas-wrapper {
   display: flex;
