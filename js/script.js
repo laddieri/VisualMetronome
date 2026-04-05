@@ -2720,7 +2720,9 @@ function setup() {
 
   var canvas = createCanvas(canvasWidth, canvasHeight);
   canvas.parent(document.querySelector('.canvas-wrapper'));
-  frameRate(120); // Higher frame rate for smoother animation at fast tempos
+  // Use browser's native refresh rate via requestAnimationFrame (no frameRate throttle)
+  // Setting frameRate(120) caused uneven inter-frame timing on 60Hz displays, producing
+  // visible tearing at high BPM where the animation arc completes in very few frames.
   xpos = canvasWidth / 2 + rad;
 
   // Create 2 animal instances
