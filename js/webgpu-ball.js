@@ -1,4 +1,6 @@
 // WebGPU bouncing ball demo — syncs to the metronome beat.
+// Two balls mirror the p5.js animation: both start at centre on the beat,
+// fly to opposite sides, and return to centre on the next beat.
 // Reads lastBeatTime, secondsPerBeat, bluetoothDelay, and Tone from global
 // scope (set by script.js). Does NOT modify any existing animation code.
 
@@ -31,23 +33,33 @@
   gpuContext.configure({ device, format, alphaMode: 'opaque' });
 
   // ── WGSL shader ──────────────────────────────────────────────────────────
-  // Renders a single full-screen triangle (no vertex buffer).
-  // The fragment shader draws the ball + glow purely in pixel space.
+  // Full-screen triangle; fragment shader draws two balls + glows in pixel space.
+  //
+  // Uniform layout (48 bytes, 16-byte aligned):
+  //   offset  0: resolution  vec2f
+  //   offset  8: ball1Pos    vec2f
+  //   offset 16: ball2Pos    vec2f
+  //   offset 24: radius      f32
+  //   offset 28: progress    f32
+  //   offset 32: onBeat      f32
+  //   offset 36: _pad        f32  (×3 to reach 48 bytes)
   const shaderCode = /* wgsl */`
     struct Uniforms {
-      resolution : vec2f,   // canvas size in pixels
-      ballPos    : vec2f,   // ball centre in pixels (Y = 0 at bottom)
-      radius     : f32,     // ball radius in pixels
-      progress   : f32,     // beat progress 0 → 1
-      onBeat     : f32,     // 1.0 at beat landing, fades to 0 quickly
-      _pad       : f32,
+      resolution : vec2f,
+      ball1Pos   : vec2f,
+      ball2Pos   : vec2f,
+      radius     : f32,
+      progress   : f32,
+      onBeat     : f32,
+      _pad0      : f32,
+      _pad1      : f32,
+      _pad2      : f32,
     }
 
     @group(0) @binding(0) var<uniform> u : Uniforms;
 
     @vertex
     fn vs(@builtin(vertex_index) vi : u32) -> @builtin(position) vec4f {
-      // One oversized triangle covers the whole clip space
       var pos = array<vec2f, 3>(
         vec2f(-1.0, -1.0),
         vec2f( 3.0, -1.0),
@@ -56,14 +68,31 @@
       return vec4f(pos[vi], 0.0, 1.0);
     }
 
+    // Draw one ball + glow contribution into col.
+    // ballPos uses bottom-left origin (Y flipped for WebGPU frag coords).
+    fn drawBall(px: vec2f, centre: vec2f, radius: f32, onBeat: f32, col: vec3f) -> vec3f {
+      var c = col;
+      let d = distance(px, centre);
+
+      // Outer glow
+      let glowR = radius * 3.2;
+      let glow  = max(0.0, 1.0 - d / glowR);
+      c += vec3f(1.0, 0.6, 0.15) * (glow * glow * (0.18 + 0.40 * onBeat));
+
+      // Ball with smooth edge
+      let edge = smoothstep(radius + 1.5, radius - 1.5, d);
+      if (edge > 0.0) {
+        let bright  = 0.82 + 0.18 * onBeat;
+        let ballCol = vec3f(bright, bright * 0.87, bright * 0.65);
+        c = mix(c, ballCol, edge);
+      }
+      return c;
+    }
+
     @fragment
     fn fs(@builtin(position) fragCoord : vec4f) -> @location(0) vec4f {
       let px  = fragCoord.xy;
       let res = u.resolution;
-
-      // WebGPU frag coords: Y=0 at top, so flip ball Y
-      let centre = vec2f(u.ballPos.x, res.y - u.ballPos.y);
-      let d = distance(px, centre);
 
       // Background
       var col = vec3f(0.14, 0.14, 0.17);
@@ -73,18 +102,12 @@
         col = vec3f(0.28, 0.28, 0.32);
       }
 
-      // Outer glow (soft halo, warm amber, brightens on beat)
-      let glowR  = u.radius * 3.0;
-      let glow   = max(0.0, 1.0 - d / glowR);
-      col += vec3f(1.0, 0.6, 0.15) * (glow * glow * (0.20 + 0.45 * u.onBeat));
+      // WebGPU Y=0 is top; balls are supplied with Y=0 at bottom, so flip
+      let c1 = vec2f(u.ball1Pos.x, res.y - u.ball1Pos.y);
+      let c2 = vec2f(u.ball2Pos.x, res.y - u.ball2Pos.y);
 
-      // Ball with smooth anti-aliased edge
-      let edge = smoothstep(u.radius + 1.5, u.radius - 1.5, d);
-      if (edge > 0.0) {
-        let bright   = 0.82 + 0.18 * u.onBeat;
-        let ballCol  = vec3f(bright, bright * 0.87, bright * 0.65);
-        col = mix(col, ballCol, edge);
-      }
+      col = drawBall(px, c1, u.radius, u.onBeat, col);
+      col = drawBall(px, c2, u.radius, u.onBeat, col);
 
       return vec4f(col, 1.0);
     }
@@ -99,10 +122,10 @@
     primitive: { topology: 'triangle-list' },
   });
 
-  // Uniforms: 8 × f32 = 32 bytes
-  // [ resolution.x, resolution.y, ballPos.x, ballPos.y, radius, progress, onBeat, _pad ]
+  // 12 × f32 = 48 bytes (multiple of 16 as required by WebGPU)
+  // [ res.x, res.y, b1x, b1y, b2x, b2y, radius, progress, onBeat, p0, p1, p2 ]
   const uniformBuffer = device.createBuffer({
-    size : 32,
+    size : 48,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
@@ -124,7 +147,7 @@
     const elapsed = Tone.now() - lastBeatTime - delay;
 
     if (elapsed < 0)          return Math.max(0, (elapsed + spb) / spb); // BT delay tail
-    if (elapsed > spb * 2)    return 0;                                    // stale / tabbed out
+    if (elapsed > spb * 2)    return 0;                                   // stale / tabbed out
     return Math.min(elapsed / spb, 1);
   }
 
@@ -133,15 +156,34 @@
     const W      = canvas.width;
     const H      = canvas.height;
     const radius = 22;
-    const margin = 48;
 
-    const progress    = getBeatProgress();
-    const displacement = Math.sin(progress * Math.PI); // 0 → peak at 0.5 → 0
-    const ballX  = margin + displacement * (W - margin * 2);
-    const ballY  = H / 2;
+    const progress = getBeatProgress();
+
+    // Mirrors getAnimalX() in script.js:
+    //   displacement = sin(progress * π) * 200  (base coords: 640 px wide)
+    //   ball1 = centre + displacement   (direction = +1)
+    //   ball2 = centre - displacement   (direction = -1)
+    // Both balls are at centre (320) when progress = 0 (on the beat) and
+    // fly to the sides as the beat progresses, returning at progress = 1.
+    const baseDisplacement = 200;
+    const displacement = Math.sin(progress * Math.PI) * baseDisplacement;
+    const centreX = W / 2;
+    const ballY   = H / 2;
+    const ball1X  = centreX + displacement;
+    const ball2X  = centreX - displacement;
+
+    // Bright flash on beat landing, fades over first 8% of the beat
     const onBeat = progress < 0.08 ? 1.0 - (progress / 0.08) : 0.0;
 
-    const udata = new Float32Array([W, H, ballX, ballY, radius, progress, onBeat, 0]);
+    const udata = new Float32Array([
+      W, H,           // resolution
+      ball1X, ballY,  // ball1Pos
+      ball2X, ballY,  // ball2Pos
+      radius,         // radius
+      progress,       // progress
+      onBeat,         // onBeat
+      0, 0, 0,        // padding
+    ]);
     device.queue.writeBuffer(uniformBuffer, 0, udata);
 
     const encoder = device.createCommandEncoder();
