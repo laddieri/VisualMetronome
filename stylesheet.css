@@ -69,13 +69,12 @@ main {
   gap: 24px;
 }
 
-/* WebGPU demo strip */
+/* WebGPU animation canvas — hidden until selected from the Animation dropdown */
 .webgpu-ball-wrapper {
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: 12px;
 }
 
 .webgpu-ball-wrapper canvas {
