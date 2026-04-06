@@ -2523,7 +2523,7 @@ function updateColorPickerVisibility() {
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = isConductor ? 'none' : '';
+    directionGroup.style.display = (isConductor || animalType === 'webgpu') ? 'none' : '';
   }
 }
 
@@ -2551,11 +2551,25 @@ function createAnimals() {
       animal1 = new Circle(1);
       animal2 = new Circle(-1);
       break;
+    case 'webgpu':
+      // WebGPU canvas handles its own rendering; p5 animals are unused
+      animal1 = new Circle(1);
+      animal2 = new Circle(-1);
+      break;
     default:
       animal1 = new Circle(1);
       animal2 = new Circle(-1);
       break;
   }
+}
+
+// ── WebGPU canvas lifecycle ──────────────────────────────────────────────────
+function _syncWebGPUCanvas() {
+  const webgpuWrapper = document.getElementById('webgpu-ball-wrapper');
+  const canvasWrapper = document.querySelector('.canvas-wrapper');
+  const isWebGPU = animalType === 'webgpu';
+  if (webgpuWrapper) webgpuWrapper.style.display = isWebGPU ? 'flex' : 'none';
+  if (canvasWrapper) canvasWrapper.style.display  = isWebGPU ? 'none' : '';
 }
 
 // ── 3D Conductor lifecycle ──────────────────────────────────────────────────
@@ -2754,6 +2768,7 @@ function setup() {
 
     createAnimals(); // Recreate animals when selection changes
     _sync3DConductor();
+    _syncWebGPUCanvas();
     sendStateUpdate();
   });
 
@@ -3813,13 +3828,14 @@ function applyRemoteCommand(msg) {
 
     case 'setAnimation': {
       var val = msg.value;
-      if (['circle', 'pig', 'selfie', 'conductor', 'conductor3d'].indexOf(val) === -1) break;
+      if (['circle', 'pig', 'selfie', 'conductor', 'conductor3d', 'webgpu'].indexOf(val) === -1) break;
       animalType = val;
       var selector = document.getElementById('animal-selector');
       if (selector) selector.value = val;
       updateColorPickerVisibility();
       createAnimals();
       _sync3DConductor();
+      _syncWebGPUCanvas();
       sendStateUpdate();
       break;
     }
