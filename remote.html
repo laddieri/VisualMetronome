@@ -50,10 +50,13 @@
     }
 
     .play-circle {
-      flex: 1 1 0;
-      min-width: 0;
-      max-width: 110px;
-      aspect-ratio: 1;
+      /* Explicit size via viewport units — more reliable than aspect-ratio on
+         flex items in Safari/iOS.
+         100vw - 40px body padding - 32px (2 × 16px gap) shared across 3 buttons */
+      --btn-size: min(110px, calc((100vw - 72px) / 3));
+      width: var(--btn-size);
+      height: var(--btn-size);
+      flex-shrink: 0;
       border-radius: 50%;
       border: none;
       line-height: 1;
