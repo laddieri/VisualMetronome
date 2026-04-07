@@ -1898,6 +1898,9 @@ function triggerSound(time, isAccent = false){
     case 'conductor':
       triggerClickSound(time);
       break;
+    case 'webgpu':
+      triggerClickSound(time);
+      break;
     default:
       if (pigPlayer.state === 'started') {
         pigPlayer.stop(time);
