@@ -545,9 +545,10 @@ tone-play-toggle {
 }
 
 #reset-settings-btn {
-  font-size: 1.1rem;
-  opacity: 0.6;
-  border-color: #cbd5e0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+  border-color: #e53e3e;
+  color: #e53e3e;
 }
 
 #reset-settings-btn:hover {
