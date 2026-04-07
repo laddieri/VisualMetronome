@@ -44,12 +44,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 20px;
+      gap: 16px;
+      width: 100%;
+      max-width: 360px;
     }
 
     .play-circle {
-      width: 110px;
-      height: 110px;
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 110px;
+      aspect-ratio: 1;
       border-radius: 50%;
       border: none;
       line-height: 1;
@@ -89,7 +93,8 @@
       font-size: 2.8rem;
       background: #dc2626;
       box-shadow: 0 0 36px rgba(220, 38, 38, 0.45);
-      width: 240px;
+      flex: none;
+      width: min(240px, 100%);
       border-radius: 55px;
     }
 
@@ -367,6 +372,7 @@
           <option value="selfie">Selfie</option>
           <option value="conductor">Conductor</option>
           <!-- <option value="conductor3d">3D Conductor</option> -->
+          <option value="webgpu">WebGPU</option>
         </select>
       </div>
 
@@ -557,8 +563,8 @@
     // Update visibility of conditional settings (direction, color, rock beat)
     function updateConditionalUI() {
       var anim = rAnimation.value;
-      // Direction hidden for conductor modes
-      rDirectionRow.style.display = (anim === 'conductor' || anim === 'conductor3d') ? 'none' : '';
+      // Direction hidden for conductor and webgpu modes
+      rDirectionRow.style.display = (anim === 'conductor' || anim === 'conductor3d' || anim === 'webgpu') ? 'none' : '';
       // Color shown only for circle
       rColorRow.style.display = (anim === 'circle') ? '' : 'none';
       // Rock beat shown only when beats = 4; waltz beat shown only when beats = 3
