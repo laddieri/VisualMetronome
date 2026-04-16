@@ -706,6 +706,15 @@ class Conductor {
     this.x = direction === 1 ? 450 : 190;
     this.y = 200;
     this.handSize = 32;
+
+    // Baton tip physics (only used by the hand holding the baton, direction === -1).
+    // The tip is simulated as a point with its own velocity, pulled toward its
+    // rest position by a spring. As the hand moves, the tip lags behind, and
+    // when the hand stops sharply at the ictus the tip wobbles briefly.
+    this.batonTipX = null;
+    this.batonTipY = null;
+    this.batonTipVX = 0;
+    this.batonTipVY = 0;
   }
 
   // Conducting patterns using Bezier curves for realistic motion.
@@ -918,18 +927,40 @@ class Conductor {
       line(shoulderX, shoulderY, this.x, this.y);
     }
 
-    // Conductor's right hand (direction === -1, left side of canvas from viewer) holds the baton
-    // Baton always angles inward toward center and slightly downward, using a fixed
-    // direction so it doesn't flip when the hand moves during conducting.
+    // Conductor's right hand (direction === -1, left side of canvas from viewer) holds the baton.
+    // The tip lags the hand during acceleration and wobbles slightly at the ictus,
+    // modeled as a point with its own momentum held to the hand by a spring.
     if (this.direction === -1) {
       const batonLen = 60;
-      // Fixed angle: point toward center-right and slightly down (~20° below horizontal)
-      const batonAngle = Math.PI * 0.11;  // ~20° below horizontal, pointing right (inward)
-      const batonX = this.x + Math.cos(batonAngle) * batonLen;
-      const batonY = this.y + Math.sin(batonAngle) * batonLen;
+      const baseAngle = Math.PI * 0.11;
+      const restX = this.x + Math.cos(baseAngle) * batonLen;
+      const restY = this.y + Math.sin(baseAngle) * batonLen;
+
+      if (this.batonTipX === null) {
+        this.batonTipX = restX;
+        this.batonTipY = restY;
+      }
+
+      // Spring-damper: underdamped so the tip overshoots slightly when the hand stops.
+      const stiffness = 0.22;
+      const damping = 0.68;
+      this.batonTipVX = (this.batonTipVX + (restX - this.batonTipX) * stiffness) * damping;
+      this.batonTipVY = (this.batonTipVY + (restY - this.batonTipY) * stiffness) * damping;
+      this.batonTipX += this.batonTipVX;
+      this.batonTipY += this.batonTipVY;
+
+      // Keep the baton rigid: project the tip back to exactly batonLen from the hand.
+      let dx = this.batonTipX - this.x;
+      let dy = this.batonTipY - this.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      dx = (dx / d) * batonLen;
+      dy = (dy / d) * batonLen;
+      this.batonTipX = this.x + dx;
+      this.batonTipY = this.y + dy;
+
       stroke(230, 220, 200);
       strokeWeight(3);
-      line(this.x, this.y, batonX, batonY);
+      line(this.x, this.y, this.batonTipX, this.batonTipY);
     }
 
     // Draw hand
