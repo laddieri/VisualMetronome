@@ -504,35 +504,52 @@ class Conductor3D {
   }
 
   // ── Inverse kinematics for arm ─────────────────────────────────────────
+  // 2-bone IK using a pole vector. Solves for the elbow position geometrically,
+  // then the caller points each bone with a quaternion. This avoids the
+  // rotation-order problems that happen when combining Euler yaw + pitch.
 
   _solveArmIK(side, targetX, targetY, targetZ) {
     const upperLen = 0.28;
     const lowerLen = 0.27;
-    const shoulderX = side * 0.22;
-    const shoulderY = 1.28;
-    const shoulderZ = 0.12;
+    const shoulderPos = new THREE.Vector3(side * 0.22, 1.28, 0.12);
+    const targetPos = new THREE.Vector3(targetX, targetY, targetZ);
 
-    const dx = targetX - shoulderX;
-    const dy = targetY - shoulderY;
-    const dz = targetZ - shoulderZ;
-    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-    const maxReach = upperLen + lowerLen - 0.02;
+    const toTarget = new THREE.Vector3().subVectors(targetPos, shoulderPos);
+    let dist = toTarget.length();
+    const maxReach = upperLen + lowerLen - 0.01;
     const minReach = 0.08;
-    const reach = Math.max(minReach, Math.min(dist, maxReach));
+    if (dist > maxReach) {
+      toTarget.multiplyScalar(maxReach / dist);
+      dist = maxReach;
+      targetPos.copy(shoulderPos).add(toTarget);
+    } else if (dist < minReach) {
+      toTarget.multiplyScalar(minReach / Math.max(dist, 1e-6));
+      dist = minReach;
+      targetPos.copy(shoulderPos).add(toTarget);
+    }
 
-    var cosElbow = (upperLen * upperLen + lowerLen * lowerLen - reach * reach) /
-                   (2 * upperLen * lowerLen);
-    cosElbow = Math.max(-1, Math.min(1, cosElbow));
-    const elbowAngle = Math.PI - Math.acos(cosElbow);
+    // Distance from shoulder to the foot of the elbow perpendicular on the
+    // shoulder→target line, plus elbow height above that line.
+    const proj = (upperLen * upperLen - lowerLen * lowerLen + dist * dist) / (2 * dist);
+    const h2 = upperLen * upperLen - proj * proj;
+    const h = h2 > 0 ? Math.sqrt(h2) : 0;
 
-    // shoulderRoll: swing arm left/right in the coronal plane (XY)
-    const shoulderRoll = Math.atan2(dx * side, -dy);
-    // shoulderPitch: tilt arm forward/back — angle of dz relative to arm length in XY plane
-    const xyDist = Math.sqrt(dx * dx + dy * dy);
-    const shoulderPitch = Math.atan2(dz, xyDist);
+    const u = toTarget.clone().normalize();
 
-    return { shoulderPitch, shoulderRoll, elbowAngle };
+    // Pole: where the elbow points. For a conductor the elbow naturally hangs
+    // outward and slightly back.
+    const pole = new THREE.Vector3(side, -0.4, -0.8).normalize();
+    const v = pole.clone().sub(u.clone().multiplyScalar(pole.dot(u)));
+    if (v.lengthSq() < 1e-6) {
+      v.set(side, 0, 0).sub(u.clone().multiplyScalar(u.x * side));
+    }
+    v.normalize();
+
+    const elbowPos = shoulderPos.clone()
+      .add(u.multiplyScalar(proj))
+      .add(v.multiplyScalar(h));
+
+    return { shoulderPos, elbowPos, targetPos };
   }
 
   // ── Apply pose to skeleton ─────────────────────────────────────────────
@@ -610,21 +627,25 @@ class Conductor3D {
     const wrist = this.bones['wrist' + sideKey];
     if (!upperArm || !elbow) return;
 
-    const ik = this._solveArmIK(side, tx, ty, tz);
+    const { shoulderPos, elbowPos, targetPos } = this._solveArmIK(side, tx, ty, tz);
 
-    // Point the upper arm toward the target using proper rotations.
-    // Default arm orientation is -Y (straight down).
-    // shoulderRoll swings the arm sideways (Z-axis rotation).
-    // shoulderPitch tilts the arm forward/back (X-axis rotation).
-    upperArm.rotation.set(0, 0, 0);
-    upperArm.rotation.z = side * (ik.shoulderRoll - Math.PI / 2);
-    upperArm.rotation.x = ik.shoulderPitch;
+    const DOWN = new THREE.Vector3(0, -1, 0);
 
-    elbow.rotation.set(0, 0, 0);
-    elbow.rotation.x = -ik.elbowAngle;
+    // Upper arm: rotate default direction (straight down) toward the elbow.
+    const upperDir = new THREE.Vector3().subVectors(elbowPos, shoulderPos).normalize();
+    upperArm.quaternion.setFromUnitVectors(DOWN, upperDir);
 
+    // Forearm: rotate default (down, in parent's local frame) toward the hand.
+    // Express the world-space forearm direction in the upper arm's local space.
+    const forearmDirWorld = new THREE.Vector3().subVectors(targetPos, elbowPos).normalize();
+    const inverseUpper = upperArm.quaternion.clone().invert();
+    const forearmDirLocal = forearmDirWorld.applyQuaternion(inverseUpper);
+    elbow.quaternion.setFromUnitVectors(DOWN, forearmDirLocal);
+
+    // Wrist: a small, natural flex. For the baton hand (right, side=1) add a
+    // subtle beat-synchronized flick so the wrist "lands" into each ictus.
     if (wrist) {
-      wrist.rotation.x = -0.2 + (side === 1 ? 0.1 : 0);
+      wrist.rotation.set(-0.1, 0, 0);
     }
   }
 
