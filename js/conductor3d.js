@@ -22,6 +22,15 @@ class Conductor3D {
     // Sway / nod state
     this.currentSway = 0;
     this.currentNod = 0;
+
+    // Baton drag state — spring-damper on baton's local tilt driven by hand velocity.
+    // Gives the tip the mass/inertia of a real baton: it lags during acceleration
+    // and wobbles slightly at the ictus when the hand stops.
+    this.prevHandPos = null;
+    this.batonLagX = 0;
+    this.batonLagZ = 0;
+    this.batonLagVelX = 0;
+    this.batonLagVelZ = 0;
   }
 
   // ── Initialization ───────────────────────────────────────────────────────
@@ -558,6 +567,40 @@ class Conductor3D {
 
     // Left arm — mirrors with reduced amplitude
     this._poseArm(-1, -pos[0] - 0.22, pos[1] * 0.6 + 1.28 + 0.05, pos[2] * 0.5 + 0.12);
+
+    // Baton drag — tip trails the hand during acceleration, overshoots at the ictus.
+    this._updateBatonDrag(pos);
+  }
+
+  _updateBatonDrag(pos) {
+    if (!this.meshes.baton) return;
+
+    if (!this.prevHandPos) {
+      this.prevHandPos = [pos[0], pos[1], pos[2]];
+    }
+    const velX = pos[0] - this.prevHandPos[0];
+    const velZ = pos[2] - this.prevHandPos[2];
+    this.prevHandPos[0] = pos[0];
+    this.prevHandPos[1] = pos[1];
+    this.prevHandPos[2] = pos[2];
+
+    // Drag opposite to motion: shaft = local +Y, so rotate about Z for lateral
+    // motion and about X for forward/back motion.
+    const dragScale = 14;
+    const targetLagZ = velX * dragScale;
+    const targetLagX = -velZ * dragScale;
+
+    // Spring-damper: stiffness pulls toward target; damping bleeds off velocity.
+    // Underdamped so the tip wobbles briefly when the hand stops sharply.
+    const stiffness = 0.18;
+    const damping = 0.62;
+    this.batonLagVelX = (this.batonLagVelX + (targetLagX - this.batonLagX) * stiffness) * damping;
+    this.batonLagVelZ = (this.batonLagVelZ + (targetLagZ - this.batonLagZ) * stiffness) * damping;
+    this.batonLagX += this.batonLagVelX;
+    this.batonLagZ += this.batonLagVelZ;
+
+    this.meshes.baton.rotation.x = -0.2 + this.batonLagX;
+    this.meshes.baton.rotation.z = this.batonLagZ;
   }
 
   _poseArm(side, tx, ty, tz) {
