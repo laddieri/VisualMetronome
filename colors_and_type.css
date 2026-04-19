@@ -1,0 +1,222 @@
+/* =========================================================
+   Visual Metronome — Design Tokens
+   Colors, type, radii, shadows, spacing
+   Inter is the sole type family, loaded from Google Fonts.
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ── Brand ──────────────────────────────────────────────────────────── */
+  --vm-indigo:         #667eea;   /* primary — buttons, sliders, focus */
+  --vm-indigo-deep:    #5a67d8;   /* primary:hover / pressed */
+  --vm-purple:         #764ba2;   /* secondary — song mode, purple CTAs */
+  --vm-purple-deep:    #5e3a85;   /* purple:hover */
+  --vm-gradient:       linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  /* ── Semantic accent ────────────────────────────────────────────────── */
+  --vm-success:        #48bb78;   /* active play-state green */
+  --vm-success-deep:   #38a169;
+  --vm-danger:         #e53e3e;   /* stop / destructive */
+  --vm-danger-soft-bg: #fed7d7;
+  --vm-warning:        #d69e2e;   /* two-measure active */
+  --vm-warning-bg:     #fffbeb;
+  --vm-info:           #2b6cb0;
+  --vm-info-bg:        #ebf8ff;
+  --vm-info-border:    #bee3f8;
+
+  /* ── Foreground (light surface) ─────────────────────────────────────── */
+  --vm-fg-1:           #2d3748;   /* headings, input values */
+  --vm-fg-2:           #4a5568;   /* body */
+  --vm-fg-3:           #718096;   /* labels, muted */
+  --vm-fg-4:           #a0aec0;   /* footer, hint, placeholder */
+
+  /* ── Surfaces (light) ───────────────────────────────────────────────── */
+  --vm-bg-page:        #ffffff;   /* hero card */
+  --vm-bg-panel:       #f7fafc;   /* controls tray, section blocks */
+  --vm-bg-panel-2:     #edf2f7;   /* pressed / hover on panel */
+  --vm-border:         #e2e8f0;   /* default border + dividers */
+  --vm-border-strong:  #cbd5e0;
+
+  /* ── Dark surfaces (phone remote + custom rhythm editor) ────────────── */
+  --vm-dark-bg:        #111827;   /* remote page bg */
+  --vm-dark-panel:     #1f2937;   /* raised panels, cr beat groups */
+  --vm-dark-panel-2:   #1e293b;   /* cr saved rows */
+  --vm-dark-ink:       #0f172a;   /* input fields inside dark panels */
+  --vm-dark-border:    #374151;
+  --vm-dark-fg-1:      #f0f0f0;   /* primary body */
+  --vm-dark-fg-2:      #e5e7eb;   /* input text */
+  --vm-dark-fg-3:      #9ca3af;   /* labels */
+  --vm-dark-fg-4:      #6b7280;   /* captions */
+  --vm-dark-fg-5:      #4b5563;   /* very quiet */
+  --vm-dark-success:   #6ee7b7;
+  --vm-dark-success-bg:#064e3b;
+  --vm-dark-danger:    #fca5a5;
+  --vm-dark-danger-bg: #450a0a;
+  --vm-dark-play:      #2563eb;   /* remote play blue */
+  --vm-dark-count-in:  #065f46;   /* remote count-in green */
+  --vm-dark-stop:      #dc2626;   /* remote stop red */
+
+  /* ── Translucent overlays ───────────────────────────────────────────── */
+  --vm-scrim:          rgba(0, 0, 0, 0.85);        /* modal backdrop */
+  --vm-indigo-wash:    rgba(102, 126, 234, 0.1);   /* hover glow */
+  --vm-indigo-focus:   rgba(102, 126, 234, 0.2);   /* focus ring inner */
+  --vm-indigo-ring:    rgba(102, 126, 234, 0.3);   /* focus ring outer */
+  --vm-indigo-halo:    rgba(102, 126, 234, 0.4);   /* thumb drag halo */
+  --vm-purple-ring:    rgba(118, 75, 162, 0.3);
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
+  --vm-font-sans:      'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Scale (rem) — lifted 1:1 from the product */
+  --vm-size-hero:      2rem;        /* 32  h1 */
+  --vm-size-xl:        1.5rem;      /* 24  modal h2 on camera */
+  --vm-size-lg:        1.4rem;      /* 22  modal h2 / large input */
+  --vm-size-md:        1.2rem;      /* 19  bpm input */
+  --vm-size-base:      1rem;        /* 16  body / button */
+  --vm-size-sm:        0.9rem;      /* 14  secondary / controls */
+  --vm-size-xs:        0.8rem;      /* 13  footer copy */
+  --vm-size-2xs:       0.75rem;     /* 12  hints */
+  --vm-size-3xs:       0.7rem;      /* 11  control labels */
+  --vm-size-4xs:       0.6rem;      /* 9.6 tiny field labels */
+  --vm-size-micro:     0.55rem;     /* 8.8 bpm stamp */
+
+  --vm-weight-regular: 400;
+  --vm-weight-medium:  500;
+  --vm-weight-semi:    600;
+  --vm-weight-bold:    700;
+  --vm-weight-black:   800;
+
+  --vm-lead-tight:     1;
+  --vm-lead-snug:      1.25;
+  --vm-lead-normal:    1.5;
+
+  --vm-track-tight:    -0.5px;     /* h1 */
+  --vm-track-wide:     0.05em;     /* ALL-CAPS labels */
+  --vm-track-wider:    0.08em;     /* remote h1 caps */
+  --vm-track-widest:   0.12em;     /* section caps on remote */
+
+  /* ── Radii ──────────────────────────────────────────────────────────── */
+  --vm-radius-xs:      4px;        /* tiny pill chip */
+  --vm-radius-sm:      6px;        /* small inputs inside dense rows */
+  --vm-radius-md:      8px;        /* default button / input / dropdown */
+  --vm-radius-lg:      10px;       /* raised row / play buttons */
+  --vm-radius-xl:      12px;       /* canvas / measure blocks */
+  --vm-radius-2xl:     16px;       /* controls tray, modals */
+  --vm-radius-3xl:     24px;       /* hero container */
+  --vm-radius-pill:    999px;
+
+  /* ── Shadows & elevation ────────────────────────────────────────────── */
+  --vm-shadow-hero:    0 20px 60px rgba(0, 0, 0, 0.3);     /* the gradient-floating card */
+  --vm-shadow-canvas:  0 4px 12px rgba(0, 0, 0, 0.1);      /* p5 canvas inner */
+  --vm-shadow-webgpu:  0 4px 16px rgba(0, 0, 0, 0.35);     /* webgpu canvas */
+  --vm-shadow-thumb:   0 1px 4px rgba(0, 0, 0, 0.25);      /* slider thumb rest */
+  --vm-shadow-thumb-hover: 0 2px 8px rgba(102, 126, 234, 0.4);
+  --vm-shadow-remote-play: 0 0 36px rgba(37, 99, 235, 0.45);
+
+  --vm-ring-subtle:    0 0 0 2px var(--vm-indigo-focus);
+  --vm-ring-focus:     0 0 0 3px var(--vm-indigo-focus);
+  --vm-ring-hover:     0 0 0 3px var(--vm-indigo-wash);
+
+  /* ── Spacing (1:1 from product) ─────────────────────────────────────── */
+  --vm-space-1:        4px;
+  --vm-space-2:        6px;
+  --vm-space-3:        8px;
+  --vm-space-4:        10px;
+  --vm-space-5:        12px;
+  --vm-space-6:        16px;
+  --vm-space-7:        20px;
+  --vm-space-8:        24px;
+  --vm-space-9:        28px;
+  --vm-space-10:       32px;
+
+  /* ── Motion ─────────────────────────────────────────────────────────── */
+  --vm-duration-fast:  0.15s;
+  --vm-duration-base:  0.2s;
+  --vm-duration-slow:  0.5s;
+  --vm-ease:           ease;
+  --vm-ease-out:       ease-out;
+}
+
+/* =========================================================
+   Semantic type classes — apply directly or use as mixins.
+   ========================================================= */
+
+html, body {
+  font-family: var(--vm-font-sans);
+  color: var(--vm-fg-2);
+}
+
+.vm-h1 {
+  font-size: var(--vm-size-hero);
+  font-weight: var(--vm-weight-bold);
+  color: var(--vm-fg-1);
+  letter-spacing: var(--vm-track-tight);
+  line-height: var(--vm-lead-snug);
+}
+
+.vm-h2 {
+  font-size: var(--vm-size-lg);
+  font-weight: var(--vm-weight-bold);
+  color: var(--vm-fg-1);
+  line-height: var(--vm-lead-snug);
+}
+
+.vm-subtitle {
+  font-size: var(--vm-size-sm);
+  color: var(--vm-fg-3);
+  font-weight: var(--vm-weight-regular);
+}
+
+.vm-body {
+  font-size: var(--vm-size-base);
+  color: var(--vm-fg-2);
+  line-height: var(--vm-lead-normal);
+}
+
+.vm-label {
+  /* The ubiquitous ALL-CAPS micro-label — above every control */
+  font-size: var(--vm-size-3xs);
+  font-weight: var(--vm-weight-semi);
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+  letter-spacing: var(--vm-track-wide);
+}
+
+.vm-label-dark {
+  /* Same label, remote/dark-surface treatment */
+  font-size: var(--vm-size-2xs);
+  font-weight: var(--vm-weight-bold);
+  color: var(--vm-dark-fg-4);
+  text-transform: uppercase;
+  letter-spacing: var(--vm-track-widest);
+}
+
+.vm-hint {
+  /* Explanatory copy below a control */
+  font-size: var(--vm-size-2xs);
+  color: var(--vm-fg-4);
+  margin-top: var(--vm-space-2);
+}
+
+.vm-value-bpm {
+  /* The bold number inside BPM display / counting trainer */
+  font-size: var(--vm-size-md);
+  font-weight: var(--vm-weight-bold);
+  color: var(--vm-fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.vm-value-huge {
+  /* Remote-screen 4rem BPM readout */
+  font-size: 4rem;
+  font-weight: var(--vm-weight-black);
+  color: var(--vm-dark-fg-1);
+  line-height: var(--vm-lead-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.vm-caption {
+  font-size: var(--vm-size-xs);
+  color: var(--vm-fg-4);
+}

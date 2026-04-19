@@ -4,13 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Metronome Remote</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/logo-192.png">
+  <link rel="apple-touch-icon" href="assets/logo-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="colors_and_type.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #111827;
-      color: #f0f0f0;
+      font-family: var(--vm-font-sans);
+      background: var(--vm-dark-bg);
+      color: var(--vm-dark-fg-1);
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
@@ -23,21 +30,21 @@
     h1 {
       font-size: 1.1rem;
       font-weight: 600;
-      letter-spacing: 0.08em;
+      letter-spacing: var(--vm-track-wider);
       text-transform: uppercase;
-      color: #9ca3af;
+      color: var(--vm-dark-fg-3);
     }
 
     /* ── Status pill ──────────────────────────────────────────────────────── */
     #status {
       font-size: 0.8rem;
       padding: 5px 14px;
-      border-radius: 999px;
+      border-radius: var(--vm-radius-pill);
       font-weight: 600;
       letter-spacing: 0.04em;
     }
-    #status.connected    { background: #064e3b; color: #6ee7b7; }
-    #status.disconnected { background: #450a0a; color: #fca5a5; }
+    #status.connected    { background: var(--vm-dark-count-in); color: var(--vm-dark-success); }
+    #status.disconnected { background: var(--vm-dark-danger-bg); color: var(--vm-dark-danger); }
 
     /* ── Play button group ────────────────────────────────────────────────── */
     .play-group {
@@ -59,7 +66,7 @@
       line-height: 1;
       cursor: pointer;
       color: #fff;
-      transition: transform 0.1s ease, background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      transition: transform var(--vm-duration-fast) var(--vm-ease), background var(--vm-duration-base) var(--vm-ease), box-shadow var(--vm-duration-base) var(--vm-ease), opacity var(--vm-duration-base) var(--vm-ease);
       user-select: none;
       -webkit-tap-highlight-color: transparent;
       display: flex;
@@ -71,8 +78,8 @@
     /* Normal play/stop */
     #play-btn {
       font-size: 2.8rem;
-      background: #2563eb;
-      box-shadow: 0 0 36px rgba(37, 99, 235, 0.45);
+      background: var(--vm-dark-play);
+      box-shadow: var(--vm-shadow-remote-play);
     }
 
     /* Count-in "+1" and "+2" */
@@ -80,7 +87,7 @@
     #count-in-btn {
       flex-direction: column;
       gap: 2px;
-      background: #065f46;
+      background: var(--vm-dark-count-in);
       box-shadow: 0 0 36px rgba(6, 95, 70, 0.4);
     }
     #count-in-1-btn .ci-play,
@@ -91,7 +98,7 @@
     /* Combined stop button */
     #remote-stop-btn {
       font-size: 2.8rem;
-      background: #dc2626;
+      background: var(--vm-dark-stop);
       box-shadow: 0 0 36px rgba(220, 38, 38, 0.45);
       flex: none;
       width: min(240px, 100%);
@@ -111,14 +118,14 @@
     .section-label {
       font-size: 0.75rem;
       font-weight: 700;
-      letter-spacing: 0.12em;
+      letter-spacing: var(--vm-track-widest);
       text-transform: uppercase;
-      color: #6b7280;
+      color: var(--vm-dark-fg-4);
     }
 
     #bpm-display {
       font-size: 4rem;
-      font-weight: 800;
+      font-weight: var(--vm-weight-black);
       line-height: 1;
       min-width: 5rem;
       text-align: center;
@@ -135,9 +142,9 @@
       width: 68px;
       height: 68px;
       border-radius: 50%;
-      border: 2px solid #374151;
-      background: #1f2937;
-      color: #e5e7eb;
+      border: 2px solid var(--vm-dark-border);
+      background: var(--vm-dark-panel);
+      color: var(--vm-dark-fg-2);
       font-size: 2rem;
       line-height: 1;
       cursor: pointer;
@@ -148,18 +155,18 @@
       align-items: center;
       justify-content: center;
     }
-    .bpm-btn:active { background: #374151; transform: scale(0.88); }
+    .bpm-btn:active { background: var(--vm-dark-border); transform: scale(0.88); }
 
     #bpm-slider {
       width: 100%;
       height: 6px;
-      accent-color: #2563eb;
+      accent-color: var(--vm-dark-play);
       cursor: pointer;
     }
 
     .hint {
       font-size: 0.72rem;
-      color: #4b5563;
+      color: var(--vm-dark-fg-5);
       text-align: center;
     }
 
@@ -167,8 +174,8 @@
     .settings-panel {
       width: 100%;
       max-width: 360px;
-      background: #1f2937;
-      border-radius: 16px;
+      background: var(--vm-dark-panel);
+      border-radius: var(--vm-radius-2xl);
       padding: 20px;
       display: flex;
       flex-direction: column;
@@ -184,22 +191,22 @@
     .settings-title {
       font-size: 0.85rem;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: var(--vm-track-wider);
       text-transform: uppercase;
-      color: #9ca3af;
+      color: var(--vm-dark-fg-3);
     }
 
     .settings-toggle-btn {
       background: none;
-      border: 1px solid #374151;
-      color: #9ca3af;
+      border: 1px solid var(--vm-dark-border);
+      color: var(--vm-dark-fg-3);
       font-size: 0.75rem;
       padding: 4px 12px;
-      border-radius: 999px;
+      border-radius: var(--vm-radius-pill);
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
-    .settings-toggle-btn:active { background: #374151; }
+    .settings-toggle-btn:active { background: var(--vm-dark-border); }
 
     .settings-body { display: flex; flex-direction: column; gap: 14px; }
     .settings-body.collapsed { display: none; }
@@ -214,15 +221,15 @@
 
     .setting-label {
       font-size: 0.82rem;
-      color: #d1d5db;
+      color: var(--vm-dark-fg-1);
       white-space: nowrap;
     }
 
     .setting-select {
-      background: #111827;
-      color: #e5e7eb;
-      border: 1px solid #374151;
-      border-radius: 8px;
+      background: var(--vm-dark-bg);
+      color: var(--vm-dark-fg-2);
+      border: 1px solid var(--vm-dark-border);
+      border-radius: var(--vm-radius-md);
       padding: 6px 10px;
       font-size: 0.82rem;
       min-width: 0;
@@ -243,10 +250,10 @@
     .toggle-track {
       position: absolute;
       inset: 0;
-      background: #374151;
+      background: var(--vm-dark-border);
       border-radius: 12px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: background var(--vm-duration-base) var(--vm-ease);
     }
     .toggle-track::after {
       content: '';
@@ -257,10 +264,10 @@
       height: 20px;
       background: #fff;
       border-radius: 50%;
-      transition: transform 0.2s ease;
+      transition: transform var(--vm-duration-base) var(--vm-ease);
     }
     .toggle-switch input:checked + .toggle-track {
-      background: #2563eb;
+      background: var(--vm-dark-play);
     }
     .toggle-switch input:checked + .toggle-track::after {
       transform: translateX(20px);
@@ -270,20 +277,20 @@
     .fullscreen-btn {
       width: 100%;
       padding: 12px;
-      border: 2px solid #374151;
-      border-radius: 12px;
-      background: #1f2937;
-      color: #e5e7eb;
+      border: 2px solid var(--vm-dark-border);
+      border-radius: var(--vm-radius-xl);
+      background: var(--vm-dark-panel);
+      color: var(--vm-dark-fg-2);
       font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease;
+      transition: background var(--vm-duration-fast) var(--vm-ease), border-color var(--vm-duration-fast) var(--vm-ease);
       -webkit-tap-highlight-color: transparent;
     }
-    .fullscreen-btn:active { background: #374151; }
+    .fullscreen-btn:active { background: var(--vm-dark-border); }
     .fullscreen-btn.active {
       background: #1e3a5f;
-      border-color: #2563eb;
+      border-color: var(--vm-dark-play);
       color: #93c5fd;
     }
 
@@ -291,8 +298,8 @@
     .color-input {
       width: 40px;
       height: 28px;
-      border: 1px solid #374151;
-      border-radius: 6px;
+      border: 1px solid var(--vm-dark-border);
+      border-radius: var(--vm-radius-sm);
       background: none;
       cursor: pointer;
       padding: 0;
@@ -301,7 +308,7 @@
     /* ── Divider ──────────────────────────────────────────────────────────── */
     .setting-divider {
       border: none;
-      border-top: 1px solid #374151;
+      border-top: 1px solid var(--vm-dark-border);
       margin: 2px 0;
     }
 
@@ -316,7 +323,7 @@
     .bt-delay-slider {
       width: 100%;
       height: 6px;
-      accent-color: #2563eb;
+      accent-color: var(--vm-dark-play);
       cursor: pointer;
       margin-top: 6px;
     }
