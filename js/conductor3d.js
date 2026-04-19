@@ -23,6 +23,14 @@ class Conductor3D {
     this.currentSway = 0;
     this.currentNod = 0;
 
+    // Blinking — randomized natural intervals
+    this.blinkTimer = 0;
+    this.nextBlinkIn = 1.5 + Math.random() * 3;
+    this.blinkProgress = -1; // -1 = not blinking; 0..1 = closing→opening
+
+    // Idle micro-motion phase (keeps head/eyes alive between beats)
+    this.idlePhase = Math.random() * 100;
+
     // Baton drag state — spring-damper on baton's local tilt driven by hand velocity.
     // Gives the tip the mass/inertia of a real baton: it lags during acceleration
     // and wobbles slightly at the ictus when the hand stops.
@@ -208,31 +216,57 @@ class Conductor3D {
     hairMesh.position.set(0, 0.01, -0.005);
     headGroup.add(hairMesh);
 
-    // Side hair / sideburns
+    // Side hair / sideburns — rounded, following the skull curvature
+    const hairMatSide = this._mat(hair, { roughness: 0.9 });
     for (const side of [-1, 1]) {
-      const sideGeo = new THREE.BoxGeometry(0.025, 0.08, 0.1);
-      const sMesh = new THREE.Mesh(sideGeo, this._mat(hair, { roughness: 0.9 }));
-      sMesh.position.set(side * 0.125, -0.02, 0.02);
+      const sideGeo = new THREE.SphereGeometry(0.05, 14, 12);
+      sideGeo.scale(0.35, 1.0, 0.95);
+      const sMesh = new THREE.Mesh(sideGeo, hairMatSide);
+      sMesh.position.set(side * 0.123, -0.01, 0.005);
       headGroup.add(sMesh);
     }
 
-    // Eyes
-    const eyeWhiteGeo = new THREE.SphereGeometry(0.018, 12, 8);
-    const eyeIrisGeo = new THREE.SphereGeometry(0.009, 10, 8);
-    const eyePupilGeo = new THREE.SphereGeometry(0.005, 8, 6);
-    const eyeWhiteMat = this._mat(0xffffff, { roughness: 0.2 });
-    const eyeIrisMat = this._mat(0x3a6b4f, { roughness: 0.3 });
-    const eyePupilMat = this._mat(0x0a0a0a, { roughness: 0.1 });
+    // Eyes — slightly warmer whites, larger iris, smaller pupil, catch-light
+    // highlight to break the dead-stare effect. Eyelids sit above each eye
+    // and scale down during blinks.
+    const eyeWhiteGeo = new THREE.SphereGeometry(0.018, 14, 10);
+    const eyeIrisGeo = new THREE.SphereGeometry(0.010, 12, 10);
+    const eyePupilGeo = new THREE.SphereGeometry(0.0042, 10, 8);
+    const eyeHighlightGeo = new THREE.SphereGeometry(0.0025, 8, 6);
+    const eyeWhiteMat = this._mat(0xf4f0e8, { roughness: 0.25 });
+    const eyeIrisMat = this._mat(0x5a7f6a, { roughness: 0.35 });
+    const eyePupilMat = this._mat(0x120a08, { roughness: 0.15 });
+    const eyeHighlightMat = this._mat(0xffffff, { roughness: 0.05, emissive: 0xffffff, emissiveIntensity: 0.4 });
+
+    this.meshes.eyes = [];
+    this.meshes.eyelids = [];
     for (const side of [-1, 1]) {
+      const eyeGroup = new THREE.Group();
+      eyeGroup.position.set(side * 0.045, 0.02, 0.115);
+      headGroup.add(eyeGroup);
+
       const eW = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-      eW.position.set(side * 0.045, 0.02, 0.115);
-      headGroup.add(eW);
+      eyeGroup.add(eW);
       const eI = new THREE.Mesh(eyeIrisGeo, eyeIrisMat);
-      eI.position.set(side * 0.045, 0.018, 0.13);
-      headGroup.add(eI);
+      eI.position.set(0, -0.002, 0.015);
+      eyeGroup.add(eI);
       const eP = new THREE.Mesh(eyePupilGeo, eyePupilMat);
-      eP.position.set(side * 0.045, 0.018, 0.135);
-      headGroup.add(eP);
+      eP.position.set(0, -0.002, 0.02);
+      eyeGroup.add(eP);
+      const eH = new THREE.Mesh(eyeHighlightGeo, eyeHighlightMat);
+      eH.position.set(-side * 0.003, 0.002, 0.021);
+      eyeGroup.add(eH);
+      this.meshes.eyes.push(eyeGroup);
+
+      // Upper eyelid — bottom-facing hemisphere that hangs from the top of
+      // the eye socket. Open: flat sliver (scale.y small). Closed: scaled
+      // down far enough to cover the whole eyeball.
+      const lidGeo = new THREE.SphereGeometry(0.022, 16, 10, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
+      const lid = new THREE.Mesh(lidGeo, this._mat(skin, { roughness: 0.65 }));
+      lid.position.set(side * 0.045, 0.039, 0.115);
+      lid.scale.set(1, 0.1, 1);
+      headGroup.add(lid);
+      this.meshes.eyelids.push(lid);
     }
 
     // Eyebrows
@@ -244,19 +278,55 @@ class Conductor3D {
       headGroup.add(brow);
     }
 
-    // Nose
-    const noseGeo = new THREE.ConeGeometry(0.012, 0.035, 8);
-    const nose = new THREE.Mesh(noseGeo, this._mat(skin, { roughness: 0.6 }));
-    nose.position.set(0, -0.005, 0.13);
-    nose.rotation.x = -0.3;
-    headGroup.add(nose);
+    // Nose — rounded bridge + bulbous tip (no sharp cone)
+    const noseMat = this._mat(skin, { roughness: 0.65 });
+    const noseBridgeGeo = new THREE.SphereGeometry(0.013, 12, 10);
+    noseBridgeGeo.scale(0.7, 1.9, 0.9);
+    const noseBridge = new THREE.Mesh(noseBridgeGeo, noseMat);
+    noseBridge.position.set(0, 0.002, 0.128);
+    headGroup.add(noseBridge);
 
-    // Lips
-    const lipGeo = new THREE.TorusGeometry(0.018, 0.005, 6, 12, Math.PI);
-    const lip = new THREE.Mesh(lipGeo, this._mat(0xc67b6f, { roughness: 0.5 }));
-    lip.position.set(0, -0.04, 0.115);
-    lip.rotation.x = Math.PI;
-    headGroup.add(lip);
+    const noseTipGeo = new THREE.SphereGeometry(0.014, 12, 10);
+    noseTipGeo.scale(1, 0.8, 0.95);
+    const noseTip = new THREE.Mesh(noseTipGeo, noseMat);
+    noseTip.position.set(0, -0.022, 0.134);
+    headGroup.add(noseTip);
+
+    // Nostrils — tiny dark ovals so the nose reads as a nose
+    const nostrilMat = this._mat(0x2a1810, { roughness: 0.9 });
+    for (const side of [-1, 1]) {
+      const nGeo = new THREE.SphereGeometry(0.004, 8, 6);
+      nGeo.scale(1, 0.5, 0.5);
+      const n = new THREE.Mesh(nGeo, nostrilMat);
+      n.position.set(side * 0.007, -0.028, 0.142);
+      headGroup.add(n);
+    }
+
+    // Mouth — upper lip arch + fuller lower lip, shaped into a soft smile.
+    // The torus arc (0→π) bulges +Y by default; we rotate so the bulge points
+    // down (corners of the mouth lift slightly → relaxed smile, not a frown).
+    const lipMat = this._mat(0xb86a5f, { roughness: 0.45 });
+    const upperLipGeo = new THREE.TorusGeometry(0.022, 0.0055, 8, 18, Math.PI);
+    const upperLip = new THREE.Mesh(upperLipGeo, lipMat);
+    upperLip.position.set(0, -0.048, 0.118);
+    upperLip.rotation.x = Math.PI;
+    // Tilt corners up a touch by flattening the arc vertically
+    upperLip.scale.set(1, 0.75, 1);
+    headGroup.add(upperLip);
+
+    // Lower lip — a soft pad below, slightly fuller
+    const lowerLipGeo = new THREE.SphereGeometry(0.014, 14, 10);
+    lowerLipGeo.scale(1.7, 0.55, 0.45);
+    const lowerLip = new THREE.Mesh(lowerLipGeo, lipMat);
+    lowerLip.position.set(0, -0.058, 0.116);
+    headGroup.add(lowerLip);
+
+    // Subtle chin shading — a small skin-tone sphere to suggest chin form
+    const chinGeo = new THREE.SphereGeometry(0.04, 12, 10);
+    chinGeo.scale(1.1, 0.6, 0.7);
+    const chin = new THREE.Mesh(chinGeo, this._mat(skin, { roughness: 0.7 }));
+    chin.position.set(0, -0.085, 0.1);
+    headGroup.add(chin);
 
     // Ears
     for (const side of [-1, 1]) {
@@ -572,17 +642,29 @@ class Conductor3D {
     this.breathPhase += 0.015;
     const breath = Math.sin(this.breathPhase) * 0.003;
 
-    // Apply torso sway
+    // Idle micro-motion — keeps the head from feeling frozen between beats.
+    // Layered sinusoids at irrational-ish frequencies avoid a visible loop.
+    const t = this.clock.elapsedTime;
+    const idleYaw   = Math.sin(t * 0.31) * 0.018 + Math.sin(t * 0.83 + 1.3) * 0.006;
+    const idlePitch = Math.sin(t * 0.47) * 0.010 + Math.sin(t * 1.17 + 0.6) * 0.004;
+    const idleRoll  = Math.sin(t * 0.23 + 2.1) * 0.006;
+
+    // Apply torso sway (plus a touch of idle roll so the shoulders breathe)
     if (this.bodyGroup) {
-      this.bodyGroup.rotation.z = this.currentSway;
+      this.bodyGroup.rotation.z = this.currentSway + idleRoll * 0.4;
       this.bodyGroup.position.y = breath;
     }
 
-    // Head nod
+    // Head nod + idle drift
     if (this.meshes.headGroup) {
-      this.meshes.headGroup.rotation.x = this.currentNod;
-      this.meshes.headGroup.rotation.y = -this.currentSway * 0.5;
+      this.meshes.headGroup.rotation.x = this.currentNod + idlePitch;
+      this.meshes.headGroup.rotation.y = -this.currentSway * 0.5 + idleYaw;
+      this.meshes.headGroup.rotation.z = idleRoll;
     }
+
+    // Blinking + subtle eye saccades
+    this._updateBlink();
+    this._updateGaze(t);
 
     // Right arm (baton hand) — follows conducting pattern
     this._poseArm(1, pos[0] + 0.22, pos[1] + 1.28, pos[2] + 0.12);
@@ -592,6 +674,50 @@ class Conductor3D {
 
     // Baton drag — tip trails the hand during acceleration, overshoots at the ictus.
     this._updateBatonDrag(pos);
+  }
+
+  _updateBlink() {
+    if (!this.meshes.eyelids) return;
+    const step = this.frameDelta || 0.016;
+
+    if (this.blinkProgress < 0) {
+      this.blinkTimer += step;
+      if (this.blinkTimer >= this.nextBlinkIn) {
+        this.blinkProgress = 0;
+        this.blinkTimer = 0;
+        // Occasional quick double-blink feels more natural
+        this.nextBlinkIn = (Math.random() < 0.15 ? 0.22 : 2.5 + Math.random() * 3.5);
+      }
+    } else {
+      // Full blink cycle ~0.18s (closing then opening)
+      this.blinkProgress += step / 0.18;
+      let closed;
+      if (this.blinkProgress < 0.5) {
+        closed = this.blinkProgress * 2;
+      } else if (this.blinkProgress < 1) {
+        closed = 1 - (this.blinkProgress - 0.5) * 2;
+      } else {
+        closed = 0;
+        this.blinkProgress = -1;
+      }
+      // Open scale.y ≈ 0.1 (thin sliver above the eye); closed ≈ 1.7
+      // (hemisphere fully hangs down over the eyeball).
+      const s = 0.1 + 1.6 * closed;
+      for (const lid of this.meshes.eyelids) {
+        lid.scale.y = s;
+      }
+    }
+  }
+
+  _updateGaze(t) {
+    if (!this.meshes.eyes) return;
+    // Slow random-ish drift for each axis + occasional tiny saccades.
+    const gazeX = Math.sin(t * 0.27 + 0.9) * 0.003 + Math.sin(t * 1.9) * 0.0015;
+    const gazeY = Math.sin(t * 0.41 + 2.3) * 0.002;
+    for (const eye of this.meshes.eyes) {
+      eye.rotation.y = gazeX * 6;
+      eye.rotation.x = gazeY * 6;
+    }
   }
 
   _updateBatonDrag(pos) {
@@ -660,6 +786,10 @@ class Conductor3D {
 
   update() {
     if (!this.initialized) return;
+
+    // Advance the clock once per frame so elapsedTime is valid for idle motion
+    // and blink timing. Cap delta to avoid large jumps when the tab was hidden.
+    this.frameDelta = Math.min(0.05, this.clock.getDelta());
 
     var state = this._getConductingState();
     this._applyPose(state);
