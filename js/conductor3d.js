@@ -268,17 +268,20 @@ class Conductor3D {
     }
 
     // ── Baton (created BEFORE arms so it can be attached) ────────────
+    // Built so the grip sits at the local origin and the shaft extends down
+    // along -Y. Once attached to the wrist (whose local -Y points along the
+    // fingers), the shaft naturally continues out past the hand.
     const batonGroup = new THREE.Group();
-    // Shaft
+    // Shaft — extends in -Y from the grip
     const shaftGeo = new THREE.CylinderGeometry(0.005, 0.004, 0.38, 8);
     const shaft = new THREE.Mesh(shaftGeo, this._mat(0xf5f0e8, { roughness: 0.3 }));
-    shaft.position.y = 0.19;
+    shaft.position.y = -0.19;
     batonGroup.add(shaft);
-    // Cork grip
+    // Cork grip — at the local origin (where the hand grips it)
     const gripGeo = new THREE.SphereGeometry(0.018, 10, 8);
     gripGeo.scale(1, 1.3, 1);
     const grip = new THREE.Mesh(gripGeo, this._mat(0xd4a76a, { roughness: 0.8 }));
-    grip.position.y = -0.01;
+    grip.position.y = 0;
     batonGroup.add(grip);
     this.meshes.baton = batonGroup;
 
@@ -360,10 +363,12 @@ class Conductor3D {
     thumb.rotation.x = 0.3;
     wristGroup.add(thumb);
 
-    // Attach baton to right hand
+    // Attach baton to right hand. Position grip inside the fist and tilt
+    // the shaft slightly forward so it doesn't lie flat along the forearm.
     if (side === 1 && this.meshes.baton) {
       wristGroup.add(this.meshes.baton);
-      this.meshes.baton.rotation.x = -0.2;
+      this.meshes.baton.position.set(0, -0.04, 0.01);
+      this.meshes.baton.rotation.x = 0.25;
     }
 
     // Store bone references
@@ -582,8 +587,8 @@ class Conductor3D {
     // Right arm (baton hand) — follows conducting pattern
     this._poseArm(1, pos[0] + 0.22, pos[1] + 1.28, pos[2] + 0.12);
 
-    // Left arm — mirrors with reduced amplitude
-    this._poseArm(-1, -pos[0] - 0.22, pos[1] * 0.6 + 1.28 + 0.05, pos[2] * 0.5 + 0.12);
+    // Left arm — mirrored across the body so both hands move at the same height.
+    this._poseArm(-1, -pos[0] - 0.22, pos[1] + 1.28, pos[2] + 0.12);
 
     // Baton drag — tip trails the hand during acceleration, overshoots at the ictus.
     this._updateBatonDrag(pos);
@@ -601,11 +606,13 @@ class Conductor3D {
     this.prevHandPos[1] = pos[1];
     this.prevHandPos[2] = pos[2];
 
-    // Drag opposite to motion: shaft = local +Y, so rotate about Z for lateral
-    // motion and about X for forward/back motion.
+    // Drag opposite to motion. Shaft = local -Y (tip is below the grip), so
+    // the sign of each rotation is flipped vs. a +Y shaft: hand moves +X →
+    // tip should trail toward -X, which requires a negative rotation about Z
+    // (a +Z rotation would send -Y toward +X). Same logic in the X axis.
     const dragScale = 14;
-    const targetLagZ = velX * dragScale;
-    const targetLagX = -velZ * dragScale;
+    const targetLagZ = -velX * dragScale;
+    const targetLagX = velZ * dragScale;
 
     // Spring-damper: stiffness pulls toward target; damping bleeds off velocity.
     // Underdamped so the tip wobbles briefly when the hand stops sharply.
@@ -616,7 +623,7 @@ class Conductor3D {
     this.batonLagX += this.batonLagVelX;
     this.batonLagZ += this.batonLagVelZ;
 
-    this.meshes.baton.rotation.x = -0.2 + this.batonLagX;
+    this.meshes.baton.rotation.x = 0.25 + this.batonLagX;
     this.meshes.baton.rotation.z = this.batonLagZ;
   }
 
