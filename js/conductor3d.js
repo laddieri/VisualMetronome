@@ -146,53 +146,103 @@ class Conductor3D {
     this.bodyGroup = bodyGroup;
     this.scene.add(bodyGroup);
 
+    // One shared skin material so every skin part (head, neck, nose, ears,
+    // eyelids, hands, fingers) shades identically under the scene lights.
+    // Previously each mesh made its own MeshStandardMaterial with a different
+    // roughness, which made the face look patchwork under the directional key
+    // light.
+    const skinMat = this._mat(skin, { roughness: 0.62 });
+    this._skinMat = skinMat;
+
     // ── Torso ─────────────────────────────────────────────────────────
-    // Narrower and shallower to prevent arm clipping
-    const torsoGeo = new THREE.BoxGeometry(0.34, 0.55, 0.18, 2, 2, 2);
-    const torsoMesh = new THREE.Mesh(torsoGeo, this._mat(tuxBody, { roughness: 0.85 }));
-    torsoMesh.position.set(0, 1.05, 0);
+    // Substantially wider and deeper — gives the conductor a real adult
+    // build instead of a broomstick under his tux.
+    const jacketMat = this._mat(tuxBody, { roughness: 0.85 });
+    const torsoGeo = new THREE.BoxGeometry(0.48, 0.58, 0.28, 3, 3, 3);
+    const torsoMesh = new THREE.Mesh(torsoGeo, jacketMat);
+    torsoMesh.position.set(0, 1.04, 0);
     torsoMesh.castShadow = true;
     bodyGroup.add(torsoMesh);
     this.meshes.torso = torsoMesh;
 
-    // Shirt front (visible V)
+    // Jacket yoke — a wider, rounded block across the top of the torso that
+    // carries the shoulder line out to the arm pivots. This replaces the
+    // free-floating spherical shoulder pads with something that reads as
+    // "jacket shoulders" and eliminates the ball-on-a-stick silhouette.
+    const yokeGeo = new THREE.BoxGeometry(0.56, 0.14, 0.30, 2, 2, 2);
+    const yokeMesh = new THREE.Mesh(yokeGeo, jacketMat);
+    yokeMesh.position.set(0, 1.29, 0);
+    yokeMesh.castShadow = true;
+    bodyGroup.add(yokeMesh);
+
+    // Softened shoulder caps — flatter, wider ovoids tucked on top of the
+    // yoke edge so the arm sockets look round without balling out.
+    for (const s of [-1, 1]) {
+      const capGeo = new THREE.SphereGeometry(0.06, 16, 12);
+      capGeo.scale(1.3, 0.7, 1.1);
+      const cap = new THREE.Mesh(capGeo, jacketMat);
+      cap.position.set(s * 0.24, 1.33, 0.01);
+      cap.castShadow = true;
+      bodyGroup.add(cap);
+    }
+
+    // Shirt front — a proper V-shaped white panel that fills the opening
+    // between the lapels. Built from a 2D Shape so the top narrows into the
+    // collar and the bottom is wider at the cummerbund line.
     const shirtMat = this._mat(shirt, { roughness: 0.5, side: THREE.DoubleSide });
-    const shirtGeo = new THREE.PlaneGeometry(0.10, 0.28);
+    const shirtShape = new THREE.Shape();
+    shirtShape.moveTo(-0.015, 0.18);   // top-left (meets at the bow tie)
+    shirtShape.lineTo(0.015, 0.18);    // top-right
+    shirtShape.lineTo(0.10, -0.20);    // bottom-right (cummerbund width)
+    shirtShape.lineTo(-0.10, -0.20);   // bottom-left
+    shirtShape.closePath();
+    const shirtGeo = new THREE.ShapeGeometry(shirtShape);
     const shirtMesh = new THREE.Mesh(shirtGeo, shirtMat);
-    shirtMesh.position.set(0, 1.12, 0.092);
+    shirtMesh.position.set(0, 1.12, 0.142);
     bodyGroup.add(shirtMesh);
 
-    // Lapels
+    // Lapels — triangular satin panels meeting at the bow-tie knot and
+    // fanning outward to the shoulders. Also built from Shapes so they read
+    // as the classic peaked-tux lapel rather than two floating rectangles.
     const lapelMat = this._mat(lapel, { roughness: 0.3, metalness: 0.1, side: THREE.DoubleSide });
-    for (const side of [-1, 1]) {
-      const lapelGeo = new THREE.PlaneGeometry(0.055, 0.22);
+    for (const s of [-1, 1]) {
+      const lp = new THREE.Shape();
+      // Pointing inward to the knot, out to the shoulder, down to the V
+      lp.moveTo(s * 0.017, 0.18);    // top-inner (beside bow tie)
+      lp.lineTo(s * 0.19, 0.15);     // top-outer (shoulder seam)
+      lp.lineTo(s * 0.16, -0.02);    // mid-outer (notch/peak)
+      lp.lineTo(s * 0.02, -0.08);    // bottom-inner (V point)
+      lp.closePath();
+      const lapelGeo = new THREE.ShapeGeometry(lp);
       const lMesh = new THREE.Mesh(lapelGeo, lapelMat);
-      lMesh.position.set(side * 0.055, 1.14, 0.093);
-      lMesh.rotation.y = side * 0.15;
+      // Lapels render in front of the shirt so the V reads as the shirt
+      // peeking between them, not the other way round.
+      lMesh.position.set(0, 1.12, 0.1432);
       bodyGroup.add(lMesh);
     }
 
-    // Bow tie
-    const btGeo = new THREE.SphereGeometry(0.022, 8, 6);
-    btGeo.scale(1.8, 0.7, 0.5);
+    // Bow tie — larger, proportioned for the wider chest
+    const btGeo = new THREE.SphereGeometry(0.028, 10, 8);
+    btGeo.scale(1.9, 0.75, 0.55);
     const btMesh = new THREE.Mesh(btGeo, this._mat(bowtie, { roughness: 0.4 }));
-    btMesh.position.set(0, 1.29, 0.095);
+    btMesh.position.set(0, 1.30, 0.145);
     bodyGroup.add(btMesh);
 
-    // Collar points
+    // Collar points — small white wings flanking the bow tie
     const collarMat = this._mat(shirt, { roughness: 0.4, side: THREE.DoubleSide });
-    for (const side of [-1, 1]) {
-      const collarGeo = new THREE.PlaneGeometry(0.04, 0.035);
+    for (const s of [-1, 1]) {
+      const collarGeo = new THREE.PlaneGeometry(0.045, 0.04);
       const cMesh = new THREE.Mesh(collarGeo, collarMat);
-      cMesh.position.set(side * 0.035, 1.305, 0.094);
-      cMesh.rotation.z = side * -0.4;
+      cMesh.position.set(s * 0.04, 1.322, 0.1445);
+      cMesh.rotation.z = s * -0.4;
       bodyGroup.add(cMesh);
     }
 
     // ── Neck ──────────────────────────────────────────────────────────
-    const neckGeo = new THREE.CylinderGeometry(0.06, 0.07, 0.08, 12);
-    const neckMesh = new THREE.Mesh(neckGeo, this._mat(skin));
-    neckMesh.position.set(0, 1.36, 0);
+    // Thicker, taller neck so it isn't a pencil under the head
+    const neckGeo = new THREE.CylinderGeometry(0.07, 0.085, 0.10, 14);
+    const neckMesh = new THREE.Mesh(neckGeo, skinMat);
+    neckMesh.position.set(0, 1.37, 0);
     bodyGroup.add(neckMesh);
     this.meshes.neck = neckMesh;
 
@@ -205,7 +255,7 @@ class Conductor3D {
     // Skull
     const headGeo = new THREE.SphereGeometry(0.13, 24, 20);
     headGeo.scale(1, 1.12, 1.05);
-    const headMesh = new THREE.Mesh(headGeo, this._mat(skin, { roughness: 0.6 }));
+    const headMesh = new THREE.Mesh(headGeo, skinMat);
     headMesh.castShadow = true;
     headGroup.add(headMesh);
 
@@ -262,7 +312,7 @@ class Conductor3D {
       // the eye socket. Open: flat sliver (scale.y small). Closed: scaled
       // down far enough to cover the whole eyeball.
       const lidGeo = new THREE.SphereGeometry(0.022, 16, 10, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
-      const lid = new THREE.Mesh(lidGeo, this._mat(skin, { roughness: 0.65 }));
+      const lid = new THREE.Mesh(lidGeo, skinMat);
       lid.position.set(side * 0.045, 0.039, 0.115);
       lid.scale.set(1, 0.1, 1);
       headGroup.add(lid);
@@ -279,16 +329,15 @@ class Conductor3D {
     }
 
     // Nose — rounded bridge + bulbous tip (no sharp cone)
-    const noseMat = this._mat(skin, { roughness: 0.65 });
     const noseBridgeGeo = new THREE.SphereGeometry(0.013, 12, 10);
     noseBridgeGeo.scale(0.7, 1.9, 0.9);
-    const noseBridge = new THREE.Mesh(noseBridgeGeo, noseMat);
+    const noseBridge = new THREE.Mesh(noseBridgeGeo, skinMat);
     noseBridge.position.set(0, 0.002, 0.128);
     headGroup.add(noseBridge);
 
     const noseTipGeo = new THREE.SphereGeometry(0.014, 12, 10);
     noseTipGeo.scale(1, 0.8, 0.95);
-    const noseTip = new THREE.Mesh(noseTipGeo, noseMat);
+    const noseTip = new THREE.Mesh(noseTipGeo, skinMat);
     noseTip.position.set(0, -0.022, 0.134);
     headGroup.add(noseTip);
 
@@ -321,18 +370,11 @@ class Conductor3D {
     lowerLip.position.set(0, -0.058, 0.116);
     headGroup.add(lowerLip);
 
-    // Subtle chin shading — a small skin-tone sphere to suggest chin form
-    const chinGeo = new THREE.SphereGeometry(0.04, 12, 10);
-    chinGeo.scale(1.1, 0.6, 0.7);
-    const chin = new THREE.Mesh(chinGeo, this._mat(skin, { roughness: 0.7 }));
-    chin.position.set(0, -0.085, 0.1);
-    headGroup.add(chin);
-
     // Ears
     for (const side of [-1, 1]) {
       const earGeo = new THREE.SphereGeometry(0.022, 8, 8);
       earGeo.scale(0.5, 1, 0.8);
-      const ear = new THREE.Mesh(earGeo, this._mat(skin, { roughness: 0.7 }));
+      const ear = new THREE.Mesh(earGeo, skinMat);
       ear.position.set(side * 0.13, -0.01, 0.01);
       headGroup.add(ear);
     }
@@ -362,25 +404,21 @@ class Conductor3D {
 
   _buildArm(parent, side, skinColor, jacketColor) {
     // side: 1 = right (baton hand), -1 = left
-    const shoulderX = side * 0.22;
+    // Shoulder pivot sits just outside the torso edge and under the rounded
+    // shoulder cap, so the arm can hang straight down without clipping into
+    // the jacket.
+    const shoulderX = side * 0.28;
 
-    // Shoulder joint group — positioned outside and in front of torso
     const shoulderGroup = new THREE.Group();
-    shoulderGroup.position.set(shoulderX, 1.28, 0.12);
+    shoulderGroup.position.set(shoulderX, 1.31, 0.08);
     parent.add(shoulderGroup);
-
-    // Shoulder pad
-    const padGeo = new THREE.SphereGeometry(0.05, 12, 10);
-    padGeo.scale(1.1, 0.8, 0.9);
-    const pad = new THREE.Mesh(padGeo, this._mat(jacketColor, { roughness: 0.85 }));
-    shoulderGroup.add(pad);
 
     // Upper arm group (rotates at shoulder)
     const upperArmGroup = new THREE.Group();
     shoulderGroup.add(upperArmGroup);
 
-    // Upper arm (jacket sleeve) — slimmer to avoid clipping
-    const uaGeo = new THREE.CylinderGeometry(0.035, 0.032, 0.28, 10);
+    // Upper arm (jacket sleeve) — a bit thicker to match the broader frame
+    const uaGeo = new THREE.CylinderGeometry(0.045, 0.038, 0.28, 12);
     const ua = new THREE.Mesh(uaGeo, this._mat(jacketColor, { roughness: 0.85 }));
     ua.position.y = -0.14;
     ua.castShadow = true;
@@ -391,15 +429,15 @@ class Conductor3D {
     elbowGroup.position.set(0, -0.28, 0);
     upperArmGroup.add(elbowGroup);
 
-    // Forearm (jacket sleeve)
-    const faGeo = new THREE.CylinderGeometry(0.030, 0.027, 0.26, 10);
+    // Forearm (jacket sleeve) — bumped to match the thicker upper arm
+    const faGeo = new THREE.CylinderGeometry(0.036, 0.031, 0.26, 12);
     const fa = new THREE.Mesh(faGeo, this._mat(jacketColor, { roughness: 0.85 }));
     fa.position.y = -0.13;
     fa.castShadow = true;
     elbowGroup.add(fa);
 
     // Shirt cuff
-    const cuffGeo = new THREE.CylinderGeometry(0.034, 0.035, 0.025, 10);
+    const cuffGeo = new THREE.CylinderGeometry(0.034, 0.036, 0.025, 12);
     const cuff = new THREE.Mesh(cuffGeo, this._mat(0xf0f0f0, { roughness: 0.4 }));
     cuff.position.y = -0.25;
     elbowGroup.add(cuff);
@@ -412,14 +450,14 @@ class Conductor3D {
     // Hand
     const handGeo = new THREE.SphereGeometry(0.028, 10, 8);
     handGeo.scale(0.9, 1.2, 0.7);
-    const hand = new THREE.Mesh(handGeo, this._mat(skinColor, { roughness: 0.6 }));
+    const hand = new THREE.Mesh(handGeo, this._skinMat);
     hand.position.y = -0.02;
     wristGroup.add(hand);
 
     // Fingers (simplified — 4 short cylinders)
     for (let f = 0; f < 4; f++) {
       const fGeo = new THREE.CylinderGeometry(0.006, 0.005, 0.035, 6);
-      const finger = new THREE.Mesh(fGeo, this._mat(skinColor, { roughness: 0.6 }));
+      const finger = new THREE.Mesh(fGeo, this._skinMat);
       const spread = (f - 1.5) * 0.014;
       finger.position.set(spread, -0.05, 0.005);
       finger.rotation.x = 0.2;
@@ -427,7 +465,7 @@ class Conductor3D {
     }
     // Thumb
     const thumbGeo = new THREE.CylinderGeometry(0.007, 0.006, 0.03, 6);
-    const thumb = new THREE.Mesh(thumbGeo, this._mat(skinColor, { roughness: 0.6 }));
+    const thumb = new THREE.Mesh(thumbGeo, this._skinMat);
     thumb.position.set(side * 0.02, -0.03, 0.015);
     thumb.rotation.z = side * 0.6;
     thumb.rotation.x = 0.3;
@@ -586,7 +624,9 @@ class Conductor3D {
   _solveArmIK(side, targetX, targetY, targetZ) {
     const upperLen = 0.28;
     const lowerLen = 0.27;
-    const shoulderPos = new THREE.Vector3(side * 0.22, 1.28, 0.12);
+    // Must match _buildArm's shoulderGroup.position so the IK math and the
+    // rendered bones share an origin.
+    const shoulderPos = new THREE.Vector3(side * 0.28, 1.31, 0.08);
     const targetPos = new THREE.Vector3(targetX, targetY, targetZ);
 
     const toTarget = new THREE.Vector3().subVectors(targetPos, shoulderPos);
@@ -666,11 +706,13 @@ class Conductor3D {
     this._updateBlink();
     this._updateGaze(t);
 
-    // Right arm (baton hand) — follows conducting pattern
-    this._poseArm(1, pos[0] + 0.22, pos[1] + 1.28, pos[2] + 0.12);
+    // Right arm (baton hand) — follows conducting pattern. Offsets track
+    // the shoulder pivot so each hand still hangs under its own shoulder
+    // when pos = (0, *, 0).
+    this._poseArm(1, pos[0] + 0.28, pos[1] + 1.31, pos[2] + 0.08);
 
     // Left arm — mirrored across the body so both hands move at the same height.
-    this._poseArm(-1, -pos[0] - 0.22, pos[1] + 1.28, pos[2] + 0.12);
+    this._poseArm(-1, -pos[0] - 0.28, pos[1] + 1.31, pos[2] + 0.08);
 
     // Baton drag — tip trails the hand during acceleration, overshoots at the ictus.
     this._updateBatonDrag(pos);
