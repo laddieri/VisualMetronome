@@ -4397,8 +4397,8 @@ function crRenderNotation() {
     var x = xStart + b * beatWidth;
     var pat = customRhythmPattern[b];
 
-    // Beat number below
-    svg += '<text x="' + (x + beatWidth / 2 - 4) + '" y="' + (staffY + 40) + '" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    // Beat number below — aligned under the first note/rest of the beat
+    svg += '<text x="' + crGetBallLandingX(pat, x, beatWidth) + '" y="' + (staffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Draw barline before beat 1 equivalent
     if (b === 0) {
@@ -4674,8 +4674,8 @@ function crRenderNotationDisplay() {
 
     svg += crDrawBeatPattern(pat, x, baseStaffY, baseBeatWidth);
 
-    // Beat number below staff
-    svg += '<text x="' + (x + baseBeatWidth / 2 - 4) + '" y="' + (baseStaffY + 40) + '" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    // Beat number below staff — aligned under the first note/rest of the beat
+    svg += '<text x="' + crGetBallLandingX(pat, x, baseBeatWidth) + '" y="' + (baseStaffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Accent marks
     if (customRhythmAccents[b] && customRhythmAccents[b].length > 0) {
