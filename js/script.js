@@ -333,6 +333,9 @@ function enterFullscreen() {
     fullscreenWrapper.appendChild(canvas);
   }
 
+  // Sync notation display so score mode works in fullscreen
+  _syncNotationDisplay();
+
   // Move entire play button group (both play buttons + stop button) to fullscreen controls
   if (playButtonGroup && togglePlaceholder) {
     mainToggleParent = playButtonGroup.parentElement;
@@ -374,6 +377,9 @@ function exitFullscreen() {
   if (canvas && normalWrapper) {
     normalWrapper.appendChild(canvas);
   }
+
+  // Sync notation display back to normal mode
+  _syncNotationDisplay();
 
   // Move play button group back to main controls in its original position
   if (playButtonGroup && mainToggleParent) {
@@ -2635,11 +2641,20 @@ function _sync3DConductor() {
 
 // ── Notation Score Display lifecycle ─────────────────────────────────────────
 function _syncNotationDisplay() {
+  var isScore = (animalType === 'score');
+
+  // Normal-mode elements (outside the fullscreen overlay)
   var wrapper = document.getElementById('notation-display-wrapper');
   var canvasWrapper = document.querySelector('.canvas-wrapper');
-  var isScore = (animalType === 'score');
-  if (wrapper) wrapper.style.display = isScore ? 'block' : 'none';
-  if (canvasWrapper) canvasWrapper.style.display = isScore ? 'none' : '';
+  if (wrapper) wrapper.style.display = (!isFullscreen && isScore) ? 'block' : 'none';
+  if (canvasWrapper) canvasWrapper.style.display = (!isFullscreen && isScore) ? 'none' : '';
+
+  // Fullscreen-mode elements (inside the fullscreen overlay)
+  var fsWrapper = document.getElementById('notation-display-fs-wrapper');
+  var fsCanvas = document.querySelector('.fullscreen-canvas-wrapper canvas');
+  if (fsWrapper) fsWrapper.style.display = (isFullscreen && isScore) ? 'block' : 'none';
+  if (fsCanvas) fsCanvas.style.display = (isFullscreen && isScore) ? 'none' : '';
+
   if (isScore) crRenderNotationDisplay();
 }
 
@@ -4431,7 +4446,8 @@ function crGetBallLandingX(pat, x, w) {
 // Renders the notation as a full-screen SVG inside #notation-display-wrapper and
 // pre-computes the display-space ball landing positions for each beat.
 function crRenderNotationDisplay() {
-  var wrapper = document.getElementById('notation-display-wrapper');
+  var targetId = isFullscreen ? 'notation-display-fs-wrapper' : 'notation-display-wrapper';
+  var wrapper = document.getElementById(targetId);
   if (!wrapper) return;
 
   var beatCount = customRhythmPattern.length;
@@ -4483,7 +4499,7 @@ function crRenderNotationDisplay() {
   }
 
   // ── Build SVG ──────────────────────────────────────────────────────────────
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" style="width:100%;height:auto;display:block">';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">';
 
   // Canvas background matching p5 grey
   svg += '<rect width="640" height="480" fill="#696969"/>';
