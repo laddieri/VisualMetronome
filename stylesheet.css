@@ -104,6 +104,17 @@ main {
   margin: 0;
 }
 
+/* Score-mode ball / shoe controls */
+.notation-ball-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.notation-ball-controls .control-dropdown {
+  flex: 1;
+}
+
 /* Notation score display */
 .notation-display-wrapper {
   width: 100%;
@@ -2496,8 +2507,7 @@ footer p {
 
 /* ── Two-Measure Pattern modal ─────────────────────────────────────────── */
 
-#two-measure-btn.ct-active,
-#tmp-6834-preset-btn.ct-active {
+#two-measure-btn.ct-active {
   background: var(--vm-warning-bg);
   border-color: var(--vm-warning);
   box-shadow: 0 0 0 2px rgba(214, 158, 46, 0.3);

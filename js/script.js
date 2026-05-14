@@ -12,6 +12,9 @@ var circleColor = '#000000'; // Color for circle animation
 var notationBeatXPositions = []; // display-space X where ball lands for each beat
 var notationBallLandingY = 0;    // display-space Y where ball lands (just above note heads)
 var notationScale = 1;           // scale factor applied to the notation content group
+var notationBallColor = '#ff6600'; // fill colour for the ball / shoe
+var notationBallStyle = 'ball';    // 'ball' or 'shoe'
+var notationBallRadius = 12;       // pixel radius saved from last render (used for shoe sizing)
 
 // Selfie capture variables
 var selfieImage = null;
@@ -2570,6 +2573,10 @@ function updateColorPickerVisibility() {
   if (directionGroup) {
     directionGroup.style.display = (isConductor || animalType === 'webgpu' || animalType === 'score') ? 'none' : '';
   }
+  const notationBallGroup = document.getElementById('notation-ball-group');
+  if (notationBallGroup) {
+    notationBallGroup.style.display = (animalType === 'score') ? '' : 'none';
+  }
 }
 
 // Function to create animals based on selected type
@@ -2856,6 +2863,18 @@ function setup() {
     _syncWebGPUCanvas();
     _syncNotationDisplay();
     sendStateUpdate();
+  });
+
+  // Score mode: ball colour picker
+  document.getElementById('notation-ball-color').addEventListener('input', function(e) {
+    notationBallColor = e.target.value;
+    if (animalType === 'score') crRenderNotationDisplay();
+  });
+
+  // Score mode: ball / shoe style selector
+  document.getElementById('notation-ball-style').addEventListener('change', function(e) {
+    notationBallStyle = e.target.value;
+    if (animalType === 'score') crRenderNotationDisplay();
   });
 
   // Conductor selfie button — opens camera to capture a face for the conductor
@@ -4443,6 +4462,27 @@ function crGetBallLandingX(pat, x, w) {
   }
 }
 
+// Returns SVG markup for a sneaker silhouette (side view, toe facing right).
+// Local coordinate system: 60 wide × 34 tall; sole bottom-centre at (30, 34).
+// tx, ty, s: the translate/scale transform that places and sizes the shoe.
+function crShoeGroupSVG(id, color, tx, ty, s) {
+  var dark  = 'rgba(0,0,0,0.22)';
+  var light = 'rgba(255,255,255,0.28)';
+  var g = '<g id="' + id + '" transform="translate(' + tx + ',' + ty + ') scale(' + s + ')" filter="url(#nd-ball-shadow)">';
+  // Main upper silhouette
+  g += '<path d="M 4,24 C 2,14 10,2 22,2 L 46,2 C 56,2 60,12 60,22 L 60,27 Q 60,34 54,34 L 7,34 Q 2,34 2,28 Z" fill="' + color + '" stroke="rgba(0,0,0,0.18)" stroke-width="1"/>';
+  // Sole band (slightly darker strip at the bottom)
+  g += '<path d="M 2,29 Q 2,34 7,34 L 54,34 Q 60,34 60,29 L 58,29 Q 56,33 52,33 L 8,33 Q 3,33 3,29 Z" fill="' + dark + '"/>';
+  // Tongue
+  g += '<path d="M 33,2 L 37,2 L 37,20 L 33,20 Z" fill="' + light + '"/>';
+  // Laces
+  g += '<line x1="25" y1="8" x2="35" y2="8" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
+  g += '<line x1="25" y1="12" x2="35" y2="12" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
+  g += '<line x1="25" y1="16" x2="35" y2="16" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
+  g += '</g>';
+  return g;
+}
+
 // Renders the notation as a full-screen SVG inside #notation-display-wrapper and
 // pre-computes the display-space ball landing positions for each beat.
 function crRenderNotationDisplay() {
@@ -4510,12 +4550,13 @@ function crRenderNotationDisplay() {
   // Canvas background matching p5 grey
   svg += '<rect width="640" height="480" fill="#696969"/>';
 
-  // Glow filter for the bouncing ball
+  // Drop-shadow filter — works for both ball and shoe
   svg += '<defs>';
-  svg += '<filter id="nd-ball-glow" x="-80%" y="-80%" width="260%" height="260%">';
-  svg += '<feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>';
-  svg += '<feFlood flood-color="#ff4400" flood-opacity="0.45" result="color"/>';
-  svg += '<feComposite in="color" in2="blur" operator="in" result="shadow"/>';
+  svg += '<filter id="nd-ball-shadow" x="-40%" y="-40%" width="180%" height="180%">';
+  svg += '<feGaussianBlur in="SourceAlpha" stdDeviation="3" result="blur"/>';
+  svg += '<feOffset dx="0" dy="2" result="offset"/>';
+  svg += '<feFlood flood-color="rgba(0,0,0,0.38)" result="color"/>';
+  svg += '<feComposite in="color" in2="offset" operator="in" result="shadow"/>';
   svg += '<feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge>';
   svg += '</filter>';
   svg += '</defs>';
@@ -4578,9 +4619,21 @@ function crRenderNotationDisplay() {
 
   svg += '</g>'; // end notation group
 
-  // Bouncing ball — drawn in display coordinates so it stays outside the scaled group
+  // Save radius for use in crUpdateNotationBall
+  notationBallRadius = ballRadius;
+
+  // Bouncing ball / shoe — drawn in display coordinates, outside the scaled notation group
   var initX = notationBeatXPositions[0] !== undefined ? notationBeatXPositions[0] : dispW / 2;
-  svg += '<circle id="notation-ball" cx="' + initX.toFixed(1) + '" cy="' + notationBallLandingY.toFixed(1) + '" r="' + ballRadius.toFixed(1) + '" fill="#ff6600" filter="url(#nd-ball-glow)" opacity="0.93"/>';
+  if (notationBallStyle === 'shoe') {
+    var shoeS  = ballRadius / 15;
+    var shoeTx = (initX - 30 * shoeS).toFixed(1);
+    var shoeTy = (notationBallLandingY + ballRadius - 34 * shoeS).toFixed(1);
+    svg += crShoeGroupSVG('notation-ball', notationBallColor, shoeTx, shoeTy, shoeS.toFixed(3));
+  } else {
+    svg += '<g id="notation-ball" transform="translate(' + initX.toFixed(1) + ',' + notationBallLandingY.toFixed(1) + ')" filter="url(#nd-ball-shadow)" opacity="0.93">';
+    svg += '<circle cx="0" cy="0" r="' + ballRadius.toFixed(1) + '" fill="' + notationBallColor + '"/>';
+    svg += '</g>';
+  }
 
   svg += '</svg>';
   wrapper.innerHTML = svg;
@@ -4613,8 +4666,14 @@ function crUpdateNotationBall() {
     ballY = notationBallLandingY - 130 * 4 * progress * (1 - progress);
   }
 
-  ball.setAttribute('cx', ballX.toFixed(1));
-  ball.setAttribute('cy', ballY.toFixed(1));
+  if (notationBallStyle === 'shoe') {
+    var s  = notationBallRadius / 15;
+    var tx = ballX - 30 * s;
+    var ty = (ballY + notationBallRadius) - 34 * s;
+    ball.setAttribute('transform', 'translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')');
+  } else {
+    ball.setAttribute('transform', 'translate(' + ballX.toFixed(1) + ',' + ballY.toFixed(1) + ')');
+  }
 }
 
 function crDrawBeatPattern(pat, x, y, w) {
@@ -5001,11 +5060,6 @@ function initTwoMeasurePatternListeners() {
     tmpEnabled.addEventListener('change', function(e) {
       twoMeasurePatternEnabled = e.target.checked;
       tmpBtn.classList.toggle('ct-active', twoMeasurePatternEnabled);
-      // If TMP is turned off, also clear the preset button active state
-      if (!twoMeasurePatternEnabled) {
-        var presetBtn = document.getElementById('tmp-6834-preset-btn');
-        if (presetBtn) presetBtn.classList.remove('ct-active');
-      }
       if (twoMeasurePatternEnabled && Tone.Transport.state === 'started' && !songModeEnabled) {
         twoMeasureCurrentMeasure = 0;
         twoMeasurePattern[0].bpm = cachedBPM;
@@ -5056,53 +5110,6 @@ if (document.readyState === 'loading') {
 } else {
   initTwoMeasurePatternListeners();
 }
-// ──────────────────────────────────────────────────────────────────────────
-
-// ── 6/8 ↔ 3/4 preset button ───────────────────────────────────────────────
-// Loads a two-measure pattern where the eighth note stays constant:
-//   Measure 1: 2 beats, subdivision 3  (6/8 — dotted-quarter beat)
-//   Measure 2: 3 beats, subdivision 2  (3/4 — quarter beat)
-// Sets tempo to ♩=110 and engages TMP with "keep subdivision speed" mode.
-(function() {
-  var presetBtn = document.getElementById('tmp-6834-preset-btn');
-  var tmpBtn    = document.getElementById('two-measure-btn');
-  if (!presetBtn) return;
-
-  presetBtn.addEventListener('click', function() {
-    // Toggle: if already active, disable TMP and clear both buttons
-    if (presetBtn.classList.contains('ct-active')) {
-      twoMeasurePatternEnabled = false;
-      presetBtn.classList.remove('ct-active');
-      if (tmpBtn) tmpBtn.classList.remove('ct-active');
-      sendStateUpdate();
-      return;
-    }
-
-    // Configure the two-measure pattern
-    twoMeasurePattern[0].beatsPerMeasure = 2;
-    twoMeasurePattern[0].subdivision     = '3';
-    twoMeasurePattern[1].beatsPerMeasure = 3;
-    twoMeasurePattern[1].subdivision     = '2';
-    tmpLinkMode = 'subdivision';
-
-    // Enable TMP, then set tempo — applyBPM will sync M1/M2 BPMs via tmpCalcM2BPM
-    twoMeasurePatternEnabled = true;
-    applyBPM(110);
-
-    // Reflect active state on both the preset button and the TMP button
-    presetBtn.classList.add('ct-active');
-    if (tmpBtn) tmpBtn.classList.add('ct-active');
-
-    // If already playing, restart from measure 1 with the new settings
-    if (Tone.Transport.state === 'started' && !songModeEnabled) {
-      twoMeasureCurrentMeasure = 0;
-      beatsPerMeasure = twoMeasurePattern[0].beatsPerMeasure;
-      subdivision     = twoMeasurePattern[0].subdivision;
-    }
-
-    sendStateUpdate();
-  });
-})();
 // ──────────────────────────────────────────────────────────────────────────
 
 // ── Reset settings button ──────────────────────────────────────────────────
@@ -5161,10 +5168,8 @@ document.getElementById('reset-settings-btn').addEventListener('click', function
   tmpLinkMode = 'beat';
   twoMeasureCurrentMeasure = 0;
   var tmpBtn    = document.getElementById('two-measure-btn');
-  var presetBtn = document.getElementById('tmp-6834-preset-btn');
   var tmpEnabledCb = document.getElementById('tmp-enabled');
   if (tmpBtn)    tmpBtn.classList.remove('ct-active');
-  if (presetBtn) presetBtn.classList.remove('ct-active');
   if (tmpEnabledCb) tmpEnabledCb.checked = false;
 
   // Custom rhythm → off
