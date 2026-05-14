@@ -4606,8 +4606,8 @@ function crGetBallLandingX(pat, x, w) {
     case 'dq':   return x + w / 2;
     case 'dh':   return x + w / 2;
     case '_':    return x + w / 2;
-    case '_e':   return x + w * 0.5;
-    case '_r':   return x + w / 2;
+    case '_e':   return x + w * 0.2;
+    case '_r':   return x + w * 0.2;
     default:     return x + w / 2;
   }
 }
