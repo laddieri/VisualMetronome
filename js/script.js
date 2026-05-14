@@ -4180,6 +4180,11 @@ function crGetSubBeats(patternValue) {
   }
 }
 
+function _syncSubdivisionVisibility() {
+  var group = document.getElementById('subdivision-group');
+  if (group) group.style.display = customRhythmEnabled ? 'none' : '';
+}
+
 function crCancelCustomRhythm() {
   customRhythmEnabled = false;
   customRhythmPattern = [];
@@ -4190,6 +4195,7 @@ function crCancelCustomRhythm() {
   var btn = document.getElementById('custom-rhythm-btn');
   if (btn) btn.classList.remove('ct-active');
   crUpdateScoreOptionVisibility();
+  _syncSubdivisionVisibility();
 }
 
 // Build default pattern (all quarter notes) for current beatsPerMeasure
@@ -4484,6 +4490,91 @@ function crShoeGroupSVG(id, color, tx, ty, s) {
   return g;
 }
 
+// Returns the SVG transform string for the notation ball/shape at display position (ballX, ballY).
+// ballY is the centre of the arc; radius is notationBallRadius.
+// For the shoe, the anchor is the sole bottom-centre, so the shape sits ON the ground.
+// For all other shapes the anchor is the visual centre (matching the ball's centre).
+function crNotationBallTransform(style, ballX, ballY, radius) {
+  var s, tx, ty;
+  switch (style) {
+    case 'shoe':
+      s = radius / 20;
+      tx = ballX - 38 * s;
+      ty = (ballY + radius) - 44 * s;
+      return 'translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    case 'heart':  // 50×46 viewbox, visual centre at (25,22)
+      s = radius / 22;
+      return 'translate(' + (ballX - 25*s).toFixed(1) + ',' + (ballY - 22*s).toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    case 'star':   // 50×44 viewbox, centre at (25,22)
+      s = radius / 20;
+      return 'translate(' + (ballX - 25*s).toFixed(1) + ',' + (ballY - 22*s).toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    case 'face':   // circle r=22, centre at (25,25)
+      s = radius / 22;
+      return 'translate(' + (ballX - 25*s).toFixed(1) + ',' + (ballY - 25*s).toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    case 'pig':    // main circle r=20, centre at (25,22)
+      s = radius / 20;
+      return 'translate(' + (ballX - 25*s).toFixed(1) + ',' + (ballY - 22*s).toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    case 'note':   // notehead+stem, centre at (12,24)
+      s = radius / 20;
+      return 'translate(' + (ballX - 12*s).toFixed(1) + ',' + (ballY - 24*s).toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    default: // ball — translate places cx/cy at (ballX,ballY)
+      return 'translate(' + ballX.toFixed(1) + ',' + ballY.toFixed(1) + ')';
+  }
+}
+
+// Returns the complete SVG <g> markup for the notation ball/shape at (ballX, ballY).
+function crNotationBallSVG(id, color, style, ballX, ballY, radius) {
+  var f = ' filter="url(#nd-ball-shadow)"';
+  var t = crNotationBallTransform(style, ballX, ballY, radius);
+  var g;
+  switch (style) {
+    case 'shoe': {
+      var s = radius / 20;
+      var stx = (ballX - 38*s).toFixed(1);
+      var sty = ((ballY + radius) - 44*s).toFixed(1);
+      return crShoeGroupSVG(id, color, stx, sty, s.toFixed(3));
+    }
+    case 'heart':
+      g  = '<g id="' + id + '" transform="' + t + '"' + f + '>';
+      g += '<path d="M 25,46 C 20,40 2,30 2,18 C 2,8 12,4 25,14 C 38,4 48,8 48,18 C 48,30 30,40 25,46 Z"';
+      g += ' fill="' + color + '" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>';
+      g += '<path d="M 25,42 C 22,37 6,28 6,18 C 6,11 14,8 25,17" fill="rgba(255,255,255,0.22)"/>';
+      return g + '</g>';
+    case 'star':
+      g  = '<g id="' + id + '" transform="' + t + '"' + f + '>';
+      g += '<path d="M 25,2 L 30,17 L 46,17 L 34,27 L 38,42 L 25,33 L 12,42 L 16,27 L 4,17 L 20,17 Z"';
+      g += ' fill="' + color + '" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>';
+      return g + '</g>';
+    case 'face':
+      g  = '<g id="' + id + '" transform="' + t + '"' + f + '>';
+      g += '<circle cx="25" cy="25" r="22" fill="' + color + '" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>';
+      g += '<circle cx="17" cy="20" r="3" fill="rgba(0,0,0,0.72)"/>';
+      g += '<circle cx="33" cy="20" r="3" fill="rgba(0,0,0,0.72)"/>';
+      g += '<path d="M 16,31 Q 25,40 34,31" stroke="rgba(0,0,0,0.72)" stroke-width="2.5" fill="none" stroke-linecap="round"/>';
+      return g + '</g>';
+    case 'pig':
+      g  = '<g id="' + id + '" transform="' + t + '"' + f + '>';
+      g += '<circle cx="8"  cy="9"  r="8" fill="#f9a8c9"/>'; // ears (behind face)
+      g += '<circle cx="42" cy="9"  r="8" fill="#f9a8c9"/>';
+      g += '<circle cx="8"  cy="8"  r="5" fill="#f06292"/>';
+      g += '<circle cx="42" cy="8"  r="5" fill="#f06292"/>';
+      g += '<circle cx="25" cy="22" r="20" fill="#f9a8c9" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>'; // face
+      g += '<circle cx="18" cy="18" r="3"  fill="#333"/>'; // eyes
+      g += '<circle cx="32" cy="18" r="3"  fill="#333"/>';
+      g += '<ellipse cx="25" cy="29" rx="9" ry="7" fill="#f06292"/>'; // snout
+      g += '<circle cx="21" cy="29" r="2.5" fill="#c2185b"/>'; // nostrils
+      g += '<circle cx="29" cy="29" r="2.5" fill="#c2185b"/>';
+      return g + '</g>';
+    case 'note':
+      g  = '<g id="' + id + '" transform="' + t + '"' + f + '>';
+      g += '<line x1="20" y1="6" x2="20" y2="40" stroke="' + color + '" stroke-width="3" stroke-linecap="round"/>';
+      g += '<ellipse cx="12" cy="40" rx="9" ry="7" transform="rotate(-20 12 40)" fill="' + color + '"/>';
+      return g + '</g>';
+    default: // ball
+      return '<g id="' + id + '" transform="' + t + '"' + f + ' opacity="0.93"><circle cx="0" cy="0" r="' + radius.toFixed(1) + '" fill="' + color + '"/></g>';
+  }
+}
+
 // Renders the notation as a full-screen SVG inside #notation-display-wrapper and
 // pre-computes the display-space ball landing positions for each beat.
 function crRenderNotationDisplay() {
@@ -4623,18 +4714,9 @@ function crRenderNotationDisplay() {
   // Save radius for use in crUpdateNotationBall
   notationBallRadius = ballRadius;
 
-  // Bouncing ball / shoe — drawn in display coordinates, outside the scaled notation group
+  // Bouncing ball / shape — drawn in display coordinates, outside the scaled notation group
   var initX = notationBeatXPositions[0] !== undefined ? notationBeatXPositions[0] : dispW / 2;
-  if (notationBallStyle === 'shoe') {
-    var shoeS  = ballRadius / 20;
-    var shoeTx = (initX - 38 * shoeS).toFixed(1);
-    var shoeTy = (notationBallLandingY + ballRadius - 44 * shoeS).toFixed(1);
-    svg += crShoeGroupSVG('notation-ball', notationBallColor, shoeTx, shoeTy, shoeS.toFixed(3));
-  } else {
-    svg += '<g id="notation-ball" transform="translate(' + initX.toFixed(1) + ',' + notationBallLandingY.toFixed(1) + ')" filter="url(#nd-ball-shadow)" opacity="0.93">';
-    svg += '<circle cx="0" cy="0" r="' + ballRadius.toFixed(1) + '" fill="' + notationBallColor + '"/>';
-    svg += '</g>';
-  }
+  svg += crNotationBallSVG('notation-ball', notationBallColor, notationBallStyle, initX, notationBallLandingY, ballRadius);
 
   svg += '</svg>';
   wrapper.innerHTML = svg;
@@ -4667,14 +4749,7 @@ function crUpdateNotationBall() {
     ballY = notationBallLandingY - 130 * 4 * progress * (1 - progress);
   }
 
-  if (notationBallStyle === 'shoe') {
-    var s  = notationBallRadius / 20;
-    var tx = ballX - 38 * s;
-    var ty = (ballY + notationBallRadius) - 44 * s;
-    ball.setAttribute('transform', 'translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')');
-  } else {
-    ball.setAttribute('transform', 'translate(' + ballX.toFixed(1) + ',' + ballY.toFixed(1) + ')');
-  }
+  ball.setAttribute('transform', crNotationBallTransform(notationBallStyle, ballX, ballY, notationBallRadius));
 }
 
 function crDrawBeatPattern(pat, x, y, w) {
@@ -4994,6 +5069,7 @@ function initCustomRhythmListeners() {
         customRhythmPattern = crBuildDefaultPattern();
       }
       crUpdateScoreOptionVisibility();
+      _syncSubdivisionVisibility();
       if (customRhythmEnabled) {
         // Auto-switch to Score animation when custom rhythm is turned on
         animalType = 'score';
@@ -5009,6 +5085,8 @@ function initCustomRhythmListeners() {
       sendStateUpdate();
     });
   }
+  // Sync on initial load in case customRhythmEnabled was restored from state
+  _syncSubdivisionVisibility();
 }
 
 // Initialize custom rhythm listeners
