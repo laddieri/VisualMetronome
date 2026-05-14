@@ -4447,6 +4447,12 @@ function crGetBallLandingX(pat, x, w) {
 // pre-computes the display-space ball landing positions for each beat.
 function crRenderNotationDisplay() {
   var targetId = isFullscreen ? 'notation-display-fs-wrapper' : 'notation-display-wrapper';
+  var otherId  = isFullscreen ? 'notation-display-wrapper' : 'notation-display-fs-wrapper';
+  // Clear the inactive wrapper so there is never more than one #notation-ball in the DOM.
+  // getElementById returns the first match, which would be wrong if both wrappers held SVG.
+  var otherWrapper = document.getElementById(otherId);
+  if (otherWrapper) otherWrapper.innerHTML = '';
+
   var wrapper = document.getElementById(targetId);
   if (!wrapper) return;
 
