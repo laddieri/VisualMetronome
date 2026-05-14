@@ -124,9 +124,10 @@ main {
   border-radius: 12px;
   box-shadow: var(--vm-shadow-canvas);
   width: 100%;
-  max-width: 100%;
+  max-width: 640px;
   height: auto;
   display: block;
+  margin: 0 auto;
 }
 
 /* Inside the fullscreen overlay the wrapper fills the available area.
