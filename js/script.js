@@ -4152,17 +4152,107 @@ function applyRemoteCommand(msg) {
 
 // ── Custom Rhythm Editor ────────────────────────────────────────────────────
 
-// Available rhythm options per beat (quarter note = 1 beat)
+// Available rhythm options per beat. `span` = total beat-slots consumed (incl. this slot).
 var CR_OPTIONS = [
-  { value: 'q',    label: '♩ Quarter note',               subBeats: [1] },
-  { value: 'r',    label: '— Quarter rest',               subBeats: [] },
-  { value: 'ee',   label: '♫ Two eighths',                subBeats: [1, 0.5] },
-  { value: 'er',   label: '♪— Eighth + eighth rest',      subBeats: [1] },
-  { value: 're',   label: '—♪ Eighth rest + eighth',      subBeats: [0.5] },
-  { value: 'ssss', label: '♬♬ Four sixteenths',           subBeats: [1, 0.75, 0.5, 0.25] },
-  { value: 'sse',  label: '♬♪ Two sixteenths + eighth',   subBeats: [1, 0.75, 0.5] },
-  { value: 'ess',  label: '♪♬ Eighth + two sixteenths',   subBeats: [1, 0.5, 0.25] },
+  { value: 'q',    label: '♩  Quarter note',              span: 1, subBeats: [1] },
+  { value: 'r',    label: '—  Quarter rest',              span: 1, subBeats: [] },
+  { value: 'ee',   label: '♫  Two eighths',               span: 1, subBeats: [1, 0.5] },
+  { value: 'er',   label: '♪— Eighth + eighth rest',      span: 1, subBeats: [1] },
+  { value: 're',   label: '—♪ Eighth rest + eighth',      span: 1, subBeats: [0.5] },
+  { value: 'ssss', label: '♬♬ Four sixteenths',           span: 1, subBeats: [1, 0.75, 0.5, 0.25] },
+  { value: 'sse',  label: '♬♪ Two sixteenths + eighth',   span: 1, subBeats: [1, 0.75, 0.5] },
+  { value: 'ess',  label: '♪♬ Eighth + two sixteenths',   span: 1, subBeats: [1, 0.5, 0.25] },
+  { value: 'h',    label: '𝅗𝅥  Half note',                span: 2, subBeats: [1] },
+  { value: 'dq',   label: '♩. Dotted quarter',            span: 2, subBeats: [1] },
+  { value: 'dh',   label: '𝅗𝅥. Dotted half note',        span: 3, subBeats: [1] },
 ];
+
+// Restricted options shown when a beat is the back-half continuation of a dotted quarter.
+var CR_BACK_HALF_OPTIONS = [
+  { value: '_e', label: '♪  Eighth note (back half)' },
+  { value: '_r', label: '—  Eighth rest  (back half)' },
+];
+
+// ── Multi-beat pattern helpers ───────────────────────────────────────────────
+
+// Number of additional beat slots consumed after the slot holding `pat`.
+function crContinuationsNeeded(pat) {
+  if (pat === 'h' || pat === 'dq') return 1;
+  if (pat === 'dh') return 2;
+  return 0;
+}
+
+// Returns the default pattern string for the i-th continuation slot (0-based).
+function crDefaultContinuation(originPat) {
+  return (originPat === 'dq') ? '_e' : '_';
+}
+
+// True when `pat` is a continuation marker (not a primary beat choice).
+function crIsContinuation(pat) {
+  return pat === '_' || pat === '_e' || pat === '_r';
+}
+
+// True when `pat` itself starts a multi-beat group.
+function crIsMultiBeat(pat) {
+  return pat === 'h' || pat === 'dq' || pat === 'dh';
+}
+
+// Set beat at beatIdx to newPat, cascading continuation setup.
+// Returns false and does nothing if there is not enough room.
+function crSetBeatPattern(beatIdx, newPat) {
+  var n = customRhythmPattern.length;
+  var needed = crContinuationsNeeded(newPat);
+  if (beatIdx + needed >= n) return false; // not enough room
+
+  // Release old continuations owned by this slot
+  var oldNeeded = crContinuationsNeeded(customRhythmPattern[beatIdx]);
+  for (var i = 1; i <= oldNeeded; i++) {
+    var oi = beatIdx + i;
+    if (oi < n && crIsContinuation(customRhythmPattern[oi])) {
+      customRhythmPattern[oi] = 'q';
+      customRhythmAccents[oi] = [];
+      customRhythmTies[oi]    = false;
+    }
+  }
+
+  customRhythmPattern[beatIdx] = newPat;
+  customRhythmAccents[beatIdx] = [];
+
+  // Set new continuations
+  for (var j = 1; j <= needed; j++) {
+    customRhythmPattern[beatIdx + j] = crDefaultContinuation(newPat);
+    customRhythmAccents[beatIdx + j] = [];
+    customRhythmTies[beatIdx + j]    = false;
+  }
+  return true;
+}
+
+// Fix any multi-beat patterns that lost their continuation slots (e.g. after resize),
+// and reset orphaned continuation markers to quarter notes.
+function crValidatePattern() {
+  var n = customRhythmPattern.length;
+  // Pass 1 — ensure multi-beat patterns have room
+  for (var i = 0; i < n; i++) {
+    var needed = crContinuationsNeeded(customRhythmPattern[i]);
+    if (needed > 0 && i + needed >= n) {
+      customRhythmPattern[i] = 'q';
+    }
+  }
+  // Pass 2 — mark legitimately owned slots
+  var owned = {};
+  for (var i = 0; i < n; i++) {
+    var m = crContinuationsNeeded(customRhythmPattern[i]);
+    for (var j = 1; j <= m; j++) {
+      if (i + j < n) owned[i + j] = true;
+    }
+  }
+  // Pass 3 — reset orphaned continuations
+  for (var i = 0; i < n; i++) {
+    if (crIsContinuation(customRhythmPattern[i]) && !owned[i]) {
+      customRhythmPattern[i] = 'q';
+    }
+  }
+}
 
 // Map option value to sub-beat positions within the beat (as fractions of beat duration).
 // Each entry is {offset: 0-1, velocity: 0-1} where offset is position within beat.
@@ -4176,6 +4266,12 @@ function crGetSubBeats(patternValue) {
     case 'ssss': return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.5}, {offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
     case 'sse':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.5}, {offset: 0.5, vel: 0.7}];
     case 'ess':  return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
+    case 'h':    return [{offset: 0, vel: 1.0}];
+    case 'dq':   return [{offset: 0, vel: 1.0}];
+    case 'dh':   return [{offset: 0, vel: 1.0}];
+    case '_':    return [];
+    case '_e':   return [{offset: 0.5, vel: 0.7}]; // back-half eighth note
+    case '_r':   return [];
     default:     return [{offset: 0, vel: 1.0}];
   }
 }
@@ -4225,13 +4321,15 @@ function crRenderBeatSelectors() {
   if (!container) return;
   container.innerHTML = '';
 
-  // Ensure pattern length matches beatsPerMeasure
+  // Sync pattern length to beatsPerMeasure
   while (customRhythmPattern.length < beatsPerMeasure) customRhythmPattern.push('q');
   if (customRhythmPattern.length > beatsPerMeasure) customRhythmPattern.length = beatsPerMeasure;
   crSyncTiesAndAccents();
+  crValidatePattern(); // fix multi-beat patterns that lost their continuations after resize
 
   for (var b = 0; b < beatsPerMeasure; b++) {
     (function(beatIdx) {
+      var pat = customRhythmPattern[beatIdx];
       var group = document.createElement('div');
       group.className = 'cr-beat-group';
 
@@ -4240,37 +4338,70 @@ function crRenderBeatSelectors() {
       label.textContent = 'Beat ' + (beatIdx + 1);
       group.appendChild(label);
 
-      // Rhythm pattern dropdown
+      // ── Silent full-beat continuation (_) — locked row ───────────────────
+      if (pat === '_') {
+        group.classList.add('cr-beat-continuation');
+        var held = document.createElement('div');
+        held.className = 'cr-beat-held-label';
+        held.textContent = '↳ held';
+        group.appendChild(held);
+        container.appendChild(group);
+        return;
+      }
+
+      var isPartial = (pat === '_e' || pat === '_r');
+
+      // ── Dropdown ──────────────────────────────────────────────────────────
       var select = document.createElement('select');
       select.className = 'cr-beat-select';
       select.dataset.beat = beatIdx;
 
-      for (var o = 0; o < CR_OPTIONS.length; o++) {
-        var opt = document.createElement('option');
-        opt.value = CR_OPTIONS[o].value;
-        opt.textContent = CR_OPTIONS[o].label;
-        if (customRhythmPattern[beatIdx] === CR_OPTIONS[o].value) opt.selected = true;
-        select.appendChild(opt);
+      if (isPartial) {
+        // Restricted: only back-half eighth note / rest
+        for (var o = 0; o < CR_BACK_HALF_OPTIONS.length; o++) {
+          var opt = document.createElement('option');
+          opt.value = CR_BACK_HALF_OPTIONS[o].value;
+          opt.textContent = CR_BACK_HALF_OPTIONS[o].label;
+          if (pat === CR_BACK_HALF_OPTIONS[o].value) opt.selected = true;
+          select.appendChild(opt);
+        }
+      } else {
+        // Full options list; disable multi-beat options that won't fit
+        for (var o = 0; o < CR_OPTIONS.length; o++) {
+          var opt = document.createElement('option');
+          var op  = CR_OPTIONS[o];
+          opt.value = op.value;
+          opt.textContent = op.label;
+          if (op.span > 1 && beatIdx + op.span - 1 >= beatsPerMeasure) opt.disabled = true;
+          if (pat === op.value) opt.selected = true;
+          select.appendChild(opt);
+        }
       }
 
       select.addEventListener('change', function(e) {
-        var bi = parseInt(e.target.dataset.beat);
-        customRhythmPattern[bi] = e.target.value;
-        // Reset accents for this beat since sub-note count may have changed
-        customRhythmAccents[bi] = [];
-        // If pattern is now a rest, remove any tie from/to this beat
-        if (e.target.value === 'r') {
-          customRhythmTies[bi] = false;
-          if (bi > 0) customRhythmTies[bi - 1] = false;
+        var bi    = parseInt(e.target.dataset.beat);
+        var newPat = e.target.value;
+        if (crIsContinuation(newPat)) {
+          // Simple toggle between _e and _r
+          customRhythmPattern[bi] = newPat;
+          customRhythmAccents[bi] = [];
+        } else {
+          if (!crSetBeatPattern(bi, newPat)) {
+            e.target.value = customRhythmPattern[bi]; // revert on failure
+            return;
+          }
+          if (newPat === 'r') {
+            customRhythmTies[bi] = false;
+            if (bi > 0) customRhythmTies[bi - 1] = false;
+          }
         }
-        crRenderBeatSelectors(); // re-render to update accent buttons
+        crRenderBeatSelectors();
         crRenderNotation();
       });
 
       group.appendChild(select);
 
-      // Accent buttons row — one per playable sub-note
-      var pat = customRhythmPattern[beatIdx];
+      // ── Accent buttons (one per playable sub-note) ────────────────────────
       var subBeats = crGetSubBeats(pat);
       if (subBeats.length > 0) {
         var accentRow = document.createElement('div');
@@ -4312,8 +4443,8 @@ function crRenderBeatSelectors() {
         group.appendChild(accentRow);
       }
 
-      // Tie toggle — tie this beat to the next (not for rests, not for last beat if it would be meaningless)
-      if (pat !== 'r') {
+      // ── Tie checkbox (not for multi-beat origins, continuations, or rests) ─
+      if (!isPartial && !crIsMultiBeat(pat) && pat !== 'r') {
         var tieRow = document.createElement('div');
         tieRow.className = 'cr-tie-row';
 
@@ -4354,6 +4485,12 @@ function crGetNoteXPositions(pat, x, w) {
     case 'ssss': return { first: x + w * 0.12, last: x + w * 0.87 };
     case 'sse':  return { first: x + w * 0.12, last: x + w * 0.75 };
     case 'ess':  return { first: x + w * 0.15, last: x + w * 0.85 };
+    case 'h':    return { first: x + w / 2, last: x + w / 2 };
+    case 'dq':   return { first: x + w / 2, last: x + w / 2 };
+    case 'dh':   return { first: x + w / 2, last: x + w / 2 };
+    case '_':    return null;
+    case '_e':   return { first: x + w * 0.5, last: x + w * 0.5 };
+    case '_r':   return null;
     default:     return { first: x + w / 2, last: x + w / 2 };
   }
 }
@@ -4369,6 +4506,12 @@ function crGetAllNoteXPositions(pat, x, w) {
     case 'ssss': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
     case 'sse':  return [x + w * 0.12, x + w * 0.37, x + w * 0.75];
     case 'ess':  return [x + w * 0.15, x + w * 0.55, x + w * 0.85];
+    case 'h':    return [x + w / 2];
+    case 'dq':   return [x + w / 2];
+    case 'dh':   return [x + w / 2];
+    case '_':    return [];
+    case '_e':   return [x + w * 0.5];
+    case '_r':   return [];
     default:     return [x + w / 2];
   }
 }
@@ -4419,8 +4562,8 @@ function crRenderNotation() {
       }
     }
 
-    // Draw tie arc to next beat
-    if (customRhythmTies[b]) {
+    // Draw tie arc to next beat (not for multi-beat origins or continuations)
+    if (customRhythmTies[b] && !crIsContinuation(pat) && !crIsMultiBeat(pat)) {
       var thisPositions = crGetNoteXPositions(pat, x, beatWidth);
       var nextBeatIdx = (b + 1) % beatCount;
       var nextX = xStart + nextBeatIdx * beatWidth;
@@ -4428,14 +4571,9 @@ function crRenderNotation() {
       var nextPositions = crGetNoteXPositions(nextPat, nextX, beatWidth);
 
       if (thisPositions && nextPositions) {
-        // Tie wraps around for last beat
-        var tieEndX;
-        if (b === beatCount - 1) {
-          // Wrap-around tie: draw to just past the final barline
-          tieEndX = xStart + beatCount * beatWidth - 3;
-        } else {
-          tieEndX = nextPositions.first;
-        }
+        var tieEndX = (b === beatCount - 1)
+          ? xStart + beatCount * beatWidth - 3
+          : nextPositions.first;
         svg += crTieArc(thisPositions.last, tieEndX, staffY);
       }
     }
@@ -4464,6 +4602,12 @@ function crGetBallLandingX(pat, x, w) {
     case 'ssss': return x + w * 0.12;
     case 'sse':  return x + w * 0.12;
     case 'ess':  return x + w * 0.15;
+    case 'h':    return x + w / 2;
+    case 'dq':   return x + w / 2;
+    case 'dh':   return x + w / 2;
+    case '_':    return x + w / 2;
+    case '_e':   return x + w * 0.5;
+    case '_r':   return x + w / 2;
     default:     return x + w / 2;
   }
 }
@@ -4688,8 +4832,8 @@ function crRenderNotationDisplay() {
       }
     }
 
-    // Tie arc
-    if (customRhythmTies[b]) {
+    // Tie arc (not for multi-beat origins or continuations)
+    if (customRhythmTies[b] && !crIsContinuation(pat) && !crIsMultiBeat(pat)) {
       var thisPos = crGetNoteXPositions(pat, x, baseBeatWidth);
       var nextBI  = (b + 1) % beatCount;
       var nextX   = baseXStart + nextBI * baseBeatWidth;
@@ -4825,6 +4969,36 @@ function crDrawBeatPattern(pat, x, y, w) {
       // Double beam only on last two (sixteenths)
       svg += crBeam(s3, s4, y - 21);
       break;
+
+    case 'h':  // Half note — open note head + stem (no beam)
+      svg += crNoteHead(x + w / 2, y, true);
+      svg += crStem(x + w / 2, y);
+      break;
+
+    case 'dq': // Dotted quarter — filled note head + stem + dot
+      svg += crNoteHead(x + w / 2, y, false);
+      svg += crStem(x + w / 2, y);
+      svg += crDot(x + w / 2 + 9, y);
+      break;
+
+    case 'dh': // Dotted half — open note head + stem + dot
+      svg += crNoteHead(x + w / 2, y, true);
+      svg += crStem(x + w / 2, y);
+      svg += crDot(x + w / 2 + 9, y);
+      break;
+
+    case '_':  // Silent full-beat continuation — nothing drawn
+      break;
+
+    case '_e': // Back-half eighth note (continuation of dotted quarter)
+      svg += crNoteHead(x + w * 0.5, y, false);
+      svg += crStem(x + w * 0.5, y);
+      svg += crFlag(x + w * 0.5, y);
+      break;
+
+    case '_r': // Back-half eighth rest (continuation of dotted quarter)
+      svg += crEighthRest(x + w * 0.5, y);
+      break;
   }
   return svg;
 }
@@ -4873,6 +5047,11 @@ function crEighthRest(cx, cy) {
   return '<circle cx="' + dotX + '" cy="' + dotY + '" r="2.2" fill="#333"/>' +
     '<path d="M' + (dotX + 0.5) + ',' + (dotY + 1) +
     ' c-1,3 -4,7 -5,12" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>';
+}
+
+function crDot(x, y) {
+  // Augmentation dot to the right of a note head (slightly above the staff line)
+  return '<circle cx="' + x.toFixed(1) + '" cy="' + (y - 2) + '" r="2.2" fill="#333"/>';
 }
 
 function crTieArc(x1, x2, staffY) {

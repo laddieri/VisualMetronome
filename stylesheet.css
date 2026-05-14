@@ -2236,6 +2236,20 @@ footer p {
   text-align: center;
 }
 
+/* Silent continuation beat (↳ held) */
+.cr-beat-group.cr-beat-continuation {
+  opacity: 0.45;
+  pointer-events: none;
+  min-width: 80px;
+}
+
+.cr-beat-held-label {
+  font-size: 0.85rem;
+  color: var(--vm-dark-fg-3);
+  font-style: italic;
+  padding: 8px 0;
+}
+
 .cr-beat-label {
   color: var(--vm-dark-fg-3);
   font-size: 0.75rem;
