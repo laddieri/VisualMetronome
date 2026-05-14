@@ -4795,7 +4795,7 @@ function crDrawBeatPattern(pat, x, y, w) {
         svg += crStem(px, y);
       }
       svg += crBeam(x + w * 0.12, x + w * 0.87, y - 25);
-      svg += crBeam(x + w * 0.12, x + w * 0.87, y - 29);
+      svg += crBeam(x + w * 0.12, x + w * 0.87, y - 21);
       break;
 
     case 'sse': // Two sixteenths + eighth
@@ -4809,7 +4809,7 @@ function crDrawBeatPattern(pat, x, y, w) {
       // Single beam across all three
       svg += crBeam(s1, e1, y - 25);
       // Double beam only on first two (sixteenths)
-      svg += crBeam(s1, s2, y - 29);
+      svg += crBeam(s1, s2, y - 21);
       break;
 
     case 'ess': // Eighth + two sixteenths
@@ -4823,7 +4823,7 @@ function crDrawBeatPattern(pat, x, y, w) {
       // Single beam across all three
       svg += crBeam(e0, s4, y - 25);
       // Double beam only on last two (sixteenths)
-      svg += crBeam(s3, s4, y - 29);
+      svg += crBeam(s3, s4, y - 21);
       break;
   }
   return svg;
