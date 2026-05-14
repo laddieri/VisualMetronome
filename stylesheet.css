@@ -1761,6 +1761,12 @@ footer p {
   box-shadow: 0 0 0 2px var(--vm-purple-ring);
 }
 
+#custom-rhythm-btn.ct-active {
+  background: #fff4e8;
+  border-color: #e07818;
+  box-shadow: 0 0 0 2px rgba(224, 120, 24, 0.35), 0 0 10px rgba(224, 120, 24, 0.45);
+}
+
 .song-section-row {
   display: flex;
   align-items: flex-end;
