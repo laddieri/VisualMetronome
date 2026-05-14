@@ -4626,10 +4626,10 @@ function crGetBeatLabelX(pat, x, w) {
 function crShoeGroupSVG(id, color, tx, ty, s) {
   var light = 'rgba(255,255,255,0.30)';
   var g = '<g id="' + id + '" transform="translate(' + tx + ',' + ty + ') scale(' + s + ')" filter="url(#nd-ball-shadow)">';
+  // Sole (thick Chuck Taylor rubber) — drawn first so the upper overlaps the top edge
+  g += '<path d="M 2,38 C 0,38 0,42 0,50 L 0,56 Q 0,60 4,60 L 76,60 Q 80,60 80,56 L 80,50 C 80,42 80,38 78,38 L 70,42 L 6,44 Z" fill="#f0f0f0" stroke="rgba(0,0,0,0.18)" stroke-width="0.8"/>';
   // Main upper — heel (left, y=4..44) is ~2.5× taller than toe (right, y=26..42)
   g += '<path d="M 4,42 C 2,20 4,6 14,4 L 52,4 C 66,3 76,14 78,26 L 78,38 Q 76,42 70,42 L 6,44 Q 2,44 2,40 Z" fill="' + color + '" stroke="rgba(0,0,0,0.18)" stroke-width="1"/>';
-  // Sole band — white rubber, drawn over the upper so it has its own distinct color
-  g += '<path d="M 2,38 Q 2,44 6,44 L 70,42 Q 76,42 78,38 L 76,38 Q 74,41 68,41 L 5,43 Q 2,43 2,38 Z" fill="#f0f0f0" stroke="rgba(0,0,0,0.18)" stroke-width="0.5"/>';
   // Tongue highlight
   g += '<path d="M 28,4 L 44,4 L 42,22 L 30,22 Z" fill="' + light + '"/>';
   // Lace lines (angled slightly heel→toe)
@@ -4650,7 +4650,7 @@ function crNotationBallTransform(style, ballX, ballY, radius) {
     case 'shoe':
       s = radius / 20;
       tx = ballX - 38 * s;
-      ty = (ballY + radius) - 44 * s;
+      ty = (ballY + radius) - 60 * s;
       return 'translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')';
     case 'heart':  // 50×46 viewbox, visual centre at (25,22)
       s = radius / 22;
