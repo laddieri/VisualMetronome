@@ -104,6 +104,17 @@ main {
   margin: 0;
 }
 
+/* Score-mode ball / shoe controls */
+.notation-ball-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.notation-ball-controls .control-dropdown {
+  flex: 1;
+}
+
 /* Notation score display */
 .notation-display-wrapper {
   width: 100%;
