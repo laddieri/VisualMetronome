@@ -4749,11 +4749,11 @@ function crRenderNotationDisplay() {
   var baseHeight    = 110;
   var baseWidth     = beatCount * baseBeatWidth + baseXStart + 10;
 
-  // Display canvas dimensions (matches p5 canvas base)
-  var dispW = 640, dispH = 480;
+  // Display canvas dimensions
+  var dispW = 640, dispH = 360;
 
   // Score-paper rectangle inside the display
-  var paperX = 30, paperY = 175, paperW = 580, paperH = 220;
+  var paperX = 30, paperY = 80, paperW = 580, paperH = 230;
   var paperCX = paperX + paperW / 2;
   var paperCY = paperY + paperH / 2;
 
@@ -4788,10 +4788,10 @@ function crRenderNotationDisplay() {
   }
 
   // ── Build SVG ──────────────────────────────────────────────────────────────
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" preserveAspectRatio="xMidYMid meet">';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet">';
 
   // Canvas background matching p5 grey
-  svg += '<rect width="640" height="480" fill="#696969"/>';
+  svg += '<rect width="640" height="360" fill="#696969"/>';
 
   // Drop-shadow filter — works for both ball and shoe
   svg += '<defs>';
@@ -4896,8 +4896,8 @@ function crUpdateNotationBall() {
     var x1 = notationBeatXPositions[nextIdx];
 
     ballX = x0 + (x1 - x0) * progress;
-    // Parabolic arc: lands (progress=0,1) at notationBallLandingY, peaks (progress=0.5) 130px above
-    ballY = notationBallLandingY - 130 * 4 * progress * (1 - progress);
+    // Parabolic arc: lands (progress=0,1) at notationBallLandingY, peaks (progress=0.5) 110px above
+    ballY = notationBallLandingY - 110 * 4 * progress * (1 - progress);
   }
 
   ball.setAttribute('transform', crNotationBallTransform(notationBallStyle, ballX, ballY, notationBallRadius));
