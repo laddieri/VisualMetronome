@@ -4934,7 +4934,18 @@ function initCustomRhythmListeners() {
         customRhythmPattern = crBuildDefaultPattern();
       }
       crUpdateScoreOptionVisibility();
+      if (customRhythmEnabled) {
+        // Auto-switch to Score animation when custom rhythm is turned on
+        animalType = 'score';
+        var sel = document.getElementById('animal-selector');
+        if (sel) sel.value = 'score';
+        createAnimals();
+        _sync3DConductor();
+        _syncWebGPUCanvas();
+        updateColorPickerVisibility();
+      }
       if (animalType === 'score') crRenderNotationDisplay();
+      _syncNotationDisplay();
       sendStateUpdate();
     });
   }
