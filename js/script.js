@@ -571,7 +571,7 @@ class Circle {
 
     switch (notationBallStyle) {
       case 'shoe': {
-        var uc = color(notationBallColor);
+        var uc = color(circleColor);
         // Sole (white, thick)
         fill(240);
         beginShape();
@@ -592,7 +592,7 @@ class Circle {
         break;
       }
       case 'heart': {
-        fill(color(notationBallColor));
+        fill(color(circleColor));
         beginShape();
         vertex(bx, by + r * 0.8);
         bezierVertex(bx - r * 0.1, by + r * 0.4, bx - r, by - r * 0.05, bx - r, by - r * 0.2);
@@ -603,7 +603,7 @@ class Circle {
         break;
       }
       case 'star': {
-        fill(color(notationBallColor));
+        fill(color(circleColor));
         beginShape();
         for (var i = 0; i < 10; i++) {
           var a = (i * TWO_PI / 10) - HALF_PI;
@@ -627,7 +627,7 @@ class Circle {
         break;
       }
       case 'note': {
-        fill(color(notationBallColor));
+        fill(color(circleColor));
         push();
         translate(bx - r * 0.15, by + r * 0.35);
         rotate(-0.4);
@@ -635,7 +635,7 @@ class Circle {
         pop();
         rect(bx + r * 0.19, by - r * 0.6, r * 0.13, r * 0.98);
         noFill();
-        stroke(color(notationBallColor));
+        stroke(color(circleColor));
         strokeWeight(r * 0.12);
         beginShape();
         vertex(bx + r * 0.32, by - r * 0.6);
@@ -645,7 +645,7 @@ class Circle {
         break;
       }
       default: { // 'ball'
-        fill(color(notationBallColor));
+        fill(color(circleColor));
         ellipse(bx, by, this.size, this.size);
       }
     }
@@ -2613,9 +2613,9 @@ document.getElementById('bpm-input').addEventListener('keydown', function(e) {
 
 // Show/hide color picker based on animation type
 function updateColorPickerVisibility() {
-  // Circle color picker replaced by the unified shape+color group below
+  // Original circle color picker — shown only for Circles animation
   const colorPickerGroup = document.getElementById('color-picker-group');
-  if (colorPickerGroup) colorPickerGroup.style.display = 'none';
+  if (colorPickerGroup) colorPickerGroup.style.display = (animalType === 'circle') ? '' : 'none';
 
   const isConductor = (animalType === 'conductor');
   const conductorSelfieBtn = document.getElementById('conductor-selfie-btn');
@@ -2626,12 +2626,12 @@ function updateColorPickerVisibility() {
   if (directionGroup) {
     directionGroup.style.display = (isConductor || animalType === 'score') ? 'none' : '';
   }
-  // Shape + color picker: visible for both Circles and Score animations
-  const showShapeControls = (animalType === 'circle' || animalType === 'score');
-  const notationBallGroup = document.getElementById('notation-ball-group');
-  if (notationBallGroup) notationBallGroup.style.display = showShapeControls ? '' : 'none';
+  // Notation ball color picker — shown only for Score animation
   const notationBallColorGroup = document.getElementById('notation-ball-color-group');
-  if (notationBallColorGroup) notationBallColorGroup.style.display = showShapeControls ? '' : 'none';
+  if (notationBallColorGroup) notationBallColorGroup.style.display = (animalType === 'score') ? '' : 'none';
+  // Shape selector — shown for both Circles and Score
+  const notationBallGroup = document.getElementById('notation-ball-group');
+  if (notationBallGroup) notationBallGroup.style.display = (animalType === 'circle' || animalType === 'score') ? '' : 'none';
 }
 
 // Function to create animals based on selected type
