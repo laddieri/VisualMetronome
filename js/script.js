@@ -564,13 +564,91 @@ class Circle {
   }
 
   display(){
-    var bodyX = this.x;
-    var bodyY = this.y;
-
-    // Draw a simple filled circle
+    var bx = this.x;
+    var by = this.y;
+    var r  = this.size / 2;
     noStroke();
-    fill(circleColor);
-    ellipse(bodyX, bodyY, this.size, this.size);
+
+    switch (notationBallStyle) {
+      case 'shoe': {
+        var uc = color(notationBallColor);
+        // Sole (white, thick)
+        fill(240);
+        beginShape();
+        vertex(bx - r, by + r * 0.12);
+        vertex(bx - r, by + r * 0.52);
+        quadraticVertex(bx - r, by + r * 0.68, bx - r * 0.85, by + r * 0.68);
+        vertex(bx + r * 0.85, by + r * 0.68);
+        quadraticVertex(bx + r, by + r * 0.68, bx + r, by + r * 0.52);
+        vertex(bx + r, by + r * 0.12);
+        endShape(CLOSE);
+        // Upper (colored, heel taller on left)
+        fill(uc);
+        beginShape();
+        vertex(bx - r * 0.9, by + r * 0.12);
+        bezierVertex(bx - r, by - r * 0.5, bx - r * 0.85, by - r, bx - r * 0.3, by - r);
+        bezierVertex(bx + r * 0.45, by - r, bx + r * 0.95, by - r * 0.42, bx + r, by + r * 0.12);
+        endShape(CLOSE);
+        break;
+      }
+      case 'heart': {
+        fill(color(notationBallColor));
+        beginShape();
+        vertex(bx, by + r * 0.8);
+        bezierVertex(bx - r * 0.1, by + r * 0.4, bx - r, by - r * 0.05, bx - r, by - r * 0.2);
+        bezierVertex(bx - r, by - r * 0.8, bx - r * 0.1, by - r, bx, by - r * 0.5);
+        bezierVertex(bx + r * 0.1, by - r, bx + r, by - r * 0.8, bx + r, by - r * 0.2);
+        bezierVertex(bx + r, by - r * 0.05, bx + r * 0.1, by + r * 0.4, bx, by + r * 0.8);
+        endShape(CLOSE);
+        break;
+      }
+      case 'star': {
+        fill(color(notationBallColor));
+        beginShape();
+        for (var i = 0; i < 10; i++) {
+          var a = (i * TWO_PI / 10) - HALF_PI;
+          var rad = (i % 2 === 0) ? r : r * 0.42;
+          vertex(bx + cos(a) * rad, by + sin(a) * rad);
+        }
+        endShape(CLOSE);
+        break;
+      }
+      case 'face': {
+        fill(255, 220, 80);
+        ellipse(bx, by, this.size, this.size);
+        fill(30);
+        ellipse(bx - r * 0.3, by - r * 0.2, r * 0.22, r * 0.3);
+        ellipse(bx + r * 0.3, by - r * 0.2, r * 0.22, r * 0.3);
+        noFill();
+        stroke(30);
+        strokeWeight(r * 0.1);
+        arc(bx, by + r * 0.1, r * 0.8, r * 0.55, 0, PI);
+        noStroke();
+        break;
+      }
+      case 'note': {
+        fill(color(notationBallColor));
+        push();
+        translate(bx - r * 0.15, by + r * 0.35);
+        rotate(-0.4);
+        ellipse(0, 0, r * 0.75, r * 0.52);
+        pop();
+        rect(bx + r * 0.19, by - r * 0.6, r * 0.13, r * 0.98);
+        noFill();
+        stroke(color(notationBallColor));
+        strokeWeight(r * 0.12);
+        beginShape();
+        vertex(bx + r * 0.32, by - r * 0.6);
+        bezierVertex(bx + r * 0.9, by - r * 0.25, bx + r * 0.7, by + r * 0.05, bx + r * 0.32, by + r * 0.05);
+        endShape();
+        noStroke();
+        break;
+      }
+      default: { // 'ball'
+        fill(color(notationBallColor));
+        ellipse(bx, by, this.size, this.size);
+      }
+    }
   }
 }
 
@@ -1373,10 +1451,9 @@ function loadSavedSelfie(id) {
     recordedSoundPlayer.volume.value = 6;
   }
 
-  // Switch to selfie mode and close modal
-  animalType = 'selfie';
-  var selector = document.getElementById('animal-selector');
-  if (selector) selector.value = 'selfie';
+  // Selfie is now a shape option, not an animation type; just reload animals
+  createAnimals();
+  if (animalType === 'score') crRenderNotationDisplay();
   closeCamera();
 }
 
@@ -1392,10 +1469,11 @@ function initCameraListeners() {
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
       closeCamera();
-      // Revert to previous animal if no selfie was taken
-      if (!selfieImage) {
-        document.getElementById('animal-selector').value = 'pig';
-        animalType = 'pig';
+      // If selfie shape was selected but no photo was taken, revert to 'ball'
+      if (!selfieImage && notationBallStyle === 'selfie') {
+        notationBallStyle = 'ball';
+        var styleEl = document.getElementById('notation-ball-style');
+        if (styleEl) styleEl.value = 'ball';
         createAnimals();
       }
     });
@@ -1919,38 +1997,13 @@ function triggerSound(time, isAccent = false){
 
   switch(animalType) {
     case 'circle':
-      triggerClickSound(time);
-      break;
-    case 'pig':
-      // Stop any currently playing instance before retriggering to prevent
-      // overlapping playback at fast tempos
-      if (pigPlayer.state === 'started') {
-        pigPlayer.stop(time);
-      }
-      pigPlayer.start(time);
-      break;
-    case 'selfie':
-      // Use recorded sound if available, otherwise use default synth
-      if (recordedSoundPlayer && recordedSoundPlayer.loaded) {
-        if (recordedSoundPlayer.state === 'started') {
-          recordedSoundPlayer.stop(time);
-        }
-        recordedSoundPlayer.start(time);
-      } else {
-        selfieSynth.triggerAttackRelease("8n", time);
-      }
-      break;
     case 'conductor':
-      triggerClickSound(time);
-      break;
-    case 'webgpu':
-      triggerClickSound(time);
-      break;
     default:
-      if (pigPlayer.state === 'started') {
-        pigPlayer.stop(time);
-      }
-      pigPlayer.start(time);
+      triggerClickSound(time);
+      break;
+    // case 'pig':    // removed from animation menu
+    // case 'selfie': // removed from animation menu
+    // case 'webgpu': // disabled
   }
 }
 
@@ -2560,22 +2613,23 @@ document.getElementById('bpm-input').addEventListener('keydown', function(e) {
 
 // Show/hide color picker based on animation type
 function updateColorPickerVisibility() {
+  // Circle color picker replaced by the unified shape+color group below
   const colorPickerGroup = document.getElementById('color-picker-group');
-  if (colorPickerGroup) {
-    colorPickerGroup.style.display = (animalType === 'circle') ? '' : 'none';
-  }
-  const isConductor = (animalType === 'conductor' || animalType === 'conductor3d');
+  if (colorPickerGroup) colorPickerGroup.style.display = 'none';
+
+  const isConductor = (animalType === 'conductor');
   const conductorSelfieBtn = document.getElementById('conductor-selfie-btn');
   if (conductorSelfieBtn) {
-    conductorSelfieBtn.style.display = (animalType === 'conductor') ? '' : 'none';
+    conductorSelfieBtn.style.display = isConductor ? '' : 'none';
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = (isConductor || animalType === 'webgpu' || animalType === 'score') ? 'none' : '';
+    directionGroup.style.display = (isConductor || animalType === 'score') ? 'none' : '';
   }
+  // Shape + color picker: visible for both Circles and Score animations
   const notationBallGroup = document.getElementById('notation-ball-group');
   if (notationBallGroup) {
-    notationBallGroup.style.display = (animalType === 'score') ? '' : 'none';
+    notationBallGroup.style.display = (animalType === 'circle' || animalType === 'score') ? '' : 'none';
   }
 }
 
@@ -2583,31 +2637,37 @@ function updateColorPickerVisibility() {
 function createAnimals() {
   switch(animalType) {
     case 'circle':
-      animal1 = new Circle(1);
-      animal2 = new Circle(-1);
+      if (notationBallStyle === 'pig') {
+        animal1 = new Pig(1);
+        animal2 = new Pig(-1);
+      } else if (notationBallStyle === 'selfie') {
+        animal1 = new Selfie(1);
+        animal2 = new Selfie(-1);
+      } else {
+        animal1 = new Circle(1);
+        animal2 = new Circle(-1);
+      }
       break;
-    case 'pig':
-      animal1 = new Pig(1);
-      animal2 = new Pig(-1);
-      break;
-    case 'selfie':
-      animal1 = new Selfie(1);
-      animal2 = new Selfie(-1);
-      break;
+    // case 'pig':    // removed from animation menu; available as a shape in 'circle' mode
+    //   animal1 = new Pig(1);
+    //   animal2 = new Pig(-1);
+    //   break;
+    // case 'selfie': // removed from animation menu
+    //   animal1 = new Selfie(1);
+    //   animal2 = new Selfie(-1);
+    //   break;
     case 'conductor':
       animal1 = new Conductor(1);  // right hand
       animal2 = new Conductor(-1); // left hand
       break;
-    case 'conductor3d':
-      // 3D conductor uses its own Three.js rendering; animals are unused
-      animal1 = new Circle(1);
-      animal2 = new Circle(-1);
-      break;
-    case 'webgpu':
-      // WebGPU canvas handles its own rendering; p5 animals are unused
-      animal1 = new Circle(1);
-      animal2 = new Circle(-1);
-      break;
+    // case 'conductor3d': // disabled — re-enable by restoring conductor3d.js script tag
+    //   animal1 = new Circle(1);
+    //   animal2 = new Circle(-1);
+    //   break;
+    // case 'webgpu':      // disabled — re-enable by restoring webgpu-ball.js script tag
+    //   animal1 = new Circle(1);
+    //   animal2 = new Circle(-1);
+    //   break;
     case 'score':
       // Notation display handles its own rendering; p5 animals are unused
       animal1 = new Circle(1);
@@ -2620,30 +2680,26 @@ function createAnimals() {
   }
 }
 
-// ── WebGPU canvas lifecycle ──────────────────────────────────────────────────
+// ── WebGPU canvas lifecycle (disabled) ──────────────────────────────────────
+// Re-enable by restoring webgpu-ball.js script tag in index.html
 function _syncWebGPUCanvas() {
-  const webgpuWrapper = document.getElementById('webgpu-ball-wrapper');
-  const canvasWrapper = document.querySelector('.canvas-wrapper');
-  const isWebGPU = animalType === 'webgpu';
-  if (webgpuWrapper) webgpuWrapper.style.display = isWebGPU ? 'flex' : 'none';
-  if (canvasWrapper) canvasWrapper.style.display  = isWebGPU ? 'none' : '';
+  // const webgpuWrapper = document.getElementById('webgpu-ball-wrapper');
+  // const canvasWrapper = document.querySelector('.canvas-wrapper');
+  // const isWebGPU = animalType === 'webgpu';
+  // if (webgpuWrapper) webgpuWrapper.style.display = isWebGPU ? 'flex' : 'none';
+  // if (canvasWrapper) canvasWrapper.style.display  = isWebGPU ? 'none' : '';
 }
 
-// ── 3D Conductor lifecycle ──────────────────────────────────────────────────
+// ── 3D Conductor lifecycle (disabled) ───────────────────────────────────────
+// Re-enable by restoring conductor3d.js script tag in index.html
 function _sync3DConductor() {
-  if (animalType === 'conductor3d') {
-    if (!conductor3dInstance) {
-      conductor3dInstance = new Conductor3D();
-    }
-    if (!conductor3dInstance.initialized) {
-      conductor3dInstance.init('.canvas-wrapper');
-    }
-    conductor3dInstance.start();
-  } else {
-    if (conductor3dInstance) {
-      conductor3dInstance.stop();
-    }
-  }
+  // if (animalType === 'conductor3d') {
+  //   if (!conductor3dInstance) { conductor3dInstance = new Conductor3D(); }
+  //   if (!conductor3dInstance.initialized) { conductor3dInstance.init('.canvas-wrapper'); }
+  //   conductor3dInstance.start();
+  // } else {
+  //   if (conductor3dInstance) { conductor3dInstance.stop(); }
+  // }
 }
 
 // ── Notation Score Display lifecycle ─────────────────────────────────────────
@@ -2852,15 +2908,9 @@ function setup() {
     // Show/hide color picker and conductor selfie button based on animation type
     updateColorPickerVisibility();
 
-    // Always open camera when selfie is selected (allows retaking)
-    if (animalType === 'selfie') {
-      cameraTarget = 'selfie';
-      openCamera();
-    }
-
     createAnimals(); // Recreate animals when selection changes
-    _sync3DConductor();
-    _syncWebGPUCanvas();
+    // _sync3DConductor(); // disabled
+    // _syncWebGPUCanvas(); // disabled
     _syncNotationDisplay();
     sendStateUpdate();
   });
@@ -2871,10 +2921,15 @@ function setup() {
     if (animalType === 'score') crRenderNotationDisplay();
   });
 
-  // Score mode: ball / shoe style selector
+  // Shape selector: applies to both Circles and Score animations
   document.getElementById('notation-ball-style').addEventListener('change', function(e) {
     notationBallStyle = e.target.value;
+    if (notationBallStyle === 'selfie') {
+      cameraTarget = 'selfie';
+      openCamera(); // capture/retake selfie photo
+    }
     if (animalType === 'score') crRenderNotationDisplay();
+    if (animalType === 'circle') createAnimals();
   });
 
   // Conductor selfie button — opens camera to capture a face for the conductor
@@ -2913,9 +2968,9 @@ function windowResized() {
   canvasHeight = size.height;
   canvasScale = size.scale;
   resizeCanvas(canvasWidth, canvasHeight);
-  if (conductor3dInstance && conductor3dInstance.initialized) {
-    conductor3dInstance.resize();
-  }
+  // if (conductor3dInstance && conductor3dInstance.initialized) { // disabled
+  //   conductor3dInstance.resize();
+  // }
 }
 
 
@@ -3517,8 +3572,8 @@ function draw() {
   } else if (animalType === 'score') {
     // Notation score display renders in its own SVG overlay; update the bouncing ball
     crUpdateNotationBall();
-  } else if (animalType === 'conductor3d') {
-    // 3D conductor is rendered by its own Three.js loop — nothing to draw on p5 canvas
+  // } else if (animalType === 'conductor3d') { // disabled
+  //   // 3D conductor rendered by Three.js loop
   } else if (animalType === 'conductor') {
     // Conductor mode: both hands move in a 2D beat pattern regardless of direction setting
     animal1.pigmove();
@@ -3936,7 +3991,7 @@ function applyRemoteCommand(msg) {
 
     case 'setAnimation': {
       var val = msg.value;
-      if (['circle', 'pig', 'selfie', 'conductor', 'conductor3d', 'webgpu', 'score'].indexOf(val) === -1) break;
+      if (['circle', 'conductor', 'score'].indexOf(val) === -1) break;
       animalType = val;
       var selector = document.getElementById('animal-selector');
       if (selector) selector.value = val;
@@ -4667,6 +4722,8 @@ function crNotationBallTransform(style, ballX, ballY, radius) {
     case 'note':   // notehead+stem, centre at (12,24)
       s = radius / 20;
       return 'translate(' + (ballX - 12*s).toFixed(1) + ',' + (ballY - 24*s).toFixed(1) + ') scale(' + s.toFixed(3) + ')';
+    case 'selfie': // circular photo, centre at (0,0)
+      return 'translate(' + ballX.toFixed(1) + ',' + ballY.toFixed(1) + ')';
     default: // ball — translate places cx/cy at (ballX,ballY)
       return 'translate(' + ballX.toFixed(1) + ',' + ballY.toFixed(1) + ')';
   }
@@ -4720,6 +4777,21 @@ function crNotationBallSVG(id, color, style, ballX, ballY, radius) {
       g += '<line x1="20" y1="6" x2="20" y2="40" stroke="' + color + '" stroke-width="3" stroke-linecap="round"/>';
       g += '<ellipse cx="12" cy="40" rx="9" ry="7" transform="rotate(-20 12 40)" fill="' + color + '"/>';
       return g + '</g>';
+    case 'selfie': {
+      var r2 = radius.toFixed(1);
+      var clipId = 'selfie-clip-' + id;
+      g  = '<g id="' + id + '" transform="' + t + '"' + f + '>';
+      g += '<defs><clipPath id="' + clipId + '"><circle cx="0" cy="0" r="' + r2 + '"/></clipPath></defs>';
+      if (selfieImageDataURL) {
+        g += '<circle cx="0" cy="0" r="' + r2 + '" fill="#ddd" stroke="rgba(0,0,0,0.2)" stroke-width="1.5"/>';
+        g += '<image href="' + selfieImageDataURL + '" x="-' + r2 + '" y="-' + r2 + '" width="' + (radius * 2).toFixed(1) + '" height="' + (radius * 2).toFixed(1) + '" clip-path="url(#' + clipId + ')"/>';
+      } else {
+        // No photo yet — draw the face placeholder
+        g += '<circle cx="0" cy="0" r="' + r2 + '" fill="#ccc" stroke="rgba(0,0,0,0.2)" stroke-width="1.5"/>';
+        g += '<text x="0" y="5" text-anchor="middle" font-size="' + (radius * 1.2).toFixed(0) + '" fill="#888">📸</text>';
+      }
+      return g + '</g>';
+    }
     default: // ball
       return '<g id="' + id + '" transform="' + t + '"' + f + ' opacity="0.93"><circle cx="0" cy="0" r="' + radius.toFixed(1) + '" fill="' + color + '"/></g>';
   }

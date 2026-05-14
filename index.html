@@ -28,9 +28,11 @@
           <!-- p5.js canvas will be inserted here -->
         </div>
 
+        <!--
         <div id="webgpu-ball-wrapper" class="webgpu-ball-wrapper">
           <p class="webgpu-label">WebGPU demo</p>
         </div>
+        -->
 
         <div id="notation-display-wrapper" class="notation-display-wrapper" style="display:none"></div>
 
@@ -97,11 +99,11 @@
               <div class="animation-selector-row">
                 <select id="animal-selector" class="control-dropdown">
                   <option value="circle">⚫ Circles</option>
-                  <option value="pig">🐷 Pig</option>
-                  <option value="selfie">📸 Selfie</option>
+                  <!-- <option value="pig">🐷 Pig</option> -->
+                  <!-- <option value="selfie">📸 Selfie</option> -->
                   <option value="conductor">🎼 Conductor</option>
-                  <option value="conductor3d">🎭 3D Conductor</option>
-                  <option value="webgpu">✨ WebGPU</option>
+                  <!-- <option value="conductor3d">🎭 3D Conductor</option> -->
+                  <!-- <option value="webgpu">✨ WebGPU</option> -->
                   <option id="notation-score-option" value="score" style="display:none">🎵 Score</option>
                 </select>
                 <button id="conductor-selfie-btn" class="conductor-selfie-btn" style="display:none" title="Add your face to the conductor">😊</button>
@@ -139,7 +141,7 @@
             </div>
 
             <div class="control-group" id="notation-ball-group" style="display:none">
-              <label class="control-label">Score</label>
+              <label class="control-label">Shape</label>
               <div class="notation-ball-controls">
                 <input type="color" id="notation-ball-color" value="#ff6600" class="color-picker-main">
                 <select id="notation-ball-style" class="control-dropdown">
@@ -149,6 +151,7 @@
                   <option value="star">⭐ Star</option>
                   <option value="face">😊 Face</option>
                   <option value="pig">🐷 Pig</option>
+                  <option value="selfie">📸 Selfie</option>
                   <option value="note">🎵 Note</option>
                 </select>
               </div>
@@ -601,8 +604,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.7.3/p5.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
-    <script src="./js/conductor3d.js" type="text/javascript"></script>
+    <!-- <script src="./js/conductor3d.js" type="text/javascript"></script> -->
     <script src="./js/script.js" type="text/javascript"></script>
-    <script src="./js/webgpu-ball.js" type="text/javascript"></script>
+    <!-- <script src="./js/webgpu-ball.js" type="text/javascript"></script> -->
   </body>
 </html>
