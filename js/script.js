@@ -4546,7 +4546,7 @@ function crRenderNotationDisplay() {
   }
 
   // ── Build SVG ──────────────────────────────────────────────────────────────
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480">';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" preserveAspectRatio="xMidYMid meet">';
 
   // Canvas background matching p5 grey
   svg += '<rect width="640" height="480" fill="#696969"/>';
