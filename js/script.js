@@ -4541,7 +4541,7 @@ function crRenderNotation() {
     var pat = customRhythmPattern[b];
 
     // Beat number below — aligned under the first note/rest of the beat
-    svg += '<text x="' + crGetBallLandingX(pat, x, beatWidth) + '" y="' + (staffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    svg += '<text x="' + crGetBeatLabelX(pat, x, beatWidth) + '" y="' + (staffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Draw barline before beat 1 equivalent
     if (b === 0) {
@@ -4610,6 +4610,13 @@ function crGetBallLandingX(pat, x, w) {
     case '_r':   return x + w / 2;
     default:     return x + w / 2;
   }
+}
+
+// Like crGetBallLandingX but for beat number labels — continuation beats label
+// slightly before the note so the number doesn't sit directly on top of it.
+function crGetBeatLabelX(pat, x, w) {
+  if (pat === '_e' || pat === '_r') return x + w * 0.2;
+  return crGetBallLandingX(pat, x, w);
 }
 
 // Returns SVG markup for a sneaker silhouette (side view, toe facing right).
@@ -4819,7 +4826,7 @@ function crRenderNotationDisplay() {
     svg += crDrawBeatPattern(pat, x, baseStaffY, baseBeatWidth);
 
     // Beat number below staff — aligned under the first note/rest of the beat
-    svg += '<text x="' + crGetBallLandingX(pat, x, baseBeatWidth) + '" y="' + (baseStaffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    svg += '<text x="' + crGetBeatLabelX(pat, x, baseBeatWidth) + '" y="' + (baseStaffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Accent marks
     if (customRhythmAccents[b] && customRhythmAccents[b].length > 0) {
