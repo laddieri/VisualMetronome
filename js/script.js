@@ -5001,11 +5001,6 @@ function initTwoMeasurePatternListeners() {
     tmpEnabled.addEventListener('change', function(e) {
       twoMeasurePatternEnabled = e.target.checked;
       tmpBtn.classList.toggle('ct-active', twoMeasurePatternEnabled);
-      // If TMP is turned off, also clear the preset button active state
-      if (!twoMeasurePatternEnabled) {
-        var presetBtn = document.getElementById('tmp-6834-preset-btn');
-        if (presetBtn) presetBtn.classList.remove('ct-active');
-      }
       if (twoMeasurePatternEnabled && Tone.Transport.state === 'started' && !songModeEnabled) {
         twoMeasureCurrentMeasure = 0;
         twoMeasurePattern[0].bpm = cachedBPM;
@@ -5056,53 +5051,6 @@ if (document.readyState === 'loading') {
 } else {
   initTwoMeasurePatternListeners();
 }
-// ──────────────────────────────────────────────────────────────────────────
-
-// ── 6/8 ↔ 3/4 preset button ───────────────────────────────────────────────
-// Loads a two-measure pattern where the eighth note stays constant:
-//   Measure 1: 2 beats, subdivision 3  (6/8 — dotted-quarter beat)
-//   Measure 2: 3 beats, subdivision 2  (3/4 — quarter beat)
-// Sets tempo to ♩=110 and engages TMP with "keep subdivision speed" mode.
-(function() {
-  var presetBtn = document.getElementById('tmp-6834-preset-btn');
-  var tmpBtn    = document.getElementById('two-measure-btn');
-  if (!presetBtn) return;
-
-  presetBtn.addEventListener('click', function() {
-    // Toggle: if already active, disable TMP and clear both buttons
-    if (presetBtn.classList.contains('ct-active')) {
-      twoMeasurePatternEnabled = false;
-      presetBtn.classList.remove('ct-active');
-      if (tmpBtn) tmpBtn.classList.remove('ct-active');
-      sendStateUpdate();
-      return;
-    }
-
-    // Configure the two-measure pattern
-    twoMeasurePattern[0].beatsPerMeasure = 2;
-    twoMeasurePattern[0].subdivision     = '3';
-    twoMeasurePattern[1].beatsPerMeasure = 3;
-    twoMeasurePattern[1].subdivision     = '2';
-    tmpLinkMode = 'subdivision';
-
-    // Enable TMP, then set tempo — applyBPM will sync M1/M2 BPMs via tmpCalcM2BPM
-    twoMeasurePatternEnabled = true;
-    applyBPM(110);
-
-    // Reflect active state on both the preset button and the TMP button
-    presetBtn.classList.add('ct-active');
-    if (tmpBtn) tmpBtn.classList.add('ct-active');
-
-    // If already playing, restart from measure 1 with the new settings
-    if (Tone.Transport.state === 'started' && !songModeEnabled) {
-      twoMeasureCurrentMeasure = 0;
-      beatsPerMeasure = twoMeasurePattern[0].beatsPerMeasure;
-      subdivision     = twoMeasurePattern[0].subdivision;
-    }
-
-    sendStateUpdate();
-  });
-})();
 // ──────────────────────────────────────────────────────────────────────────
 
 // ── Reset settings button ──────────────────────────────────────────────────
@@ -5161,10 +5109,8 @@ document.getElementById('reset-settings-btn').addEventListener('click', function
   tmpLinkMode = 'beat';
   twoMeasureCurrentMeasure = 0;
   var tmpBtn    = document.getElementById('two-measure-btn');
-  var presetBtn = document.getElementById('tmp-6834-preset-btn');
   var tmpEnabledCb = document.getElementById('tmp-enabled');
   if (tmpBtn)    tmpBtn.classList.remove('ct-active');
-  if (presetBtn) presetBtn.classList.remove('ct-active');
   if (tmpEnabledCb) tmpEnabledCb.checked = false;
 
   // Custom rhythm → off
