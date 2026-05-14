@@ -2627,10 +2627,11 @@ function updateColorPickerVisibility() {
     directionGroup.style.display = (isConductor || animalType === 'score') ? 'none' : '';
   }
   // Shape + color picker: visible for both Circles and Score animations
+  const showShapeControls = (animalType === 'circle' || animalType === 'score');
   const notationBallGroup = document.getElementById('notation-ball-group');
-  if (notationBallGroup) {
-    notationBallGroup.style.display = (animalType === 'circle' || animalType === 'score') ? '' : 'none';
-  }
+  if (notationBallGroup) notationBallGroup.style.display = showShapeControls ? '' : 'none';
+  const notationBallColorGroup = document.getElementById('notation-ball-color-group');
+  if (notationBallColorGroup) notationBallColorGroup.style.display = showShapeControls ? '' : 'none';
 }
 
 // Function to create animals based on selected type
