@@ -4463,22 +4463,23 @@ function crGetBallLandingX(pat, x, w) {
 }
 
 // Returns SVG markup for a sneaker silhouette (side view, toe facing right).
-// Local coordinate system: 60 wide × 34 tall; sole bottom-centre at (30, 34).
+// Local coordinate system: 80 wide × 48 tall; sole bottom-centre at (38, 44).
+// Heel (left) is ~40 units tall; toe (right) is ~16 units tall — clearly a side view.
 // tx, ty, s: the translate/scale transform that places and sizes the shoe.
 function crShoeGroupSVG(id, color, tx, ty, s) {
-  var dark  = 'rgba(0,0,0,0.22)';
-  var light = 'rgba(255,255,255,0.28)';
+  var dark  = 'rgba(0,0,0,0.25)';
+  var light = 'rgba(255,255,255,0.30)';
   var g = '<g id="' + id + '" transform="translate(' + tx + ',' + ty + ') scale(' + s + ')" filter="url(#nd-ball-shadow)">';
-  // Main upper silhouette
-  g += '<path d="M 4,24 C 2,14 10,2 22,2 L 46,2 C 56,2 60,12 60,22 L 60,27 Q 60,34 54,34 L 7,34 Q 2,34 2,28 Z" fill="' + color + '" stroke="rgba(0,0,0,0.18)" stroke-width="1"/>';
-  // Sole band (slightly darker strip at the bottom)
-  g += '<path d="M 2,29 Q 2,34 7,34 L 54,34 Q 60,34 60,29 L 58,29 Q 56,33 52,33 L 8,33 Q 3,33 3,29 Z" fill="' + dark + '"/>';
-  // Tongue
-  g += '<path d="M 33,2 L 37,2 L 37,20 L 33,20 Z" fill="' + light + '"/>';
-  // Laces
-  g += '<line x1="25" y1="8" x2="35" y2="8" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
-  g += '<line x1="25" y1="12" x2="35" y2="12" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
-  g += '<line x1="25" y1="16" x2="35" y2="16" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
+  // Main upper — heel (left, y=4..44) is ~2.5× taller than toe (right, y=26..42)
+  g += '<path d="M 4,42 C 2,20 4,6 14,4 L 52,4 C 66,3 76,14 78,26 L 78,38 Q 76,42 70,42 L 6,44 Q 2,44 2,40 Z" fill="' + color + '" stroke="rgba(0,0,0,0.18)" stroke-width="1"/>';
+  // Sole band (darker strip along the bottom)
+  g += '<path d="M 2,38 Q 2,44 6,44 L 70,42 Q 76,42 78,38 L 76,38 Q 74,41 68,41 L 5,43 Q 2,43 2,38 Z" fill="' + dark + '"/>';
+  // Tongue highlight
+  g += '<path d="M 28,4 L 44,4 L 42,22 L 30,22 Z" fill="' + light + '"/>';
+  // Lace lines (angled slightly heel→toe)
+  g += '<line x1="24" y1="10" x2="50" y2="8" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
+  g += '<line x1="24" y1="15" x2="50" y2="13" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
+  g += '<line x1="24" y1="20" x2="50" y2="18" stroke="rgba(255,255,255,0.7)" stroke-width="1.5" stroke-linecap="round"/>';
   g += '</g>';
   return g;
 }
@@ -4625,9 +4626,9 @@ function crRenderNotationDisplay() {
   // Bouncing ball / shoe — drawn in display coordinates, outside the scaled notation group
   var initX = notationBeatXPositions[0] !== undefined ? notationBeatXPositions[0] : dispW / 2;
   if (notationBallStyle === 'shoe') {
-    var shoeS  = ballRadius / 15;
-    var shoeTx = (initX - 30 * shoeS).toFixed(1);
-    var shoeTy = (notationBallLandingY + ballRadius - 34 * shoeS).toFixed(1);
+    var shoeS  = ballRadius / 20;
+    var shoeTx = (initX - 38 * shoeS).toFixed(1);
+    var shoeTy = (notationBallLandingY + ballRadius - 44 * shoeS).toFixed(1);
     svg += crShoeGroupSVG('notation-ball', notationBallColor, shoeTx, shoeTy, shoeS.toFixed(3));
   } else {
     svg += '<g id="notation-ball" transform="translate(' + initX.toFixed(1) + ',' + notationBallLandingY.toFixed(1) + ')" filter="url(#nd-ball-shadow)" opacity="0.93">';
@@ -4667,9 +4668,9 @@ function crUpdateNotationBall() {
   }
 
   if (notationBallStyle === 'shoe') {
-    var s  = notationBallRadius / 15;
-    var tx = ballX - 30 * s;
-    var ty = (ballY + notationBallRadius) - 34 * s;
+    var s  = notationBallRadius / 20;
+    var tx = ballX - 38 * s;
+    var ty = (ballY + notationBallRadius) - 44 * s;
     ball.setAttribute('transform', 'translate(' + tx.toFixed(1) + ',' + ty.toFixed(1) + ') scale(' + s.toFixed(3) + ')');
   } else {
     ball.setAttribute('transform', 'translate(' + ballX.toFixed(1) + ',' + ballY.toFixed(1) + ')');
