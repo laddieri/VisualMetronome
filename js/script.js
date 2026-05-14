@@ -8,6 +8,11 @@ var animal2;
 var animalType = 'circle'; // 'circle', 'pig', 'cat', 'dog', 'bird', etc.
 var circleColor = '#000000'; // Color for circle animation
 
+// Notation score display state
+var notationBeatXPositions = []; // display-space X where ball lands for each beat
+var notationBallLandingY = 0;    // display-space Y where ball lands (just above note heads)
+var notationScale = 1;           // scale factor applied to the notation content group
+
 // Selfie capture variables
 var selfieImage = null;
 var selfieImageDataURL = null; // Raw data URL of current selfie for saving
@@ -2557,7 +2562,7 @@ function updateColorPickerVisibility() {
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = (isConductor || animalType === 'webgpu') ? 'none' : '';
+    directionGroup.style.display = (isConductor || animalType === 'webgpu' || animalType === 'score') ? 'none' : '';
   }
 }
 
@@ -2587,6 +2592,11 @@ function createAnimals() {
       break;
     case 'webgpu':
       // WebGPU canvas handles its own rendering; p5 animals are unused
+      animal1 = new Circle(1);
+      animal2 = new Circle(-1);
+      break;
+    case 'score':
+      // Notation display handles its own rendering; p5 animals are unused
       animal1 = new Circle(1);
       animal2 = new Circle(-1);
       break;
@@ -2620,6 +2630,32 @@ function _sync3DConductor() {
     if (conductor3dInstance) {
       conductor3dInstance.stop();
     }
+  }
+}
+
+// ── Notation Score Display lifecycle ─────────────────────────────────────────
+function _syncNotationDisplay() {
+  var wrapper = document.getElementById('notation-display-wrapper');
+  var canvasWrapper = document.querySelector('.canvas-wrapper');
+  var isScore = (animalType === 'score');
+  if (wrapper) wrapper.style.display = isScore ? 'block' : 'none';
+  if (canvasWrapper) canvasWrapper.style.display = isScore ? 'none' : '';
+  if (isScore) crRenderNotationDisplay();
+}
+
+function crUpdateScoreOptionVisibility() {
+  var opt = document.getElementById('notation-score-option');
+  if (!opt) return;
+  opt.style.display = customRhythmEnabled ? '' : 'none';
+  if (!customRhythmEnabled && animalType === 'score') {
+    animalType = 'circle';
+    var sel = document.getElementById('animal-selector');
+    if (sel) sel.value = 'circle';
+    createAnimals();
+    _sync3DConductor();
+    _syncWebGPUCanvas();
+    _syncNotationDisplay();
+    updateColorPickerVisibility();
   }
 }
 
@@ -2803,6 +2839,7 @@ function setup() {
     createAnimals(); // Recreate animals when selection changes
     _sync3DConductor();
     _syncWebGPUCanvas();
+    _syncNotationDisplay();
     sendStateUpdate();
   });
 
@@ -3443,6 +3480,9 @@ function draw() {
 
   if (ctHideVisual) {
     // Skip animal rendering — canvas stays blank (just background)
+  } else if (animalType === 'score') {
+    // Notation score display renders in its own SVG overlay; update the bouncing ball
+    crUpdateNotationBall();
   } else if (animalType === 'conductor3d') {
     // 3D conductor is rendered by its own Three.js loop — nothing to draw on p5 canvas
   } else if (animalType === 'conductor') {
@@ -3862,7 +3902,7 @@ function applyRemoteCommand(msg) {
 
     case 'setAnimation': {
       var val = msg.value;
-      if (['circle', 'pig', 'selfie', 'conductor', 'conductor3d', 'webgpu'].indexOf(val) === -1) break;
+      if (['circle', 'pig', 'selfie', 'conductor', 'conductor3d', 'webgpu', 'score'].indexOf(val) === -1) break;
       animalType = val;
       var selector = document.getElementById('animal-selector');
       if (selector) selector.value = val;
@@ -3870,6 +3910,7 @@ function applyRemoteCommand(msg) {
       createAnimals();
       _sync3DConductor();
       _syncWebGPUCanvas();
+      _syncNotationDisplay();
       sendStateUpdate();
       break;
     }
@@ -4114,6 +4155,7 @@ function crCancelCustomRhythm() {
   if (cb) cb.checked = false;
   var btn = document.getElementById('custom-rhythm-btn');
   if (btn) btn.classList.remove('ct-active');
+  crUpdateScoreOptionVisibility();
 }
 
 // Build default pattern (all quarter notes) for current beatsPerMeasure
@@ -4365,6 +4407,192 @@ function crRenderNotation() {
 
   svg += '</svg>';
   container.innerHTML = svg;
+  if (animalType === 'score') crRenderNotationDisplay();
+}
+
+// ── Full-screen score display ─────────────────────────────────────────────────
+
+// Returns the X position (in notation base coordinates) where the ball lands for a beat.
+// Always the leftmost / first element of the beat, note or rest.
+function crGetBallLandingX(pat, x, w) {
+  switch (pat) {
+    case 'q':    return x + w / 2;
+    case 'r':    return x + w / 2;
+    case 'ee':   return x + w * 0.25;
+    case 'er':   return x + w * 0.25;
+    case 're':   return x + w * 0.25;
+    case 'ssss': return x + w * 0.12;
+    case 'sse':  return x + w * 0.12;
+    case 'ess':  return x + w * 0.15;
+    default:     return x + w / 2;
+  }
+}
+
+// Renders the notation as a full-screen SVG inside #notation-display-wrapper and
+// pre-computes the display-space ball landing positions for each beat.
+function crRenderNotationDisplay() {
+  var wrapper = document.getElementById('notation-display-wrapper');
+  if (!wrapper) return;
+
+  var beatCount = customRhythmPattern.length;
+  if (!beatCount) { wrapper.innerHTML = ''; return; }
+
+  // Base (modal-scale) notation dimensions
+  var baseBeatWidth = 70;
+  var baseXStart    = 40;
+  var baseStaffY    = 55;
+  var baseHeight    = 110;
+  var baseWidth     = beatCount * baseBeatWidth + baseXStart + 10;
+
+  // Display canvas dimensions (matches p5 canvas base)
+  var dispW = 640, dispH = 480;
+
+  // Score-paper rectangle inside the display
+  var paperX = 30, paperY = 175, paperW = 580, paperH = 220;
+  var paperCX = paperX + paperW / 2;
+  var paperCY = paperY + paperH / 2;
+
+  // Scale notation to fit the paper with padding
+  var padX = 40, padY = 20;
+  var scale = Math.min(
+    (paperW - padX * 2) / baseWidth,
+    (paperH - padY * 2) / baseHeight,
+    3.0
+  );
+  scale = Math.max(scale, 0.7);
+  notationScale = scale;
+
+  var tx = paperCX - (baseWidth  * scale) / 2;
+  var ty = paperCY - (baseHeight * scale) / 2;
+
+  // Ball radius scales with notation, capped to stay readable
+  var ballRadius = Math.max(10, Math.min(18, 10 * scale));
+
+  // Staff line in display space (note-head centres sit here)
+  var staffDisplayY = ty + baseStaffY * scale;
+
+  // Ball lands so its bottom just touches the top of the note-head ellipse (ry=3.5)
+  notationBallLandingY = staffDisplayY - 3.5 * scale - ballRadius - 1;
+
+  // Pre-compute display-space X for each beat's ball landing position
+  notationBeatXPositions = [];
+  for (var bi = 0; bi < beatCount; bi++) {
+    var beatBaseX = baseXStart + bi * baseBeatWidth;
+    var landBaseX = crGetBallLandingX(customRhythmPattern[bi], beatBaseX, baseBeatWidth);
+    notationBeatXPositions.push(tx + landBaseX * scale);
+  }
+
+  // ── Build SVG ──────────────────────────────────────────────────────────────
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" style="width:100%;height:auto;display:block">';
+
+  // Canvas background matching p5 grey
+  svg += '<rect width="640" height="480" fill="#696969"/>';
+
+  // Glow filter for the bouncing ball
+  svg += '<defs>';
+  svg += '<filter id="nd-ball-glow" x="-80%" y="-80%" width="260%" height="260%">';
+  svg += '<feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur"/>';
+  svg += '<feFlood flood-color="#ff4400" flood-opacity="0.45" result="color"/>';
+  svg += '<feComposite in="color" in2="blur" operator="in" result="shadow"/>';
+  svg += '<feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge>';
+  svg += '</filter>';
+  svg += '</defs>';
+
+  // Score paper (white sheet look)
+  svg += '<rect x="' + paperX + '" y="' + paperY + '" width="' + paperW + '" height="' + paperH + '" rx="12" fill="#fafaf8" stroke="#ddd" stroke-width="1"/>';
+
+  // Notation content — scaled group, same coordinate system as crRenderNotation
+  svg += '<g transform="translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ') scale(' + scale.toFixed(4) + ')">';
+
+  // Staff line
+  svg += '<line x1="10" y1="' + baseStaffY + '" x2="' + (baseWidth - 10) + '" y2="' + baseStaffY + '" stroke="#999" stroke-width="1"/>';
+
+  // Time signature
+  svg += '<text x="16" y="' + (baseStaffY + 5) + '" font-size="16" font-weight="bold" fill="#333" font-family="serif">' + beatCount + '</text>';
+
+  // Opening barline
+  svg += '<line x1="' + (baseXStart - 5) + '" y1="' + (baseStaffY - 20) + '" x2="' + (baseXStart - 5) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="1.5"/>';
+
+  for (var b = 0; b < beatCount; b++) {
+    var x = baseXStart + b * baseBeatWidth;
+    var pat = customRhythmPattern[b];
+
+    svg += crDrawBeatPattern(pat, x, baseStaffY, baseBeatWidth);
+
+    // Beat number below staff
+    svg += '<text x="' + (x + baseBeatWidth / 2 - 4) + '" y="' + (baseStaffY + 40) + '" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+
+    // Accent marks
+    if (customRhythmAccents[b] && customRhythmAccents[b].length > 0) {
+      var noteXPositions = crGetAllNoteXPositions(pat, x, baseBeatWidth);
+      for (var a = 0; a < customRhythmAccents[b].length; a++) {
+        var ni = customRhythmAccents[b][a];
+        if (ni < noteXPositions.length) {
+          svg += crAccentMark(noteXPositions[ni], baseStaffY - 33);
+        }
+      }
+    }
+
+    // Tie arc
+    if (customRhythmTies[b]) {
+      var thisPos = crGetNoteXPositions(pat, x, baseBeatWidth);
+      var nextBI  = (b + 1) % beatCount;
+      var nextX   = baseXStart + nextBI * baseBeatWidth;
+      var nextPat = customRhythmPattern[nextBI];
+      var nextPos = crGetNoteXPositions(nextPat, nextX, baseBeatWidth);
+      if (thisPos && nextPos) {
+        var tieEndX = (b === beatCount - 1)
+          ? (baseXStart + beatCount * baseBeatWidth - 3)
+          : nextPos.first;
+        svg += crTieArc(thisPos.last, tieEndX, baseStaffY);
+      }
+    }
+  }
+
+  // Final double barline
+  var finalBarX = baseXStart + beatCount * baseBeatWidth;
+  svg += '<line x1="' + (finalBarX + 2) + '" y1="' + (baseStaffY - 20) + '" x2="' + (finalBarX + 2) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="2.5"/>';
+  svg += '<line x1="' + (finalBarX - 2) + '" y1="' + (baseStaffY - 20) + '" x2="' + (finalBarX - 2) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="1"/>';
+
+  svg += '</g>'; // end notation group
+
+  // Bouncing ball — drawn in display coordinates so it stays outside the scaled group
+  var initX = notationBeatXPositions[0] !== undefined ? notationBeatXPositions[0] : dispW / 2;
+  svg += '<circle id="notation-ball" cx="' + initX.toFixed(1) + '" cy="' + notationBallLandingY.toFixed(1) + '" r="' + ballRadius.toFixed(1) + '" fill="#ff6600" filter="url(#nd-ball-glow)" opacity="0.93"/>';
+
+  svg += '</svg>';
+  wrapper.innerHTML = svg;
+}
+
+// Updates the bouncing ball position on each animation frame when score mode is active.
+function crUpdateNotationBall() {
+  var ball = document.getElementById('notation-ball');
+  if (!ball || !notationBeatXPositions.length) return;
+
+  var beatCount = notationBeatXPositions.length;
+  var progress  = getAnimationProgress();
+  var ballX, ballY;
+
+  if (Tone.Transport.state !== 'started' || lastBeatTime <= 0) {
+    // Stopped: rest on beat 1's note head
+    ballX = notationBeatXPositions[0];
+    ballY = notationBallLandingY;
+  } else {
+    // animBeat is the NEXT beat index (set when the previous beat fired).
+    // currentIdx = the beat that just fired; nextIdx = where the ball is heading.
+    var currentIdx = ((animBeat - 1) % beatCount + beatCount) % beatCount;
+    var nextIdx    = animBeat % beatCount;
+
+    var x0 = notationBeatXPositions[currentIdx];
+    var x1 = notationBeatXPositions[nextIdx];
+
+    ballX = x0 + (x1 - x0) * progress;
+    // Parabolic arc: lands (progress=0,1) at notationBallLandingY, peaks (progress=0.5) 130px above
+    ballY = notationBallLandingY - 130 * 4 * progress * (1 - progress);
+  }
+
+  ball.setAttribute('cx', ballX.toFixed(1));
+  ball.setAttribute('cy', ballY.toFixed(1));
 }
 
 function crDrawBeatPattern(pat, x, y, w) {
@@ -4683,6 +4911,8 @@ function initCustomRhythmListeners() {
       if (customRhythmEnabled && customRhythmPattern.length === 0) {
         customRhythmPattern = crBuildDefaultPattern();
       }
+      crUpdateScoreOptionVisibility();
+      if (animalType === 'score') crRenderNotationDisplay();
       sendStateUpdate();
     });
   }

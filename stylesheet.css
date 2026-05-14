@@ -104,6 +104,19 @@ main {
   margin: 0;
 }
 
+/* Notation score display */
+.notation-display-wrapper {
+  width: 100%;
+}
+
+.notation-display-wrapper svg {
+  border-radius: 12px;
+  box-shadow: var(--vm-shadow-canvas);
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
 /* Canvas wrapper */
 .canvas-wrapper {
   display: flex;
