@@ -4624,13 +4624,12 @@ function crGetBeatLabelX(pat, x, w) {
 // Heel (left) is ~40 units tall; toe (right) is ~16 units tall — clearly a side view.
 // tx, ty, s: the translate/scale transform that places and sizes the shoe.
 function crShoeGroupSVG(id, color, tx, ty, s) {
-  var dark  = 'rgba(0,0,0,0.25)';
   var light = 'rgba(255,255,255,0.30)';
   var g = '<g id="' + id + '" transform="translate(' + tx + ',' + ty + ') scale(' + s + ')" filter="url(#nd-ball-shadow)">';
   // Main upper — heel (left, y=4..44) is ~2.5× taller than toe (right, y=26..42)
   g += '<path d="M 4,42 C 2,20 4,6 14,4 L 52,4 C 66,3 76,14 78,26 L 78,38 Q 76,42 70,42 L 6,44 Q 2,44 2,40 Z" fill="' + color + '" stroke="rgba(0,0,0,0.18)" stroke-width="1"/>';
-  // Sole band (darker strip along the bottom)
-  g += '<path d="M 2,38 Q 2,44 6,44 L 70,42 Q 76,42 78,38 L 76,38 Q 74,41 68,41 L 5,43 Q 2,43 2,38 Z" fill="' + dark + '"/>';
+  // Sole band — white rubber, drawn over the upper so it has its own distinct color
+  g += '<path d="M 2,38 Q 2,44 6,44 L 70,42 Q 76,42 78,38 L 76,38 Q 74,41 68,41 L 5,43 Q 2,43 2,38 Z" fill="#f0f0f0" stroke="rgba(0,0,0,0.18)" stroke-width="0.5"/>';
   // Tongue highlight
   g += '<path d="M 28,4 L 44,4 L 42,22 L 30,22 Z" fill="' + light + '"/>';
   // Lace lines (angled slightly heel→toe)
