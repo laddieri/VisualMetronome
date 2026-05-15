@@ -5050,9 +5050,13 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     var vh = window.innerHeight;
     var left = anchorX - pw / 2;
     var top  = anchorY + 12;
+    // Prefer below the anchor; flip above if it would go off-screen
     if (top + ph > vh - 12) top = anchorY - ph - 12;
+    // Hard clamp: never let either edge exceed the viewport
     left = Math.max(10, Math.min(left, vw - pw - 10));
-    top  = Math.max(10, top);
+    top  = Math.max(10, Math.min(top,  vh - ph - 10));
+    picker.style.left = left + 'px';
+    picker.style.top  = top  + 'px';
     picker.style.left = left + 'px';
     picker.style.top  = top  + 'px';
   });
