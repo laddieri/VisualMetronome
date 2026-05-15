@@ -4937,8 +4937,145 @@ function crRenderNotationDisplay() {
   var initX = notationBeatXPositions[0] !== undefined ? notationBeatXPositions[0] : dispW / 2;
   svg += crNotationBallSVG('notation-ball', notationBallColor, notationBallStyle, initX, notationBallLandingY, ballRadius);
 
+  // Beat click targets — transparent overlays for the rhythm picker.
+  // Drawn last so they're on top for pointer events; CSS handles hover highlight.
+  for (var ci = 0; ci < beatCount; ci++) {
+    if (crIsContinuation(effectivePattern[ci])) continue;
+    var chx = (tx + (baseXStart + ci * baseBeatWidth) * scale - 2).toFixed(1);
+    var chy = (ty + (baseStaffY - 28) * scale).toFixed(1);
+    var chw = (baseBeatWidth * scale).toFixed(1);
+    var chh = (68 * scale).toFixed(1);
+    svg += '<rect class="cr-beat-target" data-beat="' + ci + '"'
+         + ' x="' + chx + '" y="' + chy + '" width="' + chw + '" height="' + chh + '"'
+         + ' rx="3" pointer-events="all"/>';
+  }
+
   svg += '</svg>';
   wrapper.innerHTML = svg;
+  crAttachBeatPickerListeners(wrapper);
+}
+
+// ── Rhythm picker ─────────────────────────────────────────────────────────────
+
+function crHideRhythmPicker() {
+  var picker   = document.getElementById('rhythm-picker');
+  var backdrop = document.getElementById('rhythm-picker-backdrop');
+  if (picker)   picker.style.display   = 'none';
+  if (backdrop) backdrop.style.display = 'none';
+}
+
+// Enables custom rhythm (if not yet active), applies the chosen pattern to the
+// beat, and re-renders both the score display and the modal notation preview.
+function crApplyRhythmOption(beatIdx, pat) {
+  if (!customRhythmEnabled || customRhythmPattern.length === 0) {
+    customRhythmEnabled = true;
+    customRhythmPattern = crBuildDefaultPattern();
+    crSyncTiesAndAccents();
+    var cb  = document.getElementById('custom-rhythm-enabled');
+    var btn = document.getElementById('custom-rhythm-btn');
+    if (cb)  cb.checked = true;
+    if (btn) btn.classList.add('ct-active');
+    _syncSubdivisionVisibility();
+  }
+  crSetBeatPattern(beatIdx, pat);
+  crRenderNotationDisplay();
+  crRenderNotation();
+  sendStateUpdate();
+}
+
+// Shows the floating rhythm-picker popover anchored below (or above) the beat.
+function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
+  var picker    = document.getElementById('rhythm-picker');
+  var backdrop  = document.getElementById('rhythm-picker-backdrop');
+  var beatNumEl = document.getElementById('rhythm-picker-beat-num');
+  var grid      = document.getElementById('rhythm-picker-grid');
+  if (!picker || !grid) return;
+
+  if (beatNumEl) beatNumEl.textContent = beatIdx + 1;
+
+  var beatCount  = notationBeatXPositions.length;
+  var currentPat = customRhythmPattern.length > beatIdx ? customRhythmPattern[beatIdx] : 'q';
+
+  var patterns = [
+    { pat: 'q',    label: 'Quarter'        },
+    { pat: 'r',    label: 'Rest'           },
+    { pat: 'ee',   label: '2 Eighths'      },
+    { pat: 'er',   label: 'Eighth + Rest'  },
+    { pat: 're',   label: 'Rest + Eighth'  },
+    { pat: 'ssss', label: '4 Sixteenths'   },
+    { pat: 'sse',  label: '2/16 + Eighth'  },
+    { pat: 'ess',  label: 'Eighth + 2/16'  },
+  ];
+  if (beatIdx + 1 < beatCount) {
+    patterns.push({ pat: 'h',  label: 'Half Note'       });
+    patterns.push({ pat: 'dq', label: 'Dotted Quarter'  });
+  }
+
+  grid.innerHTML = '';
+  patterns.forEach(function(opt) {
+    var btn = document.createElement('button');
+    btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
+    btn.title = opt.label;
+
+    // Mini SVG preview of the rhythm pattern (56×44 px, staff at y=30)
+    var mW = 56, mH = 44, mY = 30;
+    var mini  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '"'
+              + ' width="' + mW + '" height="' + mH + '">';
+    mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY
+          + '" stroke="#ccc" stroke-width="0.8"/>';
+    mini += crDrawBeatPattern(opt.pat, 0, mY, mW);
+    mini += '</svg>';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'rhythm-option-label';
+    lbl.textContent = opt.label;
+
+    btn.innerHTML = mini;
+    btn.appendChild(lbl);
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      crApplyRhythmOption(beatIdx, opt.pat);
+      crHideRhythmPicker();
+    });
+    grid.appendChild(btn);
+  });
+
+  picker.style.display = 'block';
+  if (backdrop) backdrop.style.display = 'block';
+
+  // Defer positioning until the browser has laid the picker out
+  requestAnimationFrame(function() {
+    var pw = picker.offsetWidth  || 290;
+    var ph = picker.offsetHeight || 230;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var left = anchorX - pw / 2;
+    var top  = anchorY + 12;
+    if (top + ph > vh - 12) top = anchorY - ph - 12;
+    left = Math.max(10, Math.min(left, vw - pw - 10));
+    top  = Math.max(10, top);
+    picker.style.left = left + 'px';
+    picker.style.top  = top  + 'px';
+  });
+}
+
+// Attaches click listeners to the beat hit-areas generated by crRenderNotationDisplay.
+function crAttachBeatPickerListeners(wrapper) {
+  if (!wrapper) return;
+  wrapper.querySelectorAll('.cr-beat-target').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var beatIdx = parseInt(el.getAttribute('data-beat'), 10);
+      var svgEl   = wrapper.querySelector('svg');
+      if (!svgEl || !notationBeatXPositions.length) return;
+      var r   = svgEl.getBoundingClientRect();
+      var sx  = r.width  / 640;
+      var sy  = r.height / 360;
+      var screenX = r.left + notationBeatXPositions[beatIdx] * sx;
+      var screenY = r.top  + (notationBallLandingY + notationBallRadius + 6) * sy;
+      crShowRhythmPicker(beatIdx, screenX, screenY);
+    });
+  });
 }
 
 // Updates the bouncing ball position on each animation frame when score mode is active.
@@ -5339,6 +5476,13 @@ function initCustomRhythmListeners() {
       sendStateUpdate();
     });
   }
+  // Rhythm picker: close on backdrop click or Escape key
+  var rpBackdrop = document.getElementById('rhythm-picker-backdrop');
+  if (rpBackdrop) rpBackdrop.addEventListener('click', crHideRhythmPicker);
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') crHideRhythmPicker();
+  });
+
   // Sync on initial load in case customRhythmEnabled was restored from state
   _syncSubdivisionVisibility();
 }

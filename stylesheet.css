@@ -145,6 +145,80 @@ main {
   box-shadow: none;
 }
 
+/* ── Rhythm picker popover (score mode) ─────────────────────────────────────── */
+.rhythm-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+}
+
+.rhythm-picker {
+  position: fixed;
+  z-index: 300;
+  background: var(--vm-bg-page);
+  border: 1px solid var(--vm-border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 10px;
+  min-width: 250px;
+}
+
+.rhythm-picker-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--vm-fg-3);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+
+.rhythm-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.rhythm-option {
+  background: var(--vm-bg-panel);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 4px 2px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.rhythm-option:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: var(--vm-indigo);
+}
+
+.rhythm-option.active {
+  background: rgba(102, 126, 234, 0.14);
+  border-color: var(--vm-indigo-deep);
+}
+
+.rhythm-option-label {
+  font-size: 9px;
+  color: var(--vm-fg-4);
+  line-height: 1.1;
+  text-align: center;
+  user-select: none;
+}
+
+/* Beat click areas inside the score SVG */
+.cr-beat-target {
+  cursor: pointer;
+  fill: transparent;
+}
+.cr-beat-target:hover {
+  fill: rgba(102, 126, 234, 0.1);
+}
+
 /* Canvas wrapper */
 .canvas-wrapper {
   display: flex;
