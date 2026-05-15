@@ -1548,6 +1548,7 @@ function initSettingsListeners() {
       updateRockBeatVisibility();
       // Cancel custom rhythm when time signature changes
       crCancelCustomRhythm();
+      if (animalType === 'score') crRenderNotationDisplay();
       sendStateUpdate();
     });
   }
@@ -4026,6 +4027,7 @@ function applyRemoteCommand(msg) {
       }
       var wbGroup = document.getElementById('waltz-beat-setting-group');
       if (wbGroup) wbGroup.style.display = bpm === 3 ? '' : 'none';
+      if (animalType === 'score') crRenderNotationDisplay();
       sendStateUpdate();
       break;
     }
