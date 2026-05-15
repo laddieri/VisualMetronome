@@ -791,7 +791,14 @@ class Conductor3D {
     this.batonLagX += this.batonLagVelX;
     this.batonLagZ += this.batonLagVelZ;
 
-    this.meshes.baton.rotation.x = 0.25 + this.batonLagX;
+    // Wrist-flick: baton tip arcs to its highest point at the "and" of each
+    // beat (halfway between ictuses). Increasing rotation.x tilts the -Y tip
+    // toward the viewer and upward, matching the wrist-snap conductors use to
+    // subdivide the beat visually.
+    const beatProg = (typeof getAnimationProgress === 'function') ? getAnimationProgress() : 0;
+    const wristFlick = Math.sin(beatProg * Math.PI) * 0.45;
+
+    this.meshes.baton.rotation.x = 0.25 + this.batonLagX + wristFlick;
     this.meshes.baton.rotation.z = this.batonLagZ;
   }
 
@@ -817,10 +824,17 @@ class Conductor3D {
     const forearmDirLocal = forearmDirWorld.applyQuaternion(inverseUpper);
     elbow.quaternion.setFromUnitVectors(DOWN, forearmDirLocal);
 
-    // Wrist: a small, natural flex. For the baton hand (right, side=1) add a
-    // subtle beat-synchronized flick so the wrist "lands" into each ictus.
+    // Wrist: a small, natural flex. For the baton hand (right, side=1) the
+    // wrist cocks back as the tip rises to the "and" so the motion reads as
+    // driven by the wrist rather than the whole arm.
     if (wrist) {
-      wrist.rotation.set(-0.1, 0, 0);
+      if (side === 1) {
+        const beatProg = (typeof getAnimationProgress === 'function') ? getAnimationProgress() : 0;
+        const wristCock = Math.sin(beatProg * Math.PI) * 0.15;
+        wrist.rotation.set(-0.1 + wristCock, 0, 0);
+      } else {
+        wrist.rotation.set(-0.1, 0, 0);
+      }
     }
   }
 
