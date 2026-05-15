@@ -39,6 +39,7 @@ var flashEnabled = false; // Flash background on beat
 var voiceCountEnabled = false; // Count beats aloud
 var rockBeatEnabled = false; // Rock beat drum machine (4/4 only)
 var waltzBeatEnabled = false; // Waltz beat drum machine (3/4 only)
+var spacebarAction = 'play'; // 'play' | 'count-in-1' | 'count-in-2'
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
 var lastBeatTime = 0;   // Track when last beat fired for animation sync
@@ -1695,6 +1696,14 @@ function initSettingsListeners() {
       metronomeSound = e.target.value;
     });
   }
+
+  // Spacebar action selector
+  const spacebarActionSelect = document.getElementById('spacebar-action-select');
+  if (spacebarActionSelect) {
+    spacebarActionSelect.addEventListener('change', (e) => {
+      spacebarAction = e.target.value;
+    });
+  }
 }
 
 // Robust AudioContext resume handling
@@ -2485,7 +2494,10 @@ document.addEventListener('keydown', function(e) {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return;
   if (document.activeElement && document.activeElement.isContentEditable) return;
   e.preventDefault(); // stop page scroll
-  _ensureAudioContext(() => toggleTransport(false));
+  var withCountIn = spacebarAction === 'count-in-1' ? 1
+                  : spacebarAction === 'count-in-2' ? 2
+                  : false;
+  _ensureAudioContext(() => toggleTransport(withCountIn));
 });
 
 // Animation size slider — scales the animation area up/down; controls scale inversely.
@@ -5712,6 +5724,11 @@ document.getElementById('reset-settings-btn').addEventListener('click', function
   var ctBtn = document.getElementById('counting-trainer-btn');
   if (ctCb)  ctCb.checked = false;
   if (ctBtn) ctBtn.classList.remove('ct-active');
+
+  // Spacebar action → default (play/stop)
+  spacebarAction = 'play';
+  var spacebarSel = document.getElementById('spacebar-action-select');
+  if (spacebarSel) spacebarSel.value = 'play';
 
   sendStateUpdate();
 });
