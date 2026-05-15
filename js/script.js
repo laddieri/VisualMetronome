@@ -2491,8 +2491,16 @@ function _syncAnimSize() {
   var slider = document.getElementById('anim-size-slider');
   if (!slider) return;
   var val = parseInt(slider.value, 10);
-  var f = 0.75 + (val - 1) * 0.0625; // 1→0.75, 5→1.0, 9→1.25
-  var ctrlF = Math.max(0.875, Math.min(1.125, 1.0 + (1.0 - f) * 0.5));
+  // Two-segment mapping keeps val=5 as exactly 1.0:
+  //   lower half (1–5): 0.75 → 1.0  (step 0.0625)
+  //   upper half (5–9): 1.0  → 1.75 (step 0.1875)
+  var f;
+  if (val <= 5) {
+    f = 0.75 + (val - 1) * 0.0625;
+  } else {
+    f = 1.0 + (val - 5) * 0.1875;
+  }
+  var ctrlF = Math.max(0.7, Math.min(1.125, 1.0 + (1.0 - f) * 0.5));
 
   var controls = document.querySelector('.controls');
   if (controls) controls.style.zoom = ctrlF;
