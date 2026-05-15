@@ -5070,29 +5070,27 @@ function crRenderNotationDisplay() {
          + ' rx="3" pointer-events="all"/>';
   }
 
-  // Note-level tie targets — only when custom rhythm is active
-  if (customRhythmEnabled) {
-    for (var nb = 0; nb < beatCount; nb++) {
-      var nbPat = effectivePattern[nb];
-      if (crIsContinuation(nbPat)) continue;
-      var nbBaseX = baseXStart + nb * baseBeatWidth;
-      var nbNoteXs = crGetAllNoteXPositions(nbPat, nbBaseX, baseBeatWidth);
-      for (var nni = 0; nni < nbNoteXs.length; nni++) {
-        // Don't allow a tie target on the very last note of the measure
-        if (nb === beatCount - 1 && nni === nbNoteXs.length - 1) continue;
-        // Don't allow cross-beat tie to a rest or continuation beat
-        if (nni === nbNoteXs.length - 1) {
-          var nextNbPat = effectivePattern[nb + 1];
-          if (!nextNbPat || crIsContinuation(nextNbPat) || crGetAllNoteXPositions(nextNbPat, 0, 1).length === 0) continue;
-        }
-        var isTied = customRhythmNoteTies[nb] && customRhythmNoteTies[nb][nni];
-        var ndx = (tx + nbNoteXs[nni] * scale - 8).toFixed(1);
-        var ndy = (ty + baseStaffY * scale - 8).toFixed(1);
-        svg += '<rect class="cr-note-target' + (isTied ? ' tied' : '') + '"'
-             + ' data-beat="' + nb + '" data-note="' + nni + '"'
-             + ' x="' + ndx + '" y="' + ndy + '" width="16" height="16"'
-             + ' rx="3" pointer-events="all"/>';
+  // Note-level tie targets — always rendered in score mode
+  for (var nb = 0; nb < beatCount; nb++) {
+    var nbPat = effectivePattern[nb];
+    if (crIsContinuation(nbPat)) continue;
+    var nbBaseX = baseXStart + nb * baseBeatWidth;
+    var nbNoteXs = crGetAllNoteXPositions(nbPat, nbBaseX, baseBeatWidth);
+    for (var nni = 0; nni < nbNoteXs.length; nni++) {
+      // Don't allow a tie target on the very last note of the measure
+      if (nb === beatCount - 1 && nni === nbNoteXs.length - 1) continue;
+      // Don't allow cross-beat tie to a rest or continuation beat
+      if (nni === nbNoteXs.length - 1) {
+        var nextNbPat = effectivePattern[nb + 1];
+        if (!nextNbPat || crIsContinuation(nextNbPat) || crGetAllNoteXPositions(nextNbPat, 0, 1).length === 0) continue;
       }
+      var isTied = customRhythmNoteTies[nb] && customRhythmNoteTies[nb][nni];
+      var ndx = (tx + nbNoteXs[nni] * scale - 8).toFixed(1);
+      var ndy = (ty + baseStaffY * scale - 8).toFixed(1);
+      svg += '<rect class="cr-note-target' + (isTied ? ' tied' : '') + '"'
+           + ' data-beat="' + nb + '" data-note="' + nni + '"'
+           + ' x="' + ndx + '" y="' + ndy + '" width="16" height="16"'
+           + ' rx="3" pointer-events="all"/>';
     }
   }
 
@@ -5288,7 +5286,18 @@ function crAttachBeatPickerListeners(wrapper) {
 }
 
 function crToggleNoteTie(beatIdx, noteIdx) {
-  if (!customRhythmEnabled || !customRhythmPattern.length) return;
+  // Auto-initialize custom rhythm with default quarter notes on first tie click
+  if (!customRhythmEnabled || !customRhythmPattern.length) {
+    customRhythmEnabled = true;
+    customRhythmPattern = crBuildDefaultPattern();
+    crSyncTiesAndAccents();
+    var _cb = document.getElementById('custom-rhythm-enabled');
+    if (_cb) _cb.checked = true;
+    var _btn = document.getElementById('custom-rhythm-btn');
+    if (_btn) _btn.classList.add('ct-active');
+    _syncSubdivisionVisibility();
+    _syncPracticeRow();
+  }
   if (!customRhythmNoteTies[beatIdx]) customRhythmNoteTies[beatIdx] = [];
   customRhythmNoteTies[beatIdx][noteIdx] = !customRhythmNoteTies[beatIdx][noteIdx];
   crRenderNotationDisplay();
