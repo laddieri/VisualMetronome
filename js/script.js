@@ -2723,19 +2723,7 @@ function _syncNotationDisplay() {
 }
 
 function crUpdateScoreOptionVisibility() {
-  var opt = document.getElementById('notation-score-option');
-  if (!opt) return;
-  opt.style.display = customRhythmEnabled ? '' : 'none';
-  if (!customRhythmEnabled && animalType === 'score') {
-    animalType = 'circle';
-    var sel = document.getElementById('animal-selector');
-    if (sel) sel.value = 'circle';
-    createAnimals();
-    _sync3DConductor();
-    _syncWebGPUCanvas();
-    _syncNotationDisplay();
-    updateColorPickerVisibility();
-  }
+  // Score is always available; nothing to hide or force-switch.
 }
 
 // ── Counting Trainer UI ──────────────────────────────────────────────────────
@@ -4811,8 +4799,11 @@ function crRenderNotationDisplay() {
   var wrapper = document.getElementById(targetId);
   if (!wrapper) return;
 
-  var beatCount = customRhythmPattern.length;
-  if (!beatCount) { wrapper.innerHTML = ''; return; }
+  // When no custom rhythm is set, default to quarter notes for every beat
+  var effectivePattern = customRhythmPattern.length
+    ? customRhythmPattern
+    : (function() { var p = []; for (var i = 0; i < beatsPerMeasure; i++) p.push('q'); return p; }());
+  var beatCount = effectivePattern.length;
 
   // Base (modal-scale) notation dimensions
   var baseBeatWidth = 70;
@@ -4855,7 +4846,7 @@ function crRenderNotationDisplay() {
   notationBeatXPositions = [];
   for (var bi = 0; bi < beatCount; bi++) {
     var beatBaseX = baseXStart + bi * baseBeatWidth;
-    var landBaseX = crGetBallLandingX(customRhythmPattern[bi], beatBaseX, baseBeatWidth);
+    var landBaseX = crGetBallLandingX(effectivePattern[bi], beatBaseX, baseBeatWidth);
     notationBeatXPositions.push(tx + landBaseX * scale);
   }
 
@@ -4893,7 +4884,7 @@ function crRenderNotationDisplay() {
 
   for (var b = 0; b < beatCount; b++) {
     var x = baseXStart + b * baseBeatWidth;
-    var pat = customRhythmPattern[b];
+    var pat = effectivePattern[b];
 
     svg += crDrawBeatPattern(pat, x, baseStaffY, baseBeatWidth);
 
@@ -4916,7 +4907,7 @@ function crRenderNotationDisplay() {
       var thisPos = crGetNoteXPositions(pat, x, baseBeatWidth);
       var nextBI  = (b + 1) % beatCount;
       var nextX   = baseXStart + nextBI * baseBeatWidth;
-      var nextPat = customRhythmPattern[nextBI];
+      var nextPat = effectivePattern[nextBI];
       var nextPos = crGetNoteXPositions(nextPat, nextX, baseBeatWidth);
       if (thisPos && nextPos) {
         var tieEndX = (b === beatCount - 1)
