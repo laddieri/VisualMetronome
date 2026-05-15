@@ -2474,6 +2474,17 @@ _stopBtn.addEventListener('click', () => {
   toggleTransport(false);
 });
 
+// Spacebar starts/stops the metronome on desktop, unless focus is in a
+// text field, button, or other element where space has its own meaning.
+document.addEventListener('keydown', function(e) {
+  if (e.key !== ' ') return;
+  var tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') return;
+  if (document.activeElement && document.activeElement.isContentEditable) return;
+  e.preventDefault(); // stop page scroll
+  _ensureAudioContext(() => toggleTransport(false));
+});
+
 function toggleTransport(withCountIn) {
   if (Tone.Transport.state === 'started') {
     // Stopping: reset state for clean restart
