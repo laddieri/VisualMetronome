@@ -40,6 +40,8 @@ var voiceCountEnabled = false; // Count beats aloud
 var rockBeatEnabled = false; // Rock beat drum machine (4/4 only)
 var waltzBeatEnabled = false; // Waltz beat drum machine (3/4 only)
 var spacebarAction = 'play'; // 'play' | 'count-in-1' | 'count-in-2'
+var practiceRhythmEnabled = false;  // alternates sound/silent measures
+var practiceRhythmMeasureIdx = -1;  // incremented at each measure start; even=sound, odd=silent
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
 var lastBeatTime = 0;   // Track when last beat fired for animation sync
@@ -2117,6 +2119,27 @@ function scheduleMainBeat() {
     }
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Practice Rhythm: track measure boundaries ──────────────────────────
+    if (currentBeat === 0 && practiceRhythmEnabled) {
+      practiceRhythmMeasureIdx++;
+      const _prSilent = practiceRhythmMeasureIdx % 2 === 1;
+      const _prColor  = _prSilent ? '#3a5c2a' : '#696969';
+      Tone.Draw.schedule(function() {
+        document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', _prColor); });
+        var prRow = document.getElementById('practice-rhythm-row');
+        if (prRow) prRow.className = 'practice-rhythm-row' + (_prSilent ? ' your-turn' : '');
+      }, time);
+    } else if (currentBeat === 0 && !practiceRhythmEnabled && practiceRhythmMeasureIdx !== -1) {
+      // Feature was just disabled mid-session — reset colour
+      practiceRhythmMeasureIdx = -1;
+      Tone.Draw.schedule(function() {
+        document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
+        var prRow = document.getElementById('practice-rhythm-row');
+        if (prRow) prRow.className = 'practice-rhythm-row';
+      }, time);
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // ── Two-measure pattern: apply measure settings at start of each measure ─
     if (twoMeasurePatternEnabled && !songModeEnabled && currentBeat === 0) {
       var mpCfg = twoMeasurePattern[twoMeasureCurrentMeasure];
@@ -2281,28 +2304,31 @@ function scheduleMainBeat() {
       // Continue with animation sync (fall through to Draw schedule below)
     } else if (ctPhase !== 'done') {
       // ── Normal sound playback (not in counting trainer) ──────────────────
-      // Custom rhythm mode: play the user-defined pattern
-      if (customRhythmEnabled && customRhythmPattern.length > 0) {
-        triggerCustomRhythmBeat(time, currentBeat);
-      // Drum machine modes: play drum pattern instead of normal click sounds
-      } else if (rockBeatEnabled && beatsPerMeasure === 4) {
-        triggerRockBeat(time, currentBeat);
-      } else if (waltzBeatEnabled && beatsPerMeasure === 3) {
-        triggerWaltzBeat(time, currentBeat);
-      } else {
-        // Determine if this is beat 1 (accented)
-        const isAccent = currentBeat === 0;
-        triggerSound(time, isAccent);
+      const _prIsSilent = practiceRhythmEnabled && practiceRhythmMeasureIdx % 2 === 1;
+      if (!_prIsSilent) {
+        // Custom rhythm mode: play the user-defined pattern
+        if (customRhythmEnabled && customRhythmPattern.length > 0) {
+          triggerCustomRhythmBeat(time, currentBeat);
+        // Drum machine modes: play drum pattern instead of normal click sounds
+        } else if (rockBeatEnabled && beatsPerMeasure === 4) {
+          triggerRockBeat(time, currentBeat);
+        } else if (waltzBeatEnabled && beatsPerMeasure === 3) {
+          triggerWaltzBeat(time, currentBeat);
+        } else {
+          // Determine if this is beat 1 (accented)
+          const isAccent = currentBeat === 0;
+          triggerSound(time, isAccent);
 
-        // Schedule subdivisions for this beat
-        scheduleSubdivisionsForBeat(time);
+          // Schedule subdivisions for this beat
+          scheduleSubdivisionsForBeat(time);
+        }
+
+        // Store beat number before it gets incremented
+        const beatToSpeak = currentBeat + 1; // 1-indexed for speaking
+
+        // Schedule speech with precise look-ahead compensation so it lands on the beat
+        speakBeatNumber(beatToSpeak, time);
       }
-
-      // Store beat number before it gets incremented
-      const beatToSpeak = currentBeat + 1; // 1-indexed for speaking
-
-      // Schedule speech with precise look-ahead compensation so it lands on the beat
-      speakBeatNumber(beatToSpeak, time);
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -2552,6 +2578,7 @@ function toggleTransport(withCountIn) {
     hideSongProgressDisplay();
     // Reset two-measure pattern state
     twoMeasureCurrentMeasure = 0;
+    practiceRhythmMeasureIdx = -1;
     _countIn1Btn.classList.remove('active');
     _countInBtn.classList.remove('active');
     _setPlayTogglePlaying(false);
@@ -2588,6 +2615,7 @@ function toggleTransport(withCountIn) {
     }
     // Reset two-measure pattern to start from measure 1
     twoMeasureCurrentMeasure = 0;
+    practiceRhythmMeasureIdx = -1;
     // If two-measure mode is active, apply measure 1 settings immediately
     if (twoMeasurePatternEnabled && !songModeEnabled) {
       twoMeasurePattern[0].bpm = cachedBPM;
@@ -2781,6 +2809,21 @@ function _syncNotationDisplay() {
 
 function crUpdateScoreOptionVisibility() {
   // Score is always available; nothing to hide or force-switch.
+}
+
+function _syncPracticeRow() {
+  var row = document.getElementById('practice-rhythm-row');
+  if (!row) return;
+  var visible = animalType === 'score' && customRhythmEnabled;
+  row.style.display = visible ? '' : 'none';
+  if (!visible && practiceRhythmEnabled) {
+    // Auto-disable when the row is hidden (left score mode or disabled custom rhythm)
+    practiceRhythmEnabled = false;
+    practiceRhythmMeasureIdx = -1;
+    var cb = document.getElementById('practice-rhythm-cb');
+    if (cb) cb.checked = false;
+    document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
+  }
 }
 
 // ── Counting Trainer UI ──────────────────────────────────────────────────────
@@ -4409,6 +4452,7 @@ function crCancelCustomRhythm() {
   if (btn) btn.classList.remove('ct-active');
   crUpdateScoreOptionVisibility();
   _syncSubdivisionVisibility();
+  _syncPracticeRow();
 }
 
 // Build default pattern (all quarter notes) for current beatsPerMeasure
@@ -4924,8 +4968,9 @@ function crRenderNotationDisplay() {
   // ── Build SVG ──────────────────────────────────────────────────────────────
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet">';
 
-  // Canvas background matching p5 grey
-  svg += '<rect width="640" height="360" fill="#696969"/>';
+  // Canvas background — changes colour when practice-rhythm silent measure is active
+  var _prBg = (practiceRhythmEnabled && practiceRhythmMeasureIdx % 2 === 1) ? '#3a5c2a' : '#696969';
+  svg += '<rect class="nd-bg-rect" width="640" height="360" fill="' + _prBg + '"/>';
 
   // Drop-shadow filter — works for both ball and shoe
   svg += '<defs>';
@@ -5047,6 +5092,7 @@ function crRenderNotationDisplay() {
   wrapper.innerHTML = svg;
   crAttachBeatPickerListeners(wrapper);
   crAttachNoteTargetListeners(wrapper);
+  _syncPracticeRow();
 }
 
 // ── Rhythm picker ─────────────────────────────────────────────────────────────
@@ -5741,6 +5787,23 @@ if (document.readyState === 'loading') {
 } else {
   initCustomRhythmListeners();
 }
+
+// ── Practice Rhythm ───────────────────────────────────────────────────────────
+(function() {
+  var cb = document.getElementById('practice-rhythm-cb');
+  if (!cb) return;
+  cb.checked = practiceRhythmEnabled;
+  cb.addEventListener('change', function() {
+    practiceRhythmEnabled = cb.checked;
+    practiceRhythmMeasureIdx = -1;
+    // Reset background to gray immediately when disabled
+    if (!practiceRhythmEnabled) {
+      document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
+      var row = document.getElementById('practice-rhythm-row');
+      if (row) row.className = 'practice-rhythm-row';
+    }
+  });
+})();
 
 // Initialize song sections listeners immediately (not dependent on p5.js setup)
 if (document.readyState === 'loading') {
