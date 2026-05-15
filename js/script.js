@@ -4710,6 +4710,7 @@ function crGetBallLandingX(pat, x, w) {
     case 'q':    return x + w / 2;
     case 'r':    return x + w / 2;
     case 'ee':   return x + w * 0.25;
+    case 'eee':  return x + w * 0.15;
     case 'er':   return x + w * 0.25;
     case 're':   return x + w * 0.25;
     case 'ssss': return x + w * 0.12;
@@ -4729,6 +4730,7 @@ function crGetBallLandingX(pat, x, w) {
 // slightly before the note so the number doesn't sit directly on top of it.
 function crGetBeatLabelX(pat, x, w) {
   if (pat === '_e' || pat === '_r') return x + w * 0.2;
+  if (pat === 'eee') return x + w * 0.15;
   return crGetBallLandingX(pat, x, w);
 }
 
