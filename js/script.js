@@ -4727,7 +4727,7 @@ function crNotationBallSVG(id, color, style, ballX, ballY, radius) {
     case 'shoe': {
       var s = radius / 20;
       var stx = (ballX - 38*s).toFixed(1);
-      var sty = ((ballY + radius) - 44*s).toFixed(1);
+      var sty = ((ballY + radius) - 60*s).toFixed(1);
       return crShoeGroupSVG(id, color, stx, sty, s.toFixed(3));
     }
     case 'heart':
