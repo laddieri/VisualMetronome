@@ -4271,6 +4271,9 @@ var CR_OPTIONS = [
   { value: 'ssss', label: '♬♬ Four sixteenths',           span: 1, subBeats: [1, 0.75, 0.5, 0.25] },
   { value: 'sse',  label: '♬♪ Two sixteenths + eighth',   span: 1, subBeats: [1, 0.75, 0.5] },
   { value: 'ess',  label: '♪♬ Eighth + two sixteenths',   span: 1, subBeats: [1, 0.5, 0.25] },
+  { value: 'des',  label: '♩. Dotted eighth + sixteenth', span: 1, subBeats: [1, 0.25] },
+  { value: 'sed',  label: '♬. Sixteenth + dotted eighth', span: 1, subBeats: [1, 0.25] },
+  { value: 'ses',  label: '♬♪♬ Sixteenth-eighth-sixteenth', span: 1, subBeats: [1, 0.25, 0.25] },
   { value: 'h',    label: '𝅗𝅥  Half note',                span: 2, subBeats: [1] },
   { value: 'dq',   label: '♩. Dotted quarter',            span: 2, subBeats: [1] },
   { value: 'dh',   label: '𝅗𝅥. Dotted half note',        span: 3, subBeats: [1] },
@@ -4377,6 +4380,9 @@ function crGetSubBeats(patternValue) {
     case 'ssss': return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.5}, {offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
     case 'sse':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.5}, {offset: 0.5, vel: 0.7}];
     case 'ess':  return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
+    case 'des':  return [{offset: 0, vel: 1.0}, {offset: 0.75, vel: 0.5}];
+    case 'sed':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.7}];
+    case 'ses':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.7}, {offset: 0.75, vel: 0.5}];
     case 'h':    return [{offset: 0, vel: 1.0}];
     case 'dq':   return [{offset: 0, vel: 1.0}];
     case 'dh':   return [{offset: 0, vel: 1.0}];
@@ -4602,6 +4608,9 @@ function crGetAllNoteXPositions(pat, x, w) {
     case 'r':    return [];
     case 'ee':   return [x + w * 0.25, x + w * 0.75];
     case 'eee':  return [x + w * 0.15, x + w * 0.50, x + w * 0.85];
+    case 'des':  return [x + w * 0.22, x + w * 0.78];
+    case 'sed':  return [x + w * 0.22, x + w * 0.72];
+    case 'ses':  return [x + w * 0.12, x + w * 0.50, x + w * 0.87];
     case 'er':   return [x + w * 0.25];
     case 're':   return [x + w * 0.7];
     case 'ssss': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
@@ -4704,6 +4713,9 @@ function crGetBallLandingX(pat, x, w) {
     case 'ssss': return x + w * 0.12;
     case 'sse':  return x + w * 0.12;
     case 'ess':  return x + w * 0.15;
+    case 'des':  return x + w * 0.22;
+    case 'sed':  return x + w * 0.22;
+    case 'ses':  return x + w * 0.12;
     case 'h':    return x + w / 2;
     case 'dq':   return x + w / 2;
     case 'dh':   return x + w / 2;
@@ -5122,6 +5134,63 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     grid.appendChild(btn);
   });
 
+  // ── Advanced section ─────────────────────────────────────────────────────
+  var oldAdv = picker.querySelector('.rhythm-advanced-section');
+  if (oldAdv) picker.removeChild(oldAdv);
+
+  var advancedPatterns = [
+    { pat: 'des', label: 'Dotted 8th+16th' },
+    { pat: 'sed', label: '16th+Dotted 8th' },
+    { pat: 'ses', label: '16th+8th+16th'   },
+  ];
+
+  var anyAdvancedActive = advancedPatterns.some(function(o) { return o.pat === currentPat; });
+
+  var advSection = document.createElement('div');
+  advSection.className = 'rhythm-advanced-section';
+
+  var advToggle = document.createElement('button');
+  advToggle.className = 'rhythm-advanced-toggle';
+  advToggle.innerHTML = '<span class="rhythm-adv-arrow">' + (anyAdvancedActive ? '▾' : '▸') + '</span> Advanced';
+
+  var advGrid = document.createElement('div');
+  advGrid.className = 'rhythm-picker-grid rhythm-advanced-grid';
+  advGrid.style.display = anyAdvancedActive ? '' : 'none';
+
+  advancedPatterns.forEach(function(opt) {
+    var btn = document.createElement('button');
+    btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
+    btn.title = opt.label;
+    var mW = 56, mH = 44, mY = 30;
+    var mini = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '">';
+    mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY + '" stroke="#ccc" stroke-width="0.8"/>';
+    mini += crDrawBeatPattern(opt.pat, 0, mY, mW);
+    mini += '</svg>';
+    var lbl = document.createElement('div');
+    lbl.className = 'rhythm-option-label';
+    lbl.textContent = opt.label;
+    btn.innerHTML = mini;
+    btn.appendChild(lbl);
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      crApplyRhythmOption(beatIdx, opt.pat);
+      crHideRhythmPicker();
+    });
+    advGrid.appendChild(btn);
+  });
+
+  advToggle.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var open = advGrid.style.display !== 'none';
+    advGrid.style.display = open ? 'none' : '';
+    var arrow = advToggle.querySelector('.rhythm-adv-arrow');
+    if (arrow) arrow.textContent = open ? '▸' : '▾';
+  });
+
+  advSection.appendChild(advToggle);
+  advSection.appendChild(advGrid);
+  picker.appendChild(advSection);
+
   picker.style.display = 'block';
   if (backdrop) backdrop.style.display = 'block';
 
@@ -5303,6 +5372,44 @@ function crDrawBeatPattern(pat, x, y, w) {
       // Double beam only on last two (sixteenths)
       svg += crBeam(s3, s4, y - 21);
       break;
+
+    case 'des': { // Dotted eighth + sixteenth
+      var dp1 = x + w * 0.22, dp2 = x + w * 0.78;
+      svg += crNoteHead(dp1, y, false);
+      svg += crStem(dp1, y);
+      svg += crDot(dp1 + 8, y);
+      svg += crNoteHead(dp2, y, false);
+      svg += crStem(dp2, y);
+      svg += crBeam(dp1, dp2, y - 25);
+      svg += crBeam((dp1 + dp2) / 2, dp2, y - 21);
+      break;
+    }
+
+    case 'sed': { // Sixteenth + dotted eighth
+      var sp1 = x + w * 0.22, sp2 = x + w * 0.72;
+      svg += crNoteHead(sp1, y, false);
+      svg += crStem(sp1, y);
+      svg += crNoteHead(sp2, y, false);
+      svg += crStem(sp2, y);
+      svg += crDot(sp2 + 8, y);
+      svg += crBeam(sp1, sp2, y - 25);
+      svg += crBeam(sp1, (sp1 + sp2) / 2, y - 21);
+      break;
+    }
+
+    case 'ses': { // Sixteenth + eighth + sixteenth
+      var ssp1 = x + w * 0.12, ssp2 = x + w * 0.50, ssp3 = x + w * 0.87;
+      svg += crNoteHead(ssp1, y, false);
+      svg += crStem(ssp1, y);
+      svg += crNoteHead(ssp2, y, false);
+      svg += crStem(ssp2, y);
+      svg += crNoteHead(ssp3, y, false);
+      svg += crStem(ssp3, y);
+      svg += crBeam(ssp1, ssp3, y - 25);
+      svg += crBeam(ssp1, (ssp1 + ssp2) / 2, y - 21);
+      svg += crBeam((ssp2 + ssp3) / 2, ssp3, y - 21);
+      break;
+    }
 
     case 'h':  // Half note — open note head + stem (no beam)
       svg += crNoteHead(x + w / 2, y, true);

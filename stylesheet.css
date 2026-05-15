@@ -233,6 +233,42 @@ main {
   user-select: none;
 }
 
+.rhythm-advanced-section {
+  margin-top: 6px;
+}
+
+.rhythm-advanced-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--vm-border);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 4px 4px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.1s;
+}
+
+.rhythm-advanced-toggle:hover {
+  color: var(--vm-indigo);
+}
+
+.rhythm-adv-arrow {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.rhythm-advanced-grid {
+  margin-top: 5px;
+}
+
 /* Beat click areas inside the score SVG */
 .cr-beat-target {
   cursor: pointer;
