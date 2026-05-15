@@ -4265,6 +4265,7 @@ var CR_OPTIONS = [
   { value: 'q',    label: '♩  Quarter note',              span: 1, subBeats: [1] },
   { value: 'r',    label: '—  Quarter rest',              span: 1, subBeats: [] },
   { value: 'ee',   label: '♫  Two eighths',               span: 1, subBeats: [1, 0.5] },
+  { value: 'eee',  label: '3  Eighth triplets',           span: 1, subBeats: [1, 1/3, 2/3] },
   { value: 'er',   label: '♪— Eighth + eighth rest',      span: 1, subBeats: [1] },
   { value: 're',   label: '—♪ Eighth rest + eighth',      span: 1, subBeats: [0.5] },
   { value: 'ssss', label: '♬♬ Four sixteenths',           span: 1, subBeats: [1, 0.75, 0.5, 0.25] },
@@ -4369,6 +4370,7 @@ function crGetSubBeats(patternValue) {
     case 'q':    return [{offset: 0, vel: 1.0}];
     case 'r':    return [];
     case 'ee':   return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.7}];
+    case 'eee':  return [{offset: 0, vel: 1.0}, {offset: 1/3, vel: 0.7}, {offset: 2/3, vel: 0.7}];
     case 'er':   return [{offset: 0, vel: 1.0}];
     case 're':   return [{offset: 0.5, vel: 0.7}];
     case 'ssss': return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.5}, {offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
@@ -5059,6 +5061,7 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     { pat: 'q',    label: 'Quarter'        },
     { pat: 'r',    label: 'Rest'           },
     { pat: 'ee',   label: '2 Eighths'      },
+    { pat: 'eee',  label: 'Triplets'       },
     { pat: 'er',   label: 'Eighth + Rest'  },
     { pat: 're',   label: 'Rest + Eighth'  },
     { pat: 'ssss', label: '4 Sixteenths'   },
@@ -5190,6 +5193,22 @@ function crDrawBeatPattern(pat, x, y, w) {
       svg += crStem(x2, y);
       svg += crBeam(x1, x2, y - 25);
       break;
+
+    case 'eee': { // Three eighth-note triplets
+      var t1 = x + w * 0.15, t2 = x + w * 0.50, t3 = x + w * 0.85;
+      // Shorter stems leave room for the triplet "3" above the beam
+      var beamY = y - 20;
+      svg += crNoteHead(t1, y, false);
+      svg += '<line x1="' + (t1+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t1+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="1.5"/>';
+      svg += crNoteHead(t2, y, false);
+      svg += '<line x1="' + (t2+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t2+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="1.5"/>';
+      svg += crNoteHead(t3, y, false);
+      svg += '<line x1="' + (t3+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t3+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="1.5"/>';
+      svg += '<line x1="' + (t1+4.5).toFixed(1) + '" y1="' + beamY + '" x2="' + (t3+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="3"/>';
+      var tmx = ((t1 + t3) / 2 + 4.5).toFixed(1);
+      svg += '<text x="' + tmx + '" y="' + (beamY - 3) + '" text-anchor="middle" font-size="8" fill="#333" font-family="serif" font-style="italic">3</text>';
+      break;
+    }
 
     case 'er': // Eighth + eighth rest
       svg += crNoteHead(x + w * 0.25, y, false);
