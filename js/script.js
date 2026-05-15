@@ -124,7 +124,7 @@ function tmpSyncAll() {
 // The customRhythmPattern array has one entry per beat.
 var customRhythmEnabled = false;
 var customRhythmPattern = []; // e.g. ['q', 'ee', 'ssss', 'q'] for 4/4
-var customRhythmTies = [];    // boolean per beat: true = tie this beat's last note to next beat's first note
+var customRhythmNoteTies = []; // [beatIdx][noteIdx] = true means that note ties to the next note
 var customRhythmAccents = []; // array of arrays: per beat, indices of sub-notes that are accented
 
 
@@ -4328,18 +4328,19 @@ function crSetBeatPattern(beatIdx, newPat) {
     if (oi < n && crIsContinuation(customRhythmPattern[oi])) {
       customRhythmPattern[oi] = 'q';
       customRhythmAccents[oi] = [];
-      customRhythmTies[oi]    = false;
+      customRhythmNoteTies[oi] = [];
     }
   }
 
   customRhythmPattern[beatIdx] = newPat;
   customRhythmAccents[beatIdx] = [];
+  customRhythmNoteTies[beatIdx] = [];
 
   // Set new continuations
   for (var j = 1; j <= needed; j++) {
     customRhythmPattern[beatIdx + j] = crDefaultContinuation(newPat);
     customRhythmAccents[beatIdx + j] = [];
-    customRhythmTies[beatIdx + j]    = false;
+    customRhythmNoteTies[beatIdx + j] = [];
   }
   return true;
 }
@@ -4402,7 +4403,7 @@ function _syncSubdivisionVisibility() {
 function crCancelCustomRhythm() {
   customRhythmEnabled = false;
   customRhythmPattern = [];
-  customRhythmTies = [];
+  customRhythmNoteTies = [];
   customRhythmAccents = [];
   var cb = document.getElementById('custom-rhythm-enabled');
   if (cb) cb.checked = false;
@@ -4419,11 +4420,19 @@ function crBuildDefaultPattern() {
   return pat;
 }
 
+function crSyncNoteTies() {
+  while (customRhythmNoteTies.length < beatsPerMeasure) customRhythmNoteTies.push([]);
+  customRhythmNoteTies.length = beatsPerMeasure;
+  for (var b = 0; b < beatsPerMeasure; b++) {
+    var noteCount = crGetAllNoteXPositions(customRhythmPattern[b] || 'q', 0, 1).length;
+    while (customRhythmNoteTies[b].length < noteCount) customRhythmNoteTies[b].push(false);
+    customRhythmNoteTies[b].length = noteCount;
+  }
+}
+
 // Ensure ties and accents arrays match the current pattern length
 function crSyncTiesAndAccents() {
-  while (customRhythmTies.length < beatsPerMeasure) customRhythmTies.push(false);
-  customRhythmTies.length = beatsPerMeasure;
-  // Last beat can't tie (wraps around to repeat, which we allow)
+  crSyncNoteTies();
   while (customRhythmAccents.length < beatsPerMeasure) customRhythmAccents.push([]);
   customRhythmAccents.length = beatsPerMeasure;
 }
@@ -4509,8 +4518,11 @@ function crRenderBeatSelectors() {
             return;
           }
           if (newPat === 'r') {
-            customRhythmTies[bi] = false;
-            if (bi > 0) customRhythmTies[bi - 1] = false;
+            customRhythmNoteTies[bi] = [];
+            // also clear any tie pointing into this beat from the previous beat
+            if (bi > 0 && customRhythmNoteTies[bi - 1] && customRhythmNoteTies[bi - 1].length > 0) {
+              customRhythmNoteTies[bi - 1][customRhythmNoteTies[bi - 1].length - 1] = false;
+            }
           }
         }
         crRenderBeatSelectors();
@@ -4559,28 +4571,6 @@ function crRenderBeatSelectors() {
         }
         accentRow.appendChild(accentBtns);
         group.appendChild(accentRow);
-      }
-
-      // ── Tie checkbox (not for multi-beat origins, continuations, or rests) ─
-      if (!isPartial && !crIsMultiBeat(pat) && pat !== 'r') {
-        var tieRow = document.createElement('div');
-        tieRow.className = 'cr-tie-row';
-
-        var tieLabel = document.createElement('label');
-        tieLabel.className = 'cr-tie-label';
-
-        var tieCb = document.createElement('input');
-        tieCb.type = 'checkbox';
-        tieCb.checked = customRhythmTies[beatIdx] || false;
-        tieCb.addEventListener('change', function(e) {
-          customRhythmTies[beatIdx] = e.target.checked;
-          crRenderNotation();
-        });
-
-        tieLabel.appendChild(tieCb);
-        tieLabel.appendChild(document.createTextNode(' Tie to next'));
-        tieRow.appendChild(tieLabel);
-        group.appendChild(tieRow);
       }
 
       container.appendChild(group);
@@ -4680,20 +4670,20 @@ function crRenderNotation() {
       }
     }
 
-    // Draw tie arc to next beat (not for multi-beat origins or continuations)
-    if (customRhythmTies[b] && !crIsContinuation(pat) && !crIsMultiBeat(pat)) {
-      var thisPositions = crGetNoteXPositions(pat, x, beatWidth);
-      var nextBeatIdx = (b + 1) % beatCount;
-      var nextX = xStart + nextBeatIdx * beatWidth;
-      var nextPat = customRhythmPattern[nextBeatIdx];
-      var nextPositions = crGetNoteXPositions(nextPat, nextX, beatWidth);
-
-      if (thisPositions && nextPositions) {
-        var tieEndX = (b === beatCount - 1)
-          ? xStart + beatCount * beatWidth - 3
-          : nextPositions.first;
-        svg += crTieArc(thisPositions.last, tieEndX, staffY);
+    // Draw note-level tie arcs
+    var allNX = crGetAllNoteXPositions(pat, x, beatWidth);
+    for (var ni = 0; ni < (customRhythmNoteTies[b] || []).length; ni++) {
+      if (!customRhythmNoteTies[b][ni]) continue;
+      var tx1 = allNX[ni];
+      var tx2;
+      if (ni < allNX.length - 1) {
+        tx2 = allNX[ni + 1];
+      } else if (b + 1 < beatCount) {
+        var nxPat = customRhythmPattern[b + 1];
+        var nxNotes = crGetAllNoteXPositions(nxPat, xStart + (b + 1) * beatWidth, beatWidth);
+        tx2 = nxNotes.length > 0 ? nxNotes[0] : null;
       }
+      if (tx2 != null) svg += crTieArc(tx1, tx2, staffY);
     }
   }
 
@@ -4978,19 +4968,20 @@ function crRenderNotationDisplay() {
       }
     }
 
-    // Tie arc (not for multi-beat origins or continuations)
-    if (customRhythmTies[b] && !crIsContinuation(pat) && !crIsMultiBeat(pat)) {
-      var thisPos = crGetNoteXPositions(pat, x, baseBeatWidth);
-      var nextBI  = (b + 1) % beatCount;
-      var nextX   = baseXStart + nextBI * baseBeatWidth;
-      var nextPat = effectivePattern[nextBI];
-      var nextPos = crGetNoteXPositions(nextPat, nextX, baseBeatWidth);
-      if (thisPos && nextPos) {
-        var tieEndX = (b === beatCount - 1)
-          ? (baseXStart + beatCount * baseBeatWidth - 3)
-          : nextPos.first;
-        svg += crTieArc(thisPos.last, tieEndX, baseStaffY);
+    // Draw note-level tie arcs (inside the scaled notation group)
+    var scoreNoteXs = crGetAllNoteXPositions(pat, x, baseBeatWidth);
+    for (var sni = 0; sni < (customRhythmNoteTies[b] || []).length; sni++) {
+      if (!customRhythmNoteTies[b][sni]) continue;
+      var sn1 = scoreNoteXs[sni];
+      var sn2;
+      if (sni < scoreNoteXs.length - 1) {
+        sn2 = scoreNoteXs[sni + 1];
+      } else if (b + 1 < beatCount) {
+        var snNextPat = effectivePattern[b + 1];
+        var snNextXs = crGetAllNoteXPositions(snNextPat, baseXStart + (b + 1) * baseBeatWidth, baseBeatWidth);
+        sn2 = snNextXs.length > 0 ? snNextXs[0] : null;
       }
+      if (sn2 != null) svg += crTieArc(sn1, sn2, baseStaffY);
     }
   }
 
@@ -5021,9 +5012,36 @@ function crRenderNotationDisplay() {
          + ' rx="3" pointer-events="all"/>';
   }
 
+  // Note-level tie targets — only when custom rhythm is active
+  if (customRhythmEnabled) {
+    for (var nb = 0; nb < beatCount; nb++) {
+      var nbPat = effectivePattern[nb];
+      if (crIsContinuation(nbPat)) continue;
+      var nbBaseX = baseXStart + nb * baseBeatWidth;
+      var nbNoteXs = crGetAllNoteXPositions(nbPat, nbBaseX, baseBeatWidth);
+      for (var nni = 0; nni < nbNoteXs.length; nni++) {
+        // Don't allow a tie target on the very last note of the measure
+        if (nb === beatCount - 1 && nni === nbNoteXs.length - 1) continue;
+        // Don't allow cross-beat tie to a rest or continuation beat
+        if (nni === nbNoteXs.length - 1) {
+          var nextNbPat = effectivePattern[nb + 1];
+          if (!nextNbPat || crIsContinuation(nextNbPat) || crGetAllNoteXPositions(nextNbPat, 0, 1).length === 0) continue;
+        }
+        var isTied = customRhythmNoteTies[nb] && customRhythmNoteTies[nb][nni];
+        var ndx = (tx + nbNoteXs[nni] * scale - 8).toFixed(1);
+        var ndy = (ty + baseStaffY * scale - 8).toFixed(1);
+        svg += '<rect class="cr-note-target' + (isTied ? ' tied' : '') + '"'
+             + ' data-beat="' + nb + '" data-note="' + nni + '"'
+             + ' x="' + ndx + '" y="' + ndy + '" width="16" height="16"'
+             + ' rx="3" pointer-events="all"/>';
+      }
+    }
+  }
+
   svg += '</svg>';
   wrapper.innerHTML = svg;
   crAttachBeatPickerListeners(wrapper);
+  crAttachNoteTargetListeners(wrapper);
 }
 
 // ── Rhythm picker ─────────────────────────────────────────────────────────────
@@ -5149,6 +5167,26 @@ function crAttachBeatPickerListeners(wrapper) {
       var screenX = r.left + notationBeatXPositions[beatIdx] * sx;
       var screenY = r.top  + (notationBallLandingY + notationBallRadius + 6) * sy;
       crShowRhythmPicker(beatIdx, screenX, screenY);
+    });
+  });
+}
+
+function crToggleNoteTie(beatIdx, noteIdx) {
+  if (!customRhythmEnabled || !customRhythmPattern.length) return;
+  if (!customRhythmNoteTies[beatIdx]) customRhythmNoteTies[beatIdx] = [];
+  customRhythmNoteTies[beatIdx][noteIdx] = !customRhythmNoteTies[beatIdx][noteIdx];
+  crRenderNotationDisplay();
+  crRenderNotation();
+  sendStateUpdate();
+}
+
+function crAttachNoteTargetListeners(wrapper) {
+  wrapper.querySelectorAll('.cr-note-target').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var b  = parseInt(el.getAttribute('data-beat'), 10);
+      var ni = parseInt(el.getAttribute('data-note'), 10);
+      crToggleNoteTie(b, ni);
     });
   });
 }
@@ -5382,16 +5420,22 @@ function triggerCustomRhythmBeat(time, beatIndex) {
   var beatDuration = Tone.Time("4n").toSeconds();
   var isFirstBeat = beatIndex === 0;
 
-  // Check if the previous beat ties into this one — suppress the first sub-note
+  // Check if the previous beat's last note ties into this beat's first note
   var prevBeat = (beatIndex - 1 + beatsPerMeasure) % beatsPerMeasure;
-  var tiedFromPrev = customRhythmTies[prevBeat] || false;
+  var prevSubs = crGetSubBeats(customRhythmPattern[prevBeat]);
+  var prevLastNI = prevSubs.length - 1;
+  var tiedFromPrev = prevLastNI >= 0 &&
+    customRhythmNoteTies[prevBeat] &&
+    customRhythmNoteTies[prevBeat][prevLastNI] === true;
 
   // Get accent list for this beat
   var beatAccents = (customRhythmAccents && customRhythmAccents[beatIndex]) || [];
 
   for (var i = 0; i < subBeats.length; i++) {
-    // Skip the first note if tied from previous beat
-    if (i === 0 && tiedFromPrev) continue;
+    // Determine if this note is tied over from the preceding note
+    var isTiedOver = (i === 0) ? tiedFromPrev
+                   : (customRhythmNoteTies[beatIndex] && customRhythmNoteTies[beatIndex][i - 1] === true);
+    if (isTiedOver) continue;
 
     var sb = subBeats[i];
     var t = time + sb.offset * beatDuration;
@@ -5434,7 +5478,7 @@ function crSaveRhythm() {
     id: Date.now(),
     name: name,
     pattern: customRhythmPattern.slice(),
-    ties: customRhythmTies.slice(),
+    noteTies: customRhythmNoteTies.map(function(bt) { return bt ? bt.slice() : []; }),
     accents: customRhythmAccents.map(function(a) { return a ? a.slice() : []; }),
     beats: beatsPerMeasure,
     savedAt: new Date().toLocaleDateString()
@@ -5449,7 +5493,20 @@ function crLoadRhythm(id) {
   var entry = rhythms.find(function(r) { return r.id === id; });
   if (!entry) return;
   customRhythmPattern = entry.pattern.slice();
-  customRhythmTies = entry.ties.slice();
+  // Load note ties; migrate from old per-beat ties format if needed
+  if (entry.noteTies) {
+    customRhythmNoteTies = entry.noteTies.map(function(bt) { return bt ? bt.slice() : []; });
+  } else if (entry.ties) {
+    customRhythmNoteTies = entry.pattern.map(function(pat, b) {
+      var noteCount = crGetAllNoteXPositions(pat, 0, 1).length;
+      var bt = [];
+      for (var ni = 0; ni < noteCount; ni++) bt.push(false);
+      if (entry.ties[b] && noteCount > 0) bt[noteCount - 1] = true;
+      return bt;
+    });
+  } else {
+    customRhythmNoteTies = [];
+  }
   customRhythmAccents = entry.accents.map(function(a) { return a ? a.slice() : []; });
   crSyncTiesAndAccents();
   crRenderBeatSelectors();
@@ -5514,7 +5571,7 @@ function initCustomRhythmListeners() {
       // Initialize pattern if empty
       if (customRhythmPattern.length === 0 || customRhythmPattern.length !== beatsPerMeasure) {
         customRhythmPattern = crBuildDefaultPattern();
-        customRhythmTies = [];
+        customRhythmNoteTies = [];
         customRhythmAccents = [];
       }
       crSyncTiesAndAccents();
