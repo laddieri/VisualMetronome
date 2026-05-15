@@ -5509,27 +5509,19 @@ function crDrawBeatPattern(pat, x, y, w) {
 
     case 'eqe': { // Eighth + syncopated quarter + eighth (2-beat syncopation: ♪♩♪)
       var qe1 = x + w * 0.2,  qqx = x + w * 0.72;
-      // Eighth note with flag
       svg += crNoteHead(qe1, y, false);
       svg += crStem(qe1, y);
       svg += crFlag(qe1, y);
-      // Quarter note (no flag) — tie arc shows it crosses into the next beat
       svg += crNoteHead(qqx, y, false);
       svg += crStem(qqx, y);
-      var qeEnd = x + w - 1;
-      svg += '<path d="M' + qqx.toFixed(1) + ',' + (y + 8) + ' Q' + ((qqx + qeEnd) / 2).toFixed(1) + ',' + (y + 14) + ' ' + qeEnd.toFixed(1) + ',' + (y + 8) + '" fill="none" stroke="#555" stroke-width="1.2"/>';
       break;
     }
 
     case 'rqe': { // Rest + syncopated quarter + eighth (2-beat syncopation: —♩♪)
       var qrx = x + w * 0.18, rqx = x + w * 0.70;
-      // Eighth rest
       svg += crEighthRest(qrx, y);
-      // Quarter note (no flag) — tie arc shows it crosses into the next beat
       svg += crNoteHead(rqx, y, false);
       svg += crStem(rqx, y);
-      var rqEnd = x + w - 1;
-      svg += '<path d="M' + rqx.toFixed(1) + ',' + (y + 8) + ' Q' + ((rqx + rqEnd) / 2).toFixed(1) + ',' + (y + 14) + ' ' + rqEnd.toFixed(1) + ',' + (y + 8) + '" fill="none" stroke="#555" stroke-width="1.2"/>';
       break;
     }
 
