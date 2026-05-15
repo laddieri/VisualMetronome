@@ -4601,6 +4601,7 @@ function crGetAllNoteXPositions(pat, x, w) {
     case 'q':    return [x + w / 2];
     case 'r':    return [];
     case 'ee':   return [x + w * 0.25, x + w * 0.75];
+    case 'eee':  return [x + w * 0.15, x + w * 0.50, x + w * 0.85];
     case 'er':   return [x + w * 0.25];
     case 're':   return [x + w * 0.7];
     case 'ssss': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
