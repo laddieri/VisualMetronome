@@ -188,25 +188,8 @@ main {
 }
 
 /* ── Beat note row (score mode, below the score SVG) ────────────────────────── */
-.beat-note-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 4px 12px 6px;
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-.beat-note-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--vm-fg-3);
-  white-space: nowrap;
-}
-
 .beat-note-select {
-  min-width: 180px;
+  min-width: 120px;
 }
 
 /* ── Rhythm picker popover (score mode) ─────────────────────────────────────── */

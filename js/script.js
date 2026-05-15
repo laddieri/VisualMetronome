@@ -4790,7 +4790,8 @@ function crRenderNotation() {
 
   // Time signature (stacked: beats on top, beat note value on bottom)
   var bnBottom = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
-  svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + beatCount + '</text>';
+  var bnTop = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
+  svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnTop + '</text>';
   svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
 
   var xStart = 40;
@@ -5112,7 +5113,8 @@ function crRenderNotationDisplay() {
 
   // Time signature (stacked: beats on top, beat note value on bottom)
   var bnBottomD = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
-  svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + beatCount + '</text>';
+  var bnTopD = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
+  svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnTopD + '</text>';
   svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
 
   // Opening barline
