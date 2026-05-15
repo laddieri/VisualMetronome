@@ -1028,7 +1028,12 @@ class Conductor {
     // modeled as a point with its own momentum held to the hand by a spring.
     if (this.direction === -1) {
       const batonLen = 60;
-      const baseAngle = Math.PI * 0.11;
+      // Wrist-flick: baton tip rises to its highest point at the "and" of each beat
+      // (halfway between ictuses). sin(progress*π) peaks at 0.5 and returns to 0
+      // at beat boundaries, creating a natural wrist-rotation arc.
+      const beatProgress = lastBeatTime > 0 ? getAnimationProgress() : 0;
+      const wristLift = Math.sin(beatProgress * Math.PI) * (Math.PI * 0.22);
+      const baseAngle = Math.PI * 0.11 - wristLift;
       const restX = this.x + Math.cos(baseAngle) * batonLen;
       const restY = this.y + Math.sin(baseAngle) * batonLen;
 
