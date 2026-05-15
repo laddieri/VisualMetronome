@@ -242,6 +242,21 @@ main {
   fill: rgba(102, 126, 234, 0.1);
 }
 
+/* Beat click areas inside the score SVG — note-level tie targets */
+.cr-note-target {
+  cursor: pointer;
+  fill: transparent;
+}
+.cr-note-target:hover {
+  fill: rgba(102, 126, 234, 0.25);
+}
+.cr-note-target.tied {
+  fill: rgba(102, 126, 234, 0.12);
+}
+.cr-note-target.tied:hover {
+  fill: rgba(220, 80, 80, 0.25);
+}
+
 /* Canvas wrapper */
 .canvas-wrapper {
   display: flex;
