@@ -5649,8 +5649,9 @@ document.getElementById('reset-settings-btn').addEventListener('click', function
   if (tmpBtn)    tmpBtn.classList.remove('ct-active');
   if (tmpEnabledCb) tmpEnabledCb.checked = false;
 
-  // Custom rhythm → off
+  // Custom rhythm → off; re-render score so it reverts to default quarter notes
   crCancelCustomRhythm();
+  if (animalType === 'score') crRenderNotationDisplay();
 
   // Counting trainer → off
   countingTrainerEnabled = false;
