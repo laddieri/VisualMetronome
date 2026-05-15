@@ -40,6 +40,7 @@ var voiceCountEnabled = false; // Count beats aloud
 var rockBeatEnabled = false; // Rock beat drum machine (4/4 only)
 var waltzBeatEnabled = false; // Waltz beat drum machine (3/4 only)
 var spacebarAction = 'play'; // 'play' | 'count-in-1' | 'count-in-2'
+var beatNoteValue = 'q'; // 'q'=quarter | 'h'=half | 'e'=eighth | 'dq'=dotted-quarter
 var practiceRhythmEnabled = false;  // alternates sound/silent measures
 var practiceRhythmMeasureIdx = -1;  // incremented at each measure start; even=sound, odd=silent
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
@@ -2824,6 +2825,15 @@ function _syncPracticeRow() {
     if (cb) cb.checked = false;
     document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
   }
+  _syncBeatNoteRow();
+}
+
+function _syncBeatNoteRow() {
+  var row = document.getElementById('beat-note-row');
+  if (!row) return;
+  row.style.display = (animalType === 'score') ? '' : 'none';
+  var sel = document.getElementById('beat-note-select');
+  if (sel) sel.value = beatNoteValue;
 }
 
 // ── Counting Trainer UI ──────────────────────────────────────────────────────
@@ -3935,6 +3945,7 @@ function initPeerMode(remoteBtn) {
         ctTargetExtraBeats: ctTargetExtraBeats,
         ctSoundOn: ctSoundOn,
         ctVisualOn: ctVisualOn,
+        beatNoteValue: beatNoteValue,
       });
     });
     conn.on('data', function (data) {
@@ -4037,6 +4048,7 @@ function sendStateUpdate() {
     ctTargetExtraBeats: ctTargetExtraBeats,
     ctSoundOn: ctSoundOn,
     ctVisualOn: ctVisualOn,
+    beatNoteValue: beatNoteValue,
   };
   if (_remoteMode === 'ws' && _remoteWS && _remoteWS.readyState === WebSocket.OPEN) {
     _remoteWS.send(JSON.stringify(state));
@@ -4298,6 +4310,19 @@ function applyRemoteCommand(msg) {
     case 'requestState':
       sendStateUpdate();
       break;
+
+    case 'setBeatNoteValue': {
+      var bnv = msg.value;
+      if (['q', 'h', 'e', 'dq'].indexOf(bnv) === -1) break;
+      beatNoteValue = bnv;
+      _syncBeatNoteRow();
+      if (animalType === 'score') {
+        crRenderNotationDisplay();
+        crRenderNotation();
+      }
+      sendStateUpdate();
+      break;
+    }
   }
 }
 
@@ -4317,6 +4342,26 @@ var CR_OPTIONS = [
   { value: 'des',  label: '♩. Dotted eighth + sixteenth', span: 1, subBeats: [1, 0.25] },
   { value: 'sed',  label: '♬. Sixteenth + dotted eighth', span: 1, subBeats: [1, 0.25] },
   { value: 'ses',  label: '♬♪♬ Sixteenth-eighth-sixteenth', span: 1, subBeats: [1, 0.25, 0.25] },
+  { value: 'H',     label: '𝅗𝅥  Half note (1 beat)',         span: 1, subBeats: [1] },
+  { value: 'HR',    label: '—  Half rest',                    span: 1, subBeats: [] },
+  { value: 'HQQ',   label: '♩♩ Two quarters',                span: 1, subBeats: [1, 0.5] },
+  { value: 'HQR',   label: '♩— Quarter + rest',               span: 1, subBeats: [1] },
+  { value: 'HRQ',   label: '—♩ Rest + quarter',               span: 1, subBeats: [0.5] },
+  { value: 'HEEEE', label: '♫♫ Four eighths',                 span: 1, subBeats: [1, 0.75, 0.5, 0.25] },
+  { value: 'HW',    label: '𝅝  Whole note',                   span: 2, subBeats: [1] },
+  { value: 'E',     label: '♪  Eighth note (1 beat)',         span: 1, subBeats: [1] },
+  { value: 'ER',    label: '—  Eighth rest',                  span: 1, subBeats: [] },
+  { value: 'ESS',   label: '♬  Two sixteenths',               span: 1, subBeats: [1, 0.5] },
+  { value: 'ESR',   label: '♬— Sixteenth + rest',             span: 1, subBeats: [1] },
+  { value: 'ERS',   label: '—♬ Rest + sixteenth',             span: 1, subBeats: [0.5] },
+  { value: 'EQ',    label: '♩  Quarter note (2 beats)',       span: 2, subBeats: [1] },
+  { value: 'D',     label: '♩. Dotted quarter (1 beat)',      span: 1, subBeats: [1] },
+  { value: 'DR',    label: '—. Dotted quarter rest',          span: 1, subBeats: [] },
+  { value: 'DEEE',  label: '♫♪ Three eighths (compound)',     span: 1, subBeats: [1, 1/3, 2/3] },
+  { value: 'DEER',  label: '♫— Two eighths + rest',           span: 1, subBeats: [1, 1/3] },
+  { value: 'DERE',  label: '♪—♪ Eighth, rest, eighth',       span: 1, subBeats: [1, 2/3] },
+  { value: 'DREE',  label: '—♫ Rest + two eighths',           span: 1, subBeats: [1/3, 2/3] },
+  { value: 'DDH',   label: '𝅗𝅥. Dotted half (2 beats)',      span: 2, subBeats: [1] },
   { value: 'h',    label: '𝅗𝅥  Half note',                span: 2, subBeats: [1] },
   { value: 'dq',   label: '♩. Dotted quarter',            span: 2, subBeats: [1] },
   { value: 'dh',   label: '𝅗𝅥. Dotted half note',        span: 3, subBeats: [1] },
@@ -4334,7 +4379,7 @@ var CR_BACK_HALF_OPTIONS = [
 
 // Number of additional beat slots consumed after the slot holding `pat`.
 function crContinuationsNeeded(pat) {
-  if (pat === 'h' || pat === 'dq' || pat === 'eqe' || pat === 'rqe') return 1;
+  if (pat === 'h' || pat === 'dq' || pat === 'eqe' || pat === 'rqe' || pat === 'HW' || pat === 'EQ' || pat === 'DDH') return 1;
   if (pat === 'dh') return 2;
   return 0;
 }
@@ -4342,6 +4387,7 @@ function crContinuationsNeeded(pat) {
 // Returns the default pattern string for the i-th continuation slot (0-based).
 function crDefaultContinuation(originPat) {
   if (originPat === 'dq' || originPat === 'eqe' || originPat === 'rqe') return '_e';
+  if (originPat === 'HW' || originPat === 'EQ' || originPat === 'DDH') return '_';
   return '_';
 }
 
@@ -4352,7 +4398,7 @@ function crIsContinuation(pat) {
 
 // True when `pat` itself starts a multi-beat group.
 function crIsMultiBeat(pat) {
-  return pat === 'h' || pat === 'dq' || pat === 'dh' || pat === 'eqe' || pat === 'rqe';
+  return pat === 'h' || pat === 'dq' || pat === 'dh' || pat === 'eqe' || pat === 'rqe' || pat === 'HW' || pat === 'EQ' || pat === 'DDH';
 }
 
 // Set beat at beatIdx to newPat, cascading continuation setup.
@@ -4431,6 +4477,26 @@ function crGetSubBeats(patternValue) {
     case 'ses':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.7}, {offset: 0.75, vel: 0.5}];
     case 'eqe':  return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.8}];
     case 'rqe':  return [{offset: 0.5, vel: 0.8}];
+    case 'H':     return [{offset: 0, vel: 1.0}];
+    case 'HR':    return [];
+    case 'HQQ':   return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.7}];
+    case 'HQR':   return [{offset: 0, vel: 1.0}];
+    case 'HRQ':   return [{offset: 0.5, vel: 0.7}];
+    case 'HEEEE': return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.5}, {offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
+    case 'HW':    return [{offset: 0, vel: 1.0}];
+    case 'E':     return [{offset: 0, vel: 1.0}];
+    case 'ER':    return [];
+    case 'ESS':   return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.7}];
+    case 'ESR':   return [{offset: 0, vel: 1.0}];
+    case 'ERS':   return [{offset: 0.5, vel: 0.7}];
+    case 'EQ':    return [{offset: 0, vel: 1.0}];
+    case 'D':     return [{offset: 0, vel: 1.0}];
+    case 'DR':    return [];
+    case 'DEEE':  return [{offset: 0, vel: 1.0}, {offset: 1/3, vel: 0.7}, {offset: 2/3, vel: 0.7}];
+    case 'DEER':  return [{offset: 0, vel: 1.0}, {offset: 1/3, vel: 0.7}];
+    case 'DERE':  return [{offset: 0, vel: 1.0}, {offset: 2/3, vel: 0.7}];
+    case 'DREE':  return [{offset: 1/3, vel: 0.7}, {offset: 2/3, vel: 0.7}];
+    case 'DDH':   return [{offset: 0, vel: 1.0}];
     case 'h':    return [{offset: 0, vel: 1.0}];
     case 'dq':   return [{offset: 0, vel: 1.0}];
     case 'dh':   return [{offset: 0, vel: 1.0}];
@@ -4458,12 +4524,14 @@ function crCancelCustomRhythm() {
   crUpdateScoreOptionVisibility();
   _syncSubdivisionVisibility();
   _syncPracticeRow();
+  _syncBeatNoteRow();
 }
 
-// Build default pattern (all quarter notes) for current beatsPerMeasure
+// Build default pattern for current beatsPerMeasure based on beatNoteValue
 function crBuildDefaultPattern() {
+  var note = { q: 'q', h: 'H', e: 'E', dq: 'D' }[beatNoteValue] || 'q';
   var pat = [];
-  for (var i = 0; i < beatsPerMeasure; i++) pat.push('q');
+  for (var i = 0; i < beatsPerMeasure; i++) pat.push(note);
   return pat;
 }
 
@@ -4667,6 +4735,26 @@ function crGetAllNoteXPositions(pat, x, w) {
     case 'ssss': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
     case 'sse':  return [x + w * 0.12, x + w * 0.37, x + w * 0.75];
     case 'ess':  return [x + w * 0.15, x + w * 0.55, x + w * 0.85];
+    case 'H':     return [x + w * 0.5];
+    case 'HR':    return [];
+    case 'HQQ':   return [x + w * 0.25, x + w * 0.75];
+    case 'HQR':   return [x + w * 0.25];
+    case 'HRQ':   return [x + w * 0.7];
+    case 'HEEEE': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
+    case 'HW':    return [x + w * 0.5];
+    case 'E':     return [x + w * 0.5];
+    case 'ER':    return [];
+    case 'ESS':   return [x + w * 0.25, x + w * 0.75];
+    case 'ESR':   return [x + w * 0.25];
+    case 'ERS':   return [x + w * 0.7];
+    case 'EQ':    return [x + w * 0.5];
+    case 'D':     return [x + w * 0.5];
+    case 'DR':    return [];
+    case 'DEEE':  return [x + w * 0.15, x + w * 0.50, x + w * 0.85];
+    case 'DEER':  return [x + w * 0.15, x + w * 0.50];
+    case 'DERE':  return [x + w * 0.15, x + w * 0.85];
+    case 'DREE':  return [x + w * 0.50, x + w * 0.85];
+    case 'DDH':   return [x + w * 0.5];
     case 'h':    return [x + w / 2];
     case 'dq':   return [x + w / 2];
     case 'dh':   return [x + w / 2];
@@ -4692,8 +4780,10 @@ function crRenderNotation() {
   // Staff line (single line for rhythm notation)
   svg += '<line x1="10" y1="' + staffY + '" x2="' + (totalWidth - 10) + '" y2="' + staffY + '" stroke="#999" stroke-width="1"/>';
 
-  // Time signature
-  svg += '<text x="16" y="' + (staffY + 5) + '" font-size="16" font-weight="bold" fill="#333" font-family="serif">' + beatCount + '</text>';
+  // Time signature (stacked: beats on top, beat note value on bottom)
+  var bnBottom = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
+  svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + beatCount + '</text>';
+  svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
 
   var xStart = 40;
 
@@ -4769,6 +4859,16 @@ function crGetBallLandingX(pat, x, w) {
     case 'ses':  return x + w * 0.12;
     case 'eqe':  return x + w * 0.2;
     case 'rqe':  return x + w * 0.2;
+    case 'H':  case 'HR': case 'HW': return x + w * 0.5;
+    case 'HQQ': case 'HQR': return x + w * 0.25;
+    case 'HRQ': return x + w * 0.25;
+    case 'HEEEE': return x + w * 0.12;
+    case 'E':  case 'ER': case 'EQ': return x + w * 0.5;
+    case 'ESS': case 'ESR': return x + w * 0.25;
+    case 'ERS': return x + w * 0.25;
+    case 'D':  case 'DR': case 'DDH': return x + w * 0.5;
+    case 'DEEE': case 'DEER': case 'DERE': return x + w * 0.15;
+    case 'DREE': return x + w * 0.25;
     case 'h':    return x + w / 2;
     case 'dq':   return x + w / 2;
     case 'dh':   return x + w / 2;
@@ -4923,10 +5023,11 @@ function crRenderNotationDisplay() {
   var wrapper = document.getElementById(targetId);
   if (!wrapper) return;
 
-  // When no custom rhythm is set, default to quarter notes for every beat
+  // When no custom rhythm is set, default to the beat-unit-appropriate note for every beat
+  var defaultBeatNote = { q: 'q', h: 'H', e: 'E', dq: 'D' }[beatNoteValue] || 'q';
   var effectivePattern = customRhythmPattern.length
     ? customRhythmPattern
-    : (function() { var p = []; for (var i = 0; i < beatsPerMeasure; i++) p.push('q'); return p; }());
+    : (function() { var p = []; for (var i = 0; i < beatsPerMeasure; i++) p.push(defaultBeatNote); return p; }());
   var beatCount = effectivePattern.length;
 
   // Base (modal-scale) notation dimensions
@@ -5001,8 +5102,10 @@ function crRenderNotationDisplay() {
   // Staff line
   svg += '<line x1="10" y1="' + baseStaffY + '" x2="' + (baseWidth - 10) + '" y2="' + baseStaffY + '" stroke="#999" stroke-width="1"/>';
 
-  // Time signature
-  svg += '<text x="16" y="' + (baseStaffY + 5) + '" font-size="16" font-weight="bold" fill="#333" font-family="serif">' + beatCount + '</text>';
+  // Time signature (stacked: beats on top, beat note value on bottom)
+  var bnBottomD = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
+  svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + beatCount + '</text>';
+  svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
 
   // Opening barline
   svg += '<line x1="' + (baseXStart - 5) + '" y1="' + (baseStaffY - 20) + '" x2="' + (baseXStart - 5) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="1.5"/>';
@@ -5100,6 +5203,7 @@ function crRenderNotationDisplay() {
   crAttachBeatPickerListeners(wrapper);
   crAttachNoteTargetListeners(wrapper);
   _syncPracticeRow();
+  _syncBeatNoteRow();
 }
 
 // ── Rhythm picker ─────────────────────────────────────────────────────────────
@@ -5143,20 +5247,53 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
   var beatCount  = notationBeatXPositions.length;
   var currentPat = customRhythmPattern.length > beatIdx ? customRhythmPattern[beatIdx] : 'q';
 
-  var patterns = [
-    { pat: 'q',    label: 'Quarter'        },
-    { pat: 'r',    label: 'Rest'           },
-    { pat: 'ee',   label: '2 Eighths'      },
-    { pat: 'eee',  label: 'Triplets'       },
-    { pat: 'er',   label: 'Eighth + Rest'  },
-    { pat: 're',   label: 'Rest + Eighth'  },
-    { pat: 'ssss', label: '4 Sixteenths'   },
-    { pat: 'sse',  label: '2/16 + Eighth'  },
-    { pat: 'ess',  label: 'Eighth + 2/16'  },
-  ];
-  if (beatIdx + 1 < beatCount) {
-    patterns.push({ pat: 'h',  label: 'Half Note'       });
-    patterns.push({ pat: 'dq', label: 'Dotted Quarter'  });
+  var patterns;
+  if (beatNoteValue === 'h') {
+    patterns = [
+      { pat: 'H',     label: 'Half' },
+      { pat: 'HR',    label: 'Half Rest' },
+      { pat: 'HQQ',   label: '2 Quarters' },
+      { pat: 'HQR',   label: 'Q + Rest' },
+      { pat: 'HRQ',   label: 'Rest + Q' },
+      { pat: 'HEEEE', label: '4 Eighths' },
+    ];
+    if (beatIdx + 1 < beatCount) patterns.push({ pat: 'HW', label: 'Whole Note' });
+  } else if (beatNoteValue === 'e') {
+    patterns = [
+      { pat: 'E',   label: 'Eighth' },
+      { pat: 'ER',  label: '8th Rest' },
+      { pat: 'ESS', label: '2 Sixteenths' },
+      { pat: 'ESR', label: '16th + Rest' },
+      { pat: 'ERS', label: 'Rest + 16th' },
+    ];
+    if (beatIdx + 1 < beatCount) patterns.push({ pat: 'EQ', label: 'Quarter (2b)' });
+  } else if (beatNoteValue === 'dq') {
+    patterns = [
+      { pat: 'D',    label: 'Dot Quarter' },
+      { pat: 'DR',   label: 'Dot Q Rest' },
+      { pat: 'DEEE', label: '3 Eighths' },
+      { pat: 'DEER', label: '2 8ths+Rest' },
+      { pat: 'DERE', label: '8th+Rest+8th' },
+      { pat: 'DREE', label: 'Rest+2 Eighths' },
+    ];
+    if (beatIdx + 1 < beatCount) patterns.push({ pat: 'DDH', label: 'Dot Half (2b)' });
+  } else {
+    // Quarter note beat (default)
+    patterns = [
+      { pat: 'q',    label: 'Quarter'        },
+      { pat: 'r',    label: 'Rest'           },
+      { pat: 'ee',   label: '2 Eighths'      },
+      { pat: 'eee',  label: 'Triplets'       },
+      { pat: 'er',   label: 'Eighth + Rest'  },
+      { pat: 're',   label: 'Rest + Eighth'  },
+      { pat: 'ssss', label: '4 Sixteenths'   },
+      { pat: 'sse',  label: '2/16 + Eighth'  },
+      { pat: 'ess',  label: 'Eighth + 2/16'  },
+    ];
+    if (beatIdx + 1 < beatCount) {
+      patterns.push({ pat: 'h',  label: 'Half Note'       });
+      patterns.push({ pat: 'dq', label: 'Dotted Quarter'  });
+    }
   }
 
   grid.innerHTML = '';
@@ -5187,67 +5324,69 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     grid.appendChild(btn);
   });
 
-  // ── Advanced section ─────────────────────────────────────────────────────
+  // ── Advanced section (quarter-note beat only) ────────────────────────────
   var oldAdv = picker.querySelector('.rhythm-advanced-section');
   if (oldAdv) picker.removeChild(oldAdv);
 
-  var advancedPatterns = [
-    { pat: 'des', label: 'Dotted 8th+16th' },
-    { pat: 'sed', label: '16th+Dotted 8th' },
-    { pat: 'ses', label: '16th+8th+16th'   },
-    // 2-beat syncopated patterns — only available when the next beat slot exists
-    { pat: 'eqe', label: '8th+Q+8th', span: 2 },
-    { pat: 'rqe', label: 'Rest+Q+8th', span: 2 },
-  ].filter(function(o) {
-    return !o.span || beatIdx + o.span <= beatCount;
-  });
-
-  var anyAdvancedActive = advancedPatterns.some(function(o) { return o.pat === currentPat; });
-
-  var advSection = document.createElement('div');
-  advSection.className = 'rhythm-advanced-section';
-
-  var advToggle = document.createElement('button');
-  advToggle.className = 'rhythm-advanced-toggle';
-  advToggle.innerHTML = '<span class="rhythm-adv-arrow">' + (anyAdvancedActive ? '▾' : '▸') + '</span> Advanced';
-
-  var advGrid = document.createElement('div');
-  advGrid.className = 'rhythm-picker-grid rhythm-advanced-grid';
-  advGrid.style.display = anyAdvancedActive ? '' : 'none';
-
-  advancedPatterns.forEach(function(opt) {
-    var btn = document.createElement('button');
-    btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
-    btn.title = opt.label;
-    var mW = 56, mH = 44, mY = 30;
-    var mini = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '">';
-    mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY + '" stroke="#ccc" stroke-width="0.8"/>';
-    mini += crDrawBeatPattern(opt.pat, 0, mY, mW);
-    mini += '</svg>';
-    var lbl = document.createElement('div');
-    lbl.className = 'rhythm-option-label';
-    lbl.textContent = opt.label;
-    btn.innerHTML = mini;
-    btn.appendChild(lbl);
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      crApplyRhythmOption(beatIdx, opt.pat);
-      crHideRhythmPicker();
+  if (beatNoteValue === 'q') {
+    var advancedPatterns = [
+      { pat: 'des', label: 'Dotted 8th+16th' },
+      { pat: 'sed', label: '16th+Dotted 8th' },
+      { pat: 'ses', label: '16th+8th+16th'   },
+      // 2-beat syncopated patterns — only available when the next beat slot exists
+      { pat: 'eqe', label: '8th+Q+8th', span: 2 },
+      { pat: 'rqe', label: 'Rest+Q+8th', span: 2 },
+    ].filter(function(o) {
+      return !o.span || beatIdx + o.span <= beatCount;
     });
-    advGrid.appendChild(btn);
-  });
 
-  advToggle.addEventListener('click', function(e) {
-    e.stopPropagation();
-    var open = advGrid.style.display !== 'none';
-    advGrid.style.display = open ? 'none' : '';
-    var arrow = advToggle.querySelector('.rhythm-adv-arrow');
-    if (arrow) arrow.textContent = open ? '▸' : '▾';
-  });
+    var anyAdvancedActive = advancedPatterns.some(function(o) { return o.pat === currentPat; });
 
-  advSection.appendChild(advToggle);
-  advSection.appendChild(advGrid);
-  picker.appendChild(advSection);
+    var advSection = document.createElement('div');
+    advSection.className = 'rhythm-advanced-section';
+
+    var advToggle = document.createElement('button');
+    advToggle.className = 'rhythm-advanced-toggle';
+    advToggle.innerHTML = '<span class="rhythm-adv-arrow">' + (anyAdvancedActive ? '▾' : '▸') + '</span> Advanced';
+
+    var advGrid = document.createElement('div');
+    advGrid.className = 'rhythm-picker-grid rhythm-advanced-grid';
+    advGrid.style.display = anyAdvancedActive ? '' : 'none';
+
+    advancedPatterns.forEach(function(opt) {
+      var btn = document.createElement('button');
+      btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
+      btn.title = opt.label;
+      var mW = 56, mH = 44, mY = 30;
+      var mini = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '">';
+      mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY + '" stroke="#ccc" stroke-width="0.8"/>';
+      mini += crDrawBeatPattern(opt.pat, 0, mY, mW);
+      mini += '</svg>';
+      var lbl = document.createElement('div');
+      lbl.className = 'rhythm-option-label';
+      lbl.textContent = opt.label;
+      btn.innerHTML = mini;
+      btn.appendChild(lbl);
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        crApplyRhythmOption(beatIdx, opt.pat);
+        crHideRhythmPicker();
+      });
+      advGrid.appendChild(btn);
+    });
+
+    advToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var open = advGrid.style.display !== 'none';
+      advGrid.style.display = open ? 'none' : '';
+      var arrow = advToggle.querySelector('.rhythm-adv-arrow');
+      if (arrow) arrow.textContent = open ? '▸' : '▾';
+    });
+
+    advSection.appendChild(advToggle);
+    advSection.appendChild(advGrid);
+    picker.appendChild(advSection);
+  }
 
   picker.style.display = 'block';
   if (backdrop) backdrop.style.display = 'block';
@@ -5517,6 +5656,130 @@ function crDrawBeatPattern(pat, x, y, w) {
       break;
     }
 
+    case 'H': // Half note, 1 beat
+      svg += crNoteHead(x + w * 0.5, y, true);
+      svg += crStem(x + w * 0.5, y);
+      break;
+
+    case 'HR': // Half rest, 1 beat
+      svg += crHalfRest(x + w * 0.5, y);
+      break;
+
+    case 'HQQ': { // 2 quarter notes filling 1 half-note beat
+      var hq1 = x + w * 0.25, hq2 = x + w * 0.75;
+      svg += crNoteHead(hq1, y, false); svg += crStem(hq1, y);
+      svg += crNoteHead(hq2, y, false); svg += crStem(hq2, y);
+      break;
+    }
+
+    case 'HQR': // Quarter + quarter rest
+      svg += crNoteHead(x + w * 0.25, y, false); svg += crStem(x + w * 0.25, y);
+      svg += crQuarterRest(x + w * 0.72, y);
+      break;
+
+    case 'HRQ': // Quarter rest + quarter
+      svg += crQuarterRest(x + w * 0.25, y);
+      svg += crNoteHead(x + w * 0.72, y, false); svg += crStem(x + w * 0.72, y);
+      break;
+
+    case 'HEEEE': { // 4 eighth notes filling 1 half-note beat (single beam)
+      var he = [x + w*0.12, x + w*0.37, x + w*0.62, x + w*0.87];
+      for (var i = 0; i < 4; i++) { svg += crNoteHead(he[i], y, false); svg += crStem(he[i], y); }
+      svg += crBeam(he[0], he[3], y - 25);
+      break;
+    }
+
+    case 'HW': // Whole note (2 half-note beats)
+      svg += crWholeNote(x + w * 0.5, y);
+      break;
+
+    case 'E': // Eighth note, 1 beat
+      svg += crNoteHead(x + w * 0.5, y, false);
+      svg += crStem(x + w * 0.5, y);
+      svg += crFlag(x + w * 0.5, y);
+      break;
+
+    case 'ER': // Eighth rest, 1 beat
+      svg += crEighthRest(x + w * 0.5, y);
+      break;
+
+    case 'ESS': { // 2 sixteenth notes (double beam)
+      var es1 = x + w * 0.25, es2 = x + w * 0.75;
+      svg += crNoteHead(es1, y, false); svg += crStem(es1, y);
+      svg += crNoteHead(es2, y, false); svg += crStem(es2, y);
+      svg += crBeam(es1, es2, y - 25);
+      svg += crBeam(es1, es2, y - 21);
+      break;
+    }
+
+    case 'ESR': // Sixteenth + sixteenth rest
+      svg += crNoteHead(x + w * 0.25, y, false);
+      svg += crStem(x + w * 0.25, y);
+      svg += crDoubleFlag(x + w * 0.25, y);
+      svg += crSixteenthRest(x + w * 0.72, y);
+      break;
+
+    case 'ERS': // Sixteenth rest + sixteenth
+      svg += crSixteenthRest(x + w * 0.22, y);
+      svg += crNoteHead(x + w * 0.72, y, false);
+      svg += crStem(x + w * 0.72, y);
+      svg += crDoubleFlag(x + w * 0.72, y);
+      break;
+
+    case 'EQ': // Quarter note (2 eighth-note beats)
+      svg += crNoteHead(x + w * 0.5, y, false);
+      svg += crStem(x + w * 0.5, y);
+      break;
+
+    case 'D': // Dotted quarter, 1 beat
+      svg += crNoteHead(x + w * 0.5, y, false);
+      svg += crStem(x + w * 0.5, y);
+      svg += crDot(x + w * 0.5 + 9, y);
+      break;
+
+    case 'DR': // Dotted quarter rest
+      svg += crDottedQuarterRest(x + w * 0.5, y);
+      break;
+
+    case 'DEEE': { // 3 eighths (compound subdivision, no "3" label needed)
+      var de1 = x + w*0.15, de2 = x + w*0.50, de3 = x + w*0.85;
+      svg += crNoteHead(de1, y, false); svg += crStem(de1, y);
+      svg += crNoteHead(de2, y, false); svg += crStem(de2, y);
+      svg += crNoteHead(de3, y, false); svg += crStem(de3, y);
+      svg += crBeam(de1, de3, y - 25);
+      break;
+    }
+
+    case 'DEER': { // 2 eighths + eighth rest
+      var dr1 = x + w*0.15, dr2 = x + w*0.50;
+      svg += crNoteHead(dr1, y, false); svg += crStem(dr1, y);
+      svg += crNoteHead(dr2, y, false); svg += crStem(dr2, y);
+      svg += crBeam(dr1, dr2, y - 25);
+      svg += crEighthRest(x + w * 0.82, y);
+      break;
+    }
+
+    case 'DERE': // Eighth + rest + eighth
+      svg += crNoteHead(x + w*0.15, y, false); svg += crStem(x + w*0.15, y); svg += crFlag(x + w*0.15, y);
+      svg += crEighthRest(x + w * 0.50, y);
+      svg += crNoteHead(x + w*0.85, y, false); svg += crStem(x + w*0.85, y); svg += crFlag(x + w*0.85, y);
+      break;
+
+    case 'DREE': { // Rest + 2 eighths
+      var drr2 = x + w*0.50, drr3 = x + w*0.85;
+      svg += crEighthRest(x + w * 0.15, y);
+      svg += crNoteHead(drr2, y, false); svg += crStem(drr2, y);
+      svg += crNoteHead(drr3, y, false); svg += crStem(drr3, y);
+      svg += crBeam(drr2, drr3, y - 25);
+      break;
+    }
+
+    case 'DDH': // Dotted half (2 dotted-quarter beats)
+      svg += crNoteHead(x + w * 0.5, y, true);
+      svg += crStem(x + w * 0.5, y);
+      svg += crDot(x + w * 0.5 + 9, y);
+      break;
+
     case 'h':  // Half note — open note head + stem (no beam)
       svg += crNoteHead(x + w / 2, y, true);
       svg += crStem(x + w / 2, y);
@@ -5599,6 +5862,33 @@ function crEighthRest(cx, cy) {
 function crDot(x, y) {
   // Augmentation dot to the right of a note head (slightly above the staff line)
   return '<circle cx="' + x.toFixed(1) + '" cy="' + (y - 2) + '" r="2.2" fill="#333"/>';
+}
+
+function crHalfRest(cx, cy) {
+  // Filled rectangle sitting ON the staff line (like a hat)
+  return '<rect x="' + (cx - 5.5).toFixed(1) + '" y="' + (cy - 5) + '" width="11" height="4.5" fill="#333"/>';
+}
+
+function crWholeNote(cx, cy) {
+  return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="6.5" ry="4.5" fill="none" stroke="#333" stroke-width="1.8"/>';
+}
+
+function crDoubleFlag(x, y) {
+  // Two flags for a standalone sixteenth note
+  var sx = x + 4.5, sy = y - 25;
+  return '<path d="M' + sx + ',' + sy + ' c1,3 8,5 6,14 c-2,-2 -5,-4 -6,-6" fill="#333" stroke="none"/>' +
+         '<path d="M' + sx + ',' + (sy + 7) + ' c1,3 7,4 5,12 c-2,-2 -4,-4 -5,-5" fill="#333" stroke="none"/>';
+}
+
+function crSixteenthRest(cx, cy) {
+  var dx = cx + 3, dy = cy - 5;
+  return '<circle cx="' + dx + '" cy="' + dy + '" r="2.2" fill="#333"/>' +
+    '<path d="M' + (dx + 0.5) + ',' + (dy + 1) + ' c-1,3 -4,7 -5,12" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<circle cx="' + (dx - 2.5) + '" cy="' + (dy + 13) + '" r="1.8" fill="#333"/>';
+}
+
+function crDottedQuarterRest(cx, cy) {
+  return crQuarterRest(cx, cy) + crDot(cx + 9, cy - 3);
 }
 
 function crTieArc(x1, x2, staffY) {
@@ -5847,6 +6137,22 @@ if (document.readyState === 'loading') {
 } else {
   initCustomRhythmListeners();
 }
+
+// ── Beat Note Dropdown ────────────────────────────────────────────────────────
+(function() {
+  var sel = document.getElementById('beat-note-select');
+  if (!sel) return;
+  sel.value = beatNoteValue;
+  sel.addEventListener('change', function() {
+    beatNoteValue = sel.value;
+    // Re-render the score with new beat note (don't clear existing pattern)
+    if (animalType === 'score') {
+      crRenderNotationDisplay();
+      crRenderNotation();
+    }
+    sendStateUpdate();
+  });
+})();
 
 // ── Practice Rhythm ───────────────────────────────────────────────────────────
 (function() {
