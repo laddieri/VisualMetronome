@@ -2488,6 +2488,31 @@ document.addEventListener('keydown', function(e) {
   _ensureAudioContext(() => toggleTransport(false));
 });
 
+// Animation size slider — scales the animation area up/down; controls scale inversely.
+// Only shown on desktop (≥768px); slider value 1–9 maps to factor 0.75–1.25.
+function _syncAnimSize() {
+  var slider = document.getElementById('anim-size-slider');
+  if (!slider) return;
+  var val = parseInt(slider.value, 10);
+  var f = 0.75 + (val - 1) * 0.0625; // 1→0.75, 5→1.0, 9→1.25
+  var ctrlF = Math.max(0.875, Math.min(1.125, 1.0 + (1.0 - f) * 0.5));
+
+  var controls = document.querySelector('.controls');
+  if (controls) controls.style.zoom = ctrlF;
+
+  var ndw = document.getElementById('notation-display-wrapper');
+  if (animalType === 'score') {
+    if (ndw) {
+      ndw.style.transform = 'scale(' + f.toFixed(4) + ')';
+      ndw.style.transformOrigin = 'top center';
+      ndw.style.marginBottom = Math.round((f - 1) * ndw.offsetHeight) + 'px';
+    }
+  } else {
+    if (ndw) { ndw.style.transform = ''; ndw.style.marginBottom = ''; }
+    requestAnimationFrame(function() { windowResized(); });
+  }
+}
+
 function toggleTransport(withCountIn) {
   if (Tone.Transport.state === 'started') {
     // Stopping: reset state for clean restart
@@ -2916,8 +2941,13 @@ function setup() {
     // _sync3DConductor(); // disabled
     // _syncWebGPUCanvas(); // disabled
     _syncNotationDisplay();
+    _syncAnimSize();
     sendStateUpdate();
   });
+
+  // Animation size slider
+  var animSizeSlider = document.getElementById('anim-size-slider');
+  if (animSizeSlider) animSizeSlider.addEventListener('input', _syncAnimSize);
 
   // Score mode: ball colour picker
   document.getElementById('notation-ball-color').addEventListener('input', function(e) {
@@ -4004,6 +4034,7 @@ function applyRemoteCommand(msg) {
       _sync3DConductor();
       _syncWebGPUCanvas();
       _syncNotationDisplay();
+      _syncAnimSize();
       sendStateUpdate();
       break;
     }
