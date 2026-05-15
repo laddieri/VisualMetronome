@@ -5017,10 +5017,9 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
     btn.title = opt.label;
 
-    // Mini SVG preview of the rhythm pattern (56×44 px, staff at y=30)
+    // Mini SVG preview of the rhythm pattern — no fixed width/height so CSS can scale it
     var mW = 56, mH = 44, mY = 30;
-    var mini  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '"'
-              + ' width="' + mW + '" height="' + mH + '">';
+    var mini  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '">';
     mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY
           + '" stroke="#ccc" stroke-width="0.8"/>';
     mini += crDrawBeatPattern(opt.pat, 0, mY, mW);
