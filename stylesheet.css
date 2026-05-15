@@ -182,6 +182,7 @@ main {
 }
 
 .rhythm-option {
+  position: relative;
   background: var(--vm-bg-panel);
   border: 2px solid transparent;
   border-radius: 8px;
@@ -207,8 +208,21 @@ main {
 }
 
 .rhythm-option.active {
-  background: rgba(102, 126, 234, 0.14);
-  border-color: var(--vm-indigo-deep);
+  background: rgba(102, 126, 234, 0.1);
+  border-color: var(--vm-indigo);
+}
+
+/* Checkmark badge signals "currently selected" without changing the button's size or layout */
+.rhythm-option.active::after {
+  content: '✓';
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--vm-indigo-deep);
+  pointer-events: none;
 }
 
 .rhythm-option-label {
