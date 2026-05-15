@@ -145,6 +145,8 @@ var voicePlayers = {};         // word → Tone.Player (populated after load)
 var voiceSamplesLoaded = false; // true once at least one sample loaded successfully
 var VOICE_WORDS = ['1','2','3','4','5','6','7','8','9','ready','go'];
 var VOICE_FORMATS = ['mp3', 'wav', 'ogg']; // tried in order
+// Per-word playback offset (seconds) to skip leading silence in specific samples.
+var VOICE_OFFSETS = { '6': 0.08 };
 
 // Try loading voice samples in the preferred format order.
 // The first format that successfully loads for a given word wins.
@@ -235,7 +237,8 @@ function triggerVoice(word, time) {
     if (player.state === 'started') {
       player.stop(time);
     }
-    player.start(time);
+    var offset = VOICE_OFFSETS[word] || 0;
+    player.start(time, offset);
   } else {
     // Fallback: Web Speech API (may lag at fast tempos)
     speechFallback(word);
