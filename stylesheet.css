@@ -161,6 +161,8 @@ main {
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
   padding: 10px;
   min-width: 250px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
 }
 
 .rhythm-picker-header {
