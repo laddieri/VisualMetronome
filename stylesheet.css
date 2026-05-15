@@ -145,6 +145,48 @@ main {
   box-shadow: none;
 }
 
+/* ── Practice Rhythm row (score mode, below the SVG) ────────────────────────── */
+.practice-rhythm-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+  transition: background 0.3s;
+}
+
+.practice-rhythm-row.your-turn {
+  background: rgba(58, 92, 42, 0.12);
+  border-radius: 8px;
+}
+
+.practice-rhythm-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vm-fg-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.practice-rhythm-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--vm-indigo);
+}
+
+.practice-rhythm-hint {
+  font-size: 11px;
+  color: var(--vm-fg-4);
+  font-style: italic;
+}
+
 /* ── Rhythm picker popover (score mode) ─────────────────────────────────────── */
 .rhythm-picker-backdrop {
   position: fixed;
@@ -231,6 +273,42 @@ main {
   line-height: 1.1;
   text-align: center;
   user-select: none;
+}
+
+.rhythm-advanced-section {
+  margin-top: 6px;
+}
+
+.rhythm-advanced-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--vm-border);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 4px 4px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.1s;
+}
+
+.rhythm-advanced-toggle:hover {
+  color: var(--vm-indigo);
+}
+
+.rhythm-adv-arrow {
+  font-size: 8px;
+  line-height: 1;
+}
+
+.rhythm-advanced-grid {
+  margin-top: 5px;
 }
 
 /* Beat click areas inside the score SVG */
