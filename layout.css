@@ -1,0 +1,1092 @@
+/* =========================================================
+   Visual Metronome — Layout v2
+   App shell, header, transport, icon rail, panels, sheet.
+   Loaded AFTER stylesheet.css so it overrides the legacy
+   .controls / .controls-primary / .controls-secondary rules
+   without rewriting them.
+   ========================================================= */
+
+/* ---- Body & app shell ---------------------------------------------------- */
+html, body {
+  background: var(--vm-bg-app);
+  color: var(--vm-fg-2);
+}
+
+body {
+  padding: 0 !important;
+  align-items: stretch !important;
+  display: block !important;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Hide the legacy container (we replace its chrome). It stays in the DOM so
+   layout.js can lift its controls into the new shell; once that's done it
+   remains display:none for the rest of the session. */
+body > .container {
+  display: none !important;
+}
+
+/* The .controls wrapper is preserved (its zoom is still updated by the
+   anim-size slider) but it's no longer the visual control surface — its
+   children have been moved into the new panels. */
+.controls {
+  display: contents !important;
+  background: transparent !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.controls-primary,
+.controls-secondary,
+.controls-utility {
+  display: contents !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  gap: 0 !important;
+}
+
+/* The legacy right-side floating size slider gets reused inside the
+   Display panel. Hide its floating presentation in v2. */
+.anim-size-rail {
+  display: none !important;
+}
+
+/* ---- App shell grid ------------------------------------------------------ */
+.app-shell {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "header  header"
+    "rail    stage"
+    "transport transport";
+  background: var(--vm-bg-app);
+  color: var(--vm-fg-2);
+}
+
+/* ---- Header -------------------------------------------------------------- */
+.app-header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  background: var(--vm-bg-chrome);
+  border-bottom: 1px solid var(--vm-border);
+  min-height: 52px;
+  z-index: 60;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.brand-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--vm-fg-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--vm-fg-2);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--vm-duration-fast) var(--vm-ease),
+              color var(--vm-duration-fast) var(--vm-ease),
+              border-color var(--vm-duration-fast) var(--vm-ease);
+}
+
+.header-btn:hover {
+  background: var(--vm-bg-panel);
+  border-color: var(--vm-border);
+  color: var(--vm-fg-1);
+}
+
+.header-btn.active,
+.header-btn[aria-expanded="true"] {
+  background: var(--vm-accent-soft);
+  color: var(--vm-accent-deep);
+  border-color: transparent;
+}
+
+.theme-toggle .theme-icon-dark { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-icon-light { display: none; }
+:root[data-theme="dark"] .theme-toggle .theme-icon-dark { display: inline; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .theme-icon-light { display: none; }
+  :root:not([data-theme="light"]) .theme-toggle .theme-icon-dark { display: inline; }
+}
+
+/* ---- More menu (overflow) ----------------------------------------------- */
+.more-menu {
+  position: relative;
+}
+
+.more-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  background: var(--vm-bg-chrome);
+  border: 1px solid var(--vm-border);
+  border-radius: 12px;
+  box-shadow: var(--vm-elev-popover);
+  padding: 6px;
+  display: none;
+  z-index: 80;
+}
+
+.more-menu.open .more-menu-list {
+  display: block;
+  animation: vm-pop 0.12s ease-out;
+}
+
+.more-menu-list button,
+.more-menu-list .more-divider {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  color: var(--vm-fg-2);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.more-menu-list button:hover {
+  background: var(--vm-bg-panel);
+  color: var(--vm-fg-1);
+}
+
+.more-menu-list button.danger {
+  color: var(--vm-danger);
+}
+
+.more-menu-list button.danger:hover {
+  background: var(--vm-danger-soft-bg);
+}
+
+.more-divider {
+  height: 1px;
+  background: var(--vm-border);
+  margin: 4px 0;
+  padding: 0 !important;
+  cursor: default !important;
+}
+
+/* Hide the divider when the slot above it has no rendered button.
+   `:has` is widely supported in evergreen browsers; degrades to a
+   thin visible line otherwise, which is harmless. */
+.more-menu-list:has(> #more-remote-slot:empty) .more-divider {
+  display: none;
+}
+.more-menu-list #more-remote-slot:has(> .hidden) ~ .more-divider {
+  display: none;
+}
+
+@keyframes vm-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* ---- Icon rail (desktop) ------------------------------------------------- */
+.icon-rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 14px 8px;
+  width: 76px;
+  background: var(--vm-bg-rail);
+  border-right: 1px solid var(--vm-border);
+  z-index: 40;
+}
+
+.rail-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--vm-fg-3);
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 12px;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: background var(--vm-duration-fast) var(--vm-ease),
+              color var(--vm-duration-fast) var(--vm-ease);
+}
+
+.rail-btn:hover {
+  background: var(--vm-bg-panel);
+  color: var(--vm-fg-1);
+}
+
+.rail-btn[aria-pressed="true"] {
+  background: var(--vm-bg-rail-active);
+  color: var(--vm-accent-deep);
+}
+
+.rail-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.rail-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---- Stage (canvas area) ------------------------------------------------- */
+.stage {
+  grid-area: stage;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--vm-bg-stage);
+  overflow: hidden;
+}
+
+/* Override the legacy canvas-wrapper backgrounds/paddings so the new
+   stage carries the surface treatment. */
+.stage > .canvas-wrapper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: transparent !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+}
+
+.stage > .canvas-wrapper canvas {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 12px !important;
+  box-shadow: var(--vm-elev-2) !important;
+  display: block !important;
+}
+
+.stage > .notation-display-wrapper {
+  margin-top: 10px;
+}
+
+.stage > .practice-rhythm-row {
+  margin-bottom: 10px;
+}
+
+/* ---- Flyout panel (desktop) --------------------------------------------- */
+.panel-host {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 360px;
+  max-width: 90vw;
+  background: var(--vm-bg-chrome);
+  border-right: 1px solid var(--vm-border);
+  box-shadow: var(--vm-elev-3);
+  transform: translateX(-105%);
+  transition: transform var(--vm-duration-base) var(--vm-ease-out);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+
+.panel-host.open {
+  transform: translateX(0);
+}
+
+.panel-host .panel-tabbar {
+  display: none; /* desktop: rail controls the tabs */
+}
+
+.panel-host .panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.panel-host .panel.is-open {
+  display: flex;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--vm-border);
+  background: var(--vm-bg-chrome);
+}
+
+.panel-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vm-fg-3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title .panel-emoji {
+  font-size: 1rem;
+}
+
+.panel-close {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--vm-fg-3);
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-close:hover {
+  background: var(--vm-bg-panel);
+  color: var(--vm-fg-1);
+}
+
+.panel-body {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Re-style legacy .control-group inside the panel. */
+.panel-body .control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
+}
+
+.panel-body .control-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.panel-body .control-dropdown {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background-color: var(--vm-bg-page);
+  color: var(--vm-fg-1);
+  border: 1px solid var(--vm-border);
+  border-radius: 10px;
+}
+
+.panel-body .color-picker-main {
+  width: 100%;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--vm-border);
+}
+
+.panel-body .swing-label {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  color: var(--vm-fg-2);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.panel-body .animation-selector-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.panel-body .animation-selector-row .control-dropdown {
+  flex: 1;
+}
+
+.panel-body .pattern-btn,
+.panel-body .panel-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--vm-fg-1);
+  background: var(--vm-bg-page);
+  border: 1px solid var(--vm-border);
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--vm-duration-fast) var(--vm-ease);
+}
+
+.panel-body .pattern-btn:hover,
+.panel-body .panel-row-btn:hover {
+  border-color: var(--vm-accent);
+  background: var(--vm-bg-panel);
+}
+
+.panel-body .pattern-btn .pattern-emoji {
+  font-size: 1.4rem;
+}
+
+.panel-body .pattern-btn .pattern-text {
+  flex: 1;
+  text-align: left;
+}
+
+.panel-body .pattern-btn .pattern-sub {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--vm-fg-3);
+  margin-top: 2px;
+}
+
+.panel-body .pattern-btn.ct-active {
+  border-color: var(--vm-accent);
+  background: var(--vm-accent-soft);
+}
+
+.panel-body .pattern-btn .pattern-chev {
+  color: var(--vm-fg-4);
+  font-size: 1rem;
+}
+
+.panel-body .setting-group,
+.panel-body .setting-label {
+  margin: 0;
+}
+
+.panel-body .setting-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--vm-fg-2);
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.panel-body .setting-hint {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--vm-fg-4);
+}
+
+.panel-body .anim-size-rail-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.panel-body .anim-size-rail-inline label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.panel-body .anim-size-rail-inline .anim-size-slider {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--vm-border);
+  height: 6px;
+  border-radius: 3px;
+  writing-mode: horizontal-tb !important;
+  direction: ltr !important;
+  cursor: pointer;
+}
+
+.panel-body .anim-size-rail-inline .anim-size-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--vm-accent);
+  border: 2px solid var(--vm-bg-page);
+  box-shadow: var(--vm-shadow-thumb);
+  cursor: grab;
+}
+
+.panel-body .anim-size-rail-inline .anim-size-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--vm-accent);
+  border: 2px solid var(--vm-bg-page);
+  box-shadow: var(--vm-shadow-thumb);
+  cursor: grab;
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--vm-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--vm-duration-base) var(--vm-ease);
+  z-index: 45;
+}
+
+.scrim.open {
+  opacity: 0.35;
+  pointer-events: auto;
+}
+
+/* ---- Transport bar (bottom) --------------------------------------------- */
+.transport {
+  grid-area: transport;
+  background: var(--vm-bg-chrome);
+  border-top: 1px solid var(--vm-border);
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 76px;
+  z-index: 55;
+}
+
+.transport-play {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.transport-play .play-button-group {
+  position: relative;
+  margin: 0 !important;
+  align-self: center;
+}
+
+.transport-play #play-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Slightly tighter than legacy 1.4x scale */
+.transport-play tone-play-toggle,
+.transport-play #count-in-1-play-btn,
+.transport-play #count-in-play-btn,
+.transport-play #stop-btn {
+  transform: scale(1.1) !important;
+}
+
+.transport-tempo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.transport-tempo .tempo-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.transport-tempo .tempo-header .control-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+}
+
+.transport-tempo .tempo-marking-dropdown {
+  flex-shrink: 0;
+  max-width: 200px;
+}
+
+.transport-tempo .tempo-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.transport-tempo .tempo-range {
+  flex: 1;
+  min-width: 0;
+}
+
+.transport-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.transport-meta .meta-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-width: 76px;
+}
+
+.transport-meta .meta-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--vm-fg-4);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  text-align: center;
+}
+
+.transport-meta select {
+  width: 100%;
+  padding: 8px 28px 8px 10px;
+  font-size: 0.9rem;
+  color: var(--vm-fg-1);
+  background-color: var(--vm-bg-page);
+  border: 1px solid var(--vm-border);
+  border-radius: 10px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  cursor: pointer;
+}
+
+/* ---- Sheet (mobile bottom sheet) ---------------------------------------- */
+.sheet {
+  display: none;
+}
+
+/* ---- Tablet / Mobile breakpoint ----------------------------------------- */
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "stage"
+      "sheet";
+  }
+
+  .icon-rail {
+    display: none;
+  }
+
+  .transport {
+    display: none;
+  }
+
+  .panel-host {
+    display: none;
+  }
+
+  /* Stage uses full width on mobile */
+  .stage > .canvas-wrapper {
+    padding: 10px;
+  }
+
+  /* Sheet */
+  .sheet {
+    grid-area: sheet;
+    display: flex;
+    flex-direction: column;
+    background: var(--vm-bg-chrome);
+    border-top: 1px solid var(--vm-border);
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.15);
+    max-height: 78vh;
+    transition: max-height var(--vm-duration-base) var(--vm-ease-out);
+    z-index: 55;
+    overflow: hidden;
+  }
+
+  .sheet.collapsed {
+    max-height: 270px;
+  }
+
+  .sheet-grip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 12px 0;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  .sheet-grip::before {
+    content: '';
+    width: 40px;
+    height: 4px;
+    background: var(--vm-border-strong);
+    border-radius: 999px;
+  }
+
+  .sheet-transport {
+    padding: 8px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .sheet-transport .transport-play {
+    justify-content: center;
+  }
+
+  .sheet-transport .tempo-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sheet-transport .tempo-range {
+    flex: 1;
+  }
+
+  .sheet-transport .transport-meta {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .sheet-transport .meta-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    min-width: 72px;
+  }
+
+  .sheet-transport .meta-label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    color: var(--vm-fg-4);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    text-align: center;
+  }
+
+  .sheet-transport select {
+    width: 100%;
+    padding: 7px 26px 7px 9px;
+    font-size: 0.85rem;
+    background-color: var(--vm-bg-page);
+    color: var(--vm-fg-1);
+    border: 1px solid var(--vm-border);
+    border-radius: 9px;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    cursor: pointer;
+  }
+
+  /* Tab bar */
+  .sheet-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--vm-border);
+    flex-shrink: 0;
+  }
+
+  .sheet-tab {
+    flex: 1;
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--vm-fg-3);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 10px 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .sheet-tab[aria-pressed="true"] {
+    color: var(--vm-accent-deep);
+    border-bottom-color: var(--vm-accent);
+  }
+
+  .sheet.collapsed .panel-host-mobile {
+    display: none;
+  }
+
+  .sheet.collapsed .sheet-tab[aria-pressed="true"] {
+    border-bottom-color: transparent;
+    color: var(--vm-fg-3);
+  }
+
+  .panel-host-mobile {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-host-mobile .panel {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .panel-host-mobile .panel.is-open {
+    display: flex;
+  }
+
+  .panel-host-mobile .panel-header {
+    display: none;
+  }
+
+  .panel-host-mobile .panel-body {
+    padding: 14px 16px 24px;
+    overflow-y: auto;
+    gap: 12px;
+  }
+
+  /* Brand title smaller on phones */
+  .brand-title {
+    font-size: 0.95rem;
+  }
+
+  .app-header {
+    padding: 8px 12px;
+    min-height: 48px;
+  }
+}
+
+/* ---- Compact phone ------------------------------------------------------- */
+@media (max-width: 380px) {
+  .brand-title {
+    display: none;
+  }
+  .app-header {
+    padding: 8px 10px;
+  }
+  .sheet-transport {
+    padding: 6px 10px 8px;
+  }
+}
+
+/* ---- Very wide / desktop polish ----------------------------------------- */
+@media (min-width: 901px) {
+  .sheet {
+    display: none;
+  }
+
+  .transport-meta .meta-group#tr-beat-note-group[hidden] { display: none; }
+}
+
+/* ---- Landscape phones with limited height -------------------------------- */
+@media (max-height: 480px) and (orientation: landscape) and (max-width: 900px) {
+  .sheet.collapsed {
+    max-height: 130px;
+  }
+  .sheet-transport {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding: 6px 12px 8px;
+  }
+  .sheet-transport .transport-play {
+    flex: 0 0 auto;
+  }
+  .sheet-transport .tempo-slider-row {
+    flex: 1;
+  }
+  .sheet-transport .transport-meta {
+    flex: 0 0 auto;
+  }
+}
+
+/* ---- Modal theming (so dark mode actually looks dark) ------------------- */
+.settings-container,
+.camera-container,
+.tmp-container,
+.custom-rhythm-container,
+.counting-trainer-container,
+.song-sections-container {
+  background: var(--vm-bg-page) !important;
+  color: var(--vm-fg-2);
+}
+
+.settings-container h2,
+.camera-container h2 {
+  color: var(--vm-fg-1) !important;
+}
+
+.settings-container .setting-label,
+.settings-container .setting-hint {
+  color: var(--vm-fg-2);
+}
+
+.settings-container .control-dropdown,
+.settings-container input[type="text"],
+.settings-container input[type="number"] {
+  background-color: var(--vm-bg-page);
+  color: var(--vm-fg-1);
+  border-color: var(--vm-border);
+}
+
+.camera-container p {
+  color: var(--vm-fg-3) !important;
+}
+
+.tmp-container,
+.custom-rhythm-container,
+.counting-trainer-container,
+.song-sections-container {
+  color: var(--vm-fg-2);
+}
+
+/* Ensure number/text inputs across the app pick up the theme */
+input[type="number"],
+input[type="text"] {
+  background: var(--vm-bg-page);
+  color: var(--vm-fg-1);
+  border-color: var(--vm-border);
+}
+
+/* Stop button reset — was absolute-positioned over a 120px box; in the new
+   transport it sits next to the play group inline. */
+.transport-play #stop-btn {
+  position: static !important;
+  width: auto !important;
+  padding: 0 14px !important;
+  height: 38px !important;
+}
+
+.transport-play .play-button-group {
+  /* Drop the absolute-positioning container behavior */
+  width: auto;
+  min-width: 0;
+}
+
+/* In fullscreen, restore the stop button's original absolute positioning
+   so the existing fullscreen toggle-placeholder layout still looks right. */
+#fullscreen-toggle-placeholder .play-button-group {
+  position: relative;
+}
+#fullscreen-toggle-placeholder #stop-btn {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 120px !important;
+  height: 44px !important;
+  padding: 0 !important;
+}
+
+/* Make the legacy beat-note row that lives inside the panel render
+   like any other control group instead of its score-mode default. */
+.panel-body #beat-note-row {
+  display: flex !important;
+}
+
+.panel-body #beat-note-row[hidden] {
+  display: none !important;
+}
+
+/* Headings inside the rhythm panel pattern button list */
+.panel-body .panel-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--vm-fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 4px 0 2px;
+}
+
+/* Accent on the active-pattern indicator dot */
+.pattern-btn .pattern-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vm-fg-4);
+  display: inline-block;
+}
+.pattern-btn.ct-active .pattern-dot {
+  background: var(--vm-success);
+  box-shadow: 0 0 0 4px rgba(72, 187, 120, 0.2);
+}

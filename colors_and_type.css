@@ -26,17 +26,34 @@
   --vm-info-border:    #bee3f8;
 
   /* ── Foreground (light surface) ─────────────────────────────────────── */
-  --vm-fg-1:           #2d3748;   /* headings, input values */
-  --vm-fg-2:           #4a5568;   /* body */
-  --vm-fg-3:           #718096;   /* labels, muted */
-  --vm-fg-4:           #a0aec0;   /* footer, hint, placeholder */
+  --vm-fg-1:           #0f172a;   /* headings, input values */
+  --vm-fg-2:           #1f2937;   /* body */
+  --vm-fg-3:           #475569;   /* labels, muted */
+  --vm-fg-4:           #94a3b8;   /* footer, hint, placeholder */
 
   /* ── Surfaces (light) ───────────────────────────────────────────────── */
   --vm-bg-page:        #ffffff;   /* hero card */
-  --vm-bg-panel:       #f7fafc;   /* controls tray, section blocks */
-  --vm-bg-panel-2:     #edf2f7;   /* pressed / hover on panel */
+  --vm-bg-panel:       #f1f5f9;   /* controls tray, section blocks */
+  --vm-bg-panel-2:     #e2e8f0;   /* pressed / hover on panel */
   --vm-border:         #e2e8f0;   /* default border + dividers */
   --vm-border-strong:  #cbd5e0;
+
+  /* ── App-level surface tokens (new shell) ──────────────────────────── */
+  --vm-bg-app:         #f8fafc;   /* outside container */
+  --vm-bg-stage:       #ffffff;   /* canvas/notation backdrop */
+  --vm-bg-chrome:      #ffffff;   /* header, transport, panels */
+  --vm-bg-rail:        #ffffff;   /* icon rail */
+  --vm-bg-rail-active: rgba(99, 102, 241, 0.10);
+  --vm-bg-overlay:     rgba(255, 255, 255, 0.85);
+  --vm-text-on-accent: #ffffff;
+  --vm-accent:         #6366f1;   /* unified accent — slightly cooler indigo */
+  --vm-accent-deep:    #4f46e5;
+  --vm-accent-soft:    rgba(99, 102, 241, 0.14);
+
+  --vm-elev-1:         0 1px 2px rgba(15, 23, 42, 0.05);
+  --vm-elev-2:         0 4px 12px rgba(15, 23, 42, 0.08);
+  --vm-elev-3:         0 12px 28px rgba(15, 23, 42, 0.14);
+  --vm-elev-popover:   0 20px 50px rgba(15, 23, 42, 0.22);
 
   /* ── Dark surfaces (phone remote + custom rhythm editor) ────────────── */
   --vm-dark-bg:        #111827;   /* remote page bg */
@@ -219,4 +236,105 @@ html, body {
 .vm-caption {
   font-size: var(--vm-size-xs);
   color: var(--vm-fg-4);
+}
+
+/* =========================================================
+   Dark theme — applied via [data-theme="dark"] on <html>.
+   Variable names match light theme so all existing CSS adapts.
+   ========================================================= */
+:root[data-theme="dark"] {
+  --vm-fg-1:           #f8fafc;
+  --vm-fg-2:           #e2e8f0;
+  --vm-fg-3:           #94a3b8;
+  --vm-fg-4:           #64748b;
+
+  --vm-bg-page:        #1e293b;
+  --vm-bg-panel:       #0f172a;
+  --vm-bg-panel-2:     #1e293b;
+  --vm-border:         #334155;
+  --vm-border-strong:  #475569;
+
+  --vm-bg-app:         #020617;
+  --vm-bg-stage:       #0f172a;
+  --vm-bg-chrome:      #111827;
+  --vm-bg-rail:        #111827;
+  --vm-bg-rail-active: rgba(129, 140, 248, 0.18);
+  --vm-bg-overlay:     rgba(2, 6, 23, 0.78);
+  --vm-text-on-accent: #ffffff;
+  --vm-accent:         #818cf8;
+  --vm-accent-deep:    #6366f1;
+  --vm-accent-soft:    rgba(129, 140, 248, 0.18);
+
+  --vm-indigo:         #818cf8;
+  --vm-indigo-deep:    #6366f1;
+  --vm-indigo-wash:    rgba(129, 140, 248, 0.18);
+  --vm-indigo-focus:   rgba(129, 140, 248, 0.30);
+  --vm-indigo-ring:    rgba(129, 140, 248, 0.40);
+  --vm-indigo-halo:    rgba(129, 140, 248, 0.50);
+  --vm-purple-ring:    rgba(167, 139, 250, 0.45);
+
+  --vm-scrim:          rgba(2, 6, 23, 0.78);
+
+  --vm-elev-1:         0 1px 2px rgba(0, 0, 0, 0.45);
+  --vm-elev-2:         0 4px 12px rgba(0, 0, 0, 0.55);
+  --vm-elev-3:         0 12px 28px rgba(0, 0, 0, 0.65);
+  --vm-elev-popover:   0 20px 50px rgba(0, 0, 0, 0.7);
+
+  --vm-shadow-hero:    0 20px 60px rgba(0, 0, 0, 0.6);
+  --vm-shadow-canvas:  0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Follow OS preference when no explicit choice is stored.
+   layout.js sets data-theme="light" or "dark" on first interaction;
+   until then, this media query carries dark users automatically. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --vm-fg-1:           #f8fafc;
+    --vm-fg-2:           #e2e8f0;
+    --vm-fg-3:           #94a3b8;
+    --vm-fg-4:           #64748b;
+
+    --vm-bg-page:        #1e293b;
+    --vm-bg-panel:       #0f172a;
+    --vm-bg-panel-2:     #1e293b;
+    --vm-border:         #334155;
+    --vm-border-strong:  #475569;
+
+    --vm-bg-app:         #020617;
+    --vm-bg-stage:       #0f172a;
+    --vm-bg-chrome:      #111827;
+    --vm-bg-rail:        #111827;
+    --vm-bg-rail-active: rgba(129, 140, 248, 0.18);
+    --vm-bg-overlay:     rgba(2, 6, 23, 0.78);
+    --vm-accent:         #818cf8;
+    --vm-accent-deep:    #6366f1;
+    --vm-accent-soft:    rgba(129, 140, 248, 0.18);
+
+    --vm-indigo:         #818cf8;
+    --vm-indigo-deep:    #6366f1;
+    --vm-indigo-wash:    rgba(129, 140, 248, 0.18);
+    --vm-indigo-focus:   rgba(129, 140, 248, 0.30);
+    --vm-indigo-ring:    rgba(129, 140, 248, 0.40);
+    --vm-indigo-halo:    rgba(129, 140, 248, 0.50);
+
+    --vm-scrim:          rgba(2, 6, 23, 0.78);
+
+    --vm-elev-1:         0 1px 2px rgba(0, 0, 0, 0.45);
+    --vm-elev-2:         0 4px 12px rgba(0, 0, 0, 0.55);
+    --vm-elev-3:         0 12px 28px rgba(0, 0, 0, 0.65);
+    --vm-elev-popover:   0 20px 50px rgba(0, 0, 0, 0.7);
+
+    --vm-shadow-hero:    0 20px 60px rgba(0, 0, 0, 0.6);
+    --vm-shadow-canvas:  0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* Smooth theme transition on tokens that flip. */
+html, body, .app-shell, .app-header, .transport, .icon-rail,
+.panel, .sheet, .sheet-grip, .header-btn, .rail-btn,
+.control-dropdown, .bpm-input, .tempo-range, .settings-container,
+.camera-container, .utility-btn {
+  transition: background-color var(--vm-duration-base) var(--vm-ease),
+              color var(--vm-duration-base) var(--vm-ease),
+              border-color var(--vm-duration-base) var(--vm-ease);
 }
