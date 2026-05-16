@@ -1084,16 +1084,26 @@ function startCameraStream(video) {
     cameraStream.getTracks().forEach(track => track.stop());
     cameraStream = null;
   }
-  return navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: cameraFacingMode,
-      width: { ideal: 640 },
-      height: { ideal: 480 }
-    }
-  }).then(stream => {
-    cameraStream = stream;
-    video.srcObject = stream;
-  });
+  // Null srcObject first — required by iOS Safari before reassigning
+  video.srcObject = null;
+  video.classList.toggle('rear-camera', cameraFacingMode === 'environment');
+
+  function tryGetUserMedia(constraints) {
+    return navigator.mediaDevices.getUserMedia({ video: constraints })
+      .then(stream => { cameraStream = stream; video.srcObject = stream; });
+  }
+
+  // Use exact facingMode so browsers can't silently fall back to the wrong camera.
+  // If exact isn't supported, retry with a soft preference.
+  return tryGetUserMedia({
+    facingMode: { exact: cameraFacingMode },
+    width: { ideal: 640 },
+    height: { ideal: 480 }
+  }).catch(() => tryGetUserMedia({
+    facingMode: cameraFacingMode,
+    width: { ideal: 640 },
+    height: { ideal: 480 }
+  }));
 }
 
 function openCamera() {
