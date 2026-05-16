@@ -327,7 +327,7 @@
     var remoteBtn = $('remote-btn');
     var remoteSlot = $('header-remote-slot');
     if (remoteBtn && remoteSlot) {
-      remoteBtn.classList.remove('utility-btn');
+      remoteBtn.classList.remove('utility-btn', 'hidden');
       remoteBtn.classList.add('header-btn');
       remoteBtn.textContent = '📱';
       remoteBtn.title = 'Phone Remote Control';
