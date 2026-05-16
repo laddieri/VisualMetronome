@@ -16,14 +16,22 @@
     <link rel="stylesheet" href="stylesheet.css" type="text/css">
     <link rel="stylesheet" href="layout.css" type="text/css">
     <script>
-      // Apply saved theme before paint to avoid flash.
+      // Apply saved theme before paint to avoid flash, and seed the canvas
+      // background color so script.js's first draw() frame uses the right
+      // value. layout.js will later replace this with the live CSS value.
       (function () {
+        var explicit = null;
         try {
           var t = localStorage.getItem('vm.theme');
           if (t === 'dark' || t === 'light') {
             document.documentElement.setAttribute('data-theme', t);
+            explicit = t;
           }
         } catch (e) { /* ignore */ }
+        var prefersDark = window.matchMedia &&
+                          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = explicit === 'dark' || (explicit == null && prefersDark);
+        window.vmCanvasBg = isDark ? '#1e293b' : '#e2e8f0';
       })();
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>

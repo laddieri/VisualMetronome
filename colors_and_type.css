@@ -55,6 +55,10 @@
   --vm-elev-3:         0 12px 28px rgba(15, 23, 42, 0.14);
   --vm-elev-popover:   0 20px 50px rgba(15, 23, 42, 0.22);
 
+  /* Canvas background — read by script.js for the p5 stage and the
+     notation SVG so they match the rest of the theme. */
+  --vm-canvas-bg:      #e2e8f0;
+
   /* ── Dark surfaces (phone remote + custom rhythm editor) ────────────── */
   --vm-dark-bg:        #111827;   /* remote page bg */
   --vm-dark-panel:     #1f2937;   /* raised panels, cr beat groups */
@@ -282,6 +286,8 @@ html, body {
 
   --vm-shadow-hero:    0 20px 60px rgba(0, 0, 0, 0.6);
   --vm-shadow-canvas:  0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --vm-canvas-bg:      #1e293b;
 }
 
 /* Follow OS preference when no explicit choice is stored.
@@ -326,6 +332,8 @@ html, body {
 
     --vm-shadow-hero:    0 20px 60px rgba(0, 0, 0, 0.6);
     --vm-shadow-canvas:  0 4px 12px rgba(0, 0, 0, 0.4);
+
+    --vm-canvas-bg:      #1e293b;
   }
 }
 

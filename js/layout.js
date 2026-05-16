@@ -16,12 +16,30 @@
   // ───── Theme ───────────────────────────────────────────────────────────
   var THEME_KEY = 'vm.theme';
 
+  // Read the current --vm-canvas-bg from CSS and publish it for script.js to
+  // pick up. script.js's draw() and notation SVG builder consult
+  // window.vmCanvasBg so the p5 stage and SVG match the active theme.
+  function syncCanvasBg() {
+    var c = getComputedStyle(document.documentElement)
+              .getPropertyValue('--vm-canvas-bg').trim();
+    if (c) window.vmCanvasBg = c;
+
+    // Re-paint existing notation SVG rects so the new color shows
+    // immediately without waiting for the next render trigger.
+    document.querySelectorAll('.nd-bg-rect').forEach(function (r) {
+      // Preserve practice-rhythm "your turn" green; only swap the base.
+      var current = r.getAttribute('fill');
+      if (current !== '#3a5c2a') r.setAttribute('fill', window.vmCanvasBg);
+    });
+  }
+
   function applyTheme(theme) {
     if (theme === 'dark' || theme === 'light') {
       document.documentElement.setAttribute('data-theme', theme);
     } else {
       document.documentElement.removeAttribute('data-theme');
     }
+    syncCanvasBg();
   }
 
   function initTheme() {
@@ -45,6 +63,17 @@
       applyTheme(nextTheme);
       try { localStorage.setItem(THEME_KEY, nextTheme); } catch (e) { /* ignore */ }
     });
+
+    // If the user changes their OS preference while the app is open AND they
+    // haven't picked an explicit theme, keep the canvas color in sync.
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var listener = function () {
+        if (!document.documentElement.getAttribute('data-theme')) syncCanvasBg();
+      };
+      if (mq.addEventListener) mq.addEventListener('change', listener);
+      else mq.addListener(listener);
+    }
   }
 
   // ───── DOM reorganization ─────────────────────────────────────────────
