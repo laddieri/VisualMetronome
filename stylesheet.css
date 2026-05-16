@@ -1243,7 +1243,11 @@ footer p {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1); /* Mirror for selfie */
+  transform: scaleX(-1); /* Mirror front camera so it feels natural */
+}
+
+.camera-preview-wrapper video.rear-camera {
+  transform: none;
 }
 
 .face-guide {
