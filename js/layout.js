@@ -323,26 +323,28 @@
       legacy.style.display = 'none';
     }
 
-    // ── Reset button → header more menu ──
-    var resetBtn = $('reset-settings-btn');
-    var resetSlot = $('more-reset-slot');
-    if (resetBtn && resetSlot) {
-      resetBtn.classList.remove('toggle', 'reset-settings-btn');
-      resetBtn.classList.add('danger');
-      resetBtn.removeAttribute('title');
-      resetBtn.textContent = '↺  Reset all settings';
-      resetSlot.appendChild(resetBtn);
-    }
-
-    // ── Remote button → header more menu ──
+    // ── Remote button → header bar ──
     var remoteBtn = $('remote-btn');
-    var remoteSlot = $('more-remote-slot');
+    var remoteSlot = $('header-remote-slot');
     if (remoteBtn && remoteSlot) {
       remoteBtn.classList.remove('utility-btn');
-      remoteBtn.textContent = '📱  Phone Remote';
+      remoteBtn.classList.add('header-btn');
+      remoteBtn.textContent = '📱';
+      remoteBtn.title = 'Phone Remote Control';
+      remoteBtn.setAttribute('aria-label', 'Phone Remote Control');
       remoteSlot.appendChild(remoteBtn);
-      // The script.js logic toggles `remote-btn.classList.remove('hidden')`
-      // when a remote is available — keep that working.
+    }
+
+    // ── Reset button → header bar ──
+    var resetBtn = $('reset-settings-btn');
+    var resetSlot = $('header-reset-slot');
+    if (resetBtn && resetSlot) {
+      resetBtn.classList.remove('toggle', 'reset-settings-btn');
+      resetBtn.classList.add('header-btn', 'header-btn--danger');
+      resetBtn.title = 'Reset all settings';
+      resetBtn.setAttribute('aria-label', 'Reset all settings');
+      resetBtn.textContent = '↺';
+      resetSlot.appendChild(resetBtn);
     }
   }
 
@@ -510,47 +512,12 @@
     else mq.addListener(listener);
   }
 
-  // ───── More menu ───────────────────────────────────────────────────────
-  function initMoreMenu() {
-    var wrap = document.getElementById('more-menu');
-    var btn  = document.getElementById('more-btn');
-    if (!wrap || !btn) return;
-
-    function open() {
-      wrap.classList.add('open');
-      btn.setAttribute('aria-expanded', 'true');
-    }
-    function close() {
-      wrap.classList.remove('open');
-      btn.setAttribute('aria-expanded', 'false');
-    }
-
-    btn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      if (wrap.classList.contains('open')) close(); else open();
-    });
-
-    document.addEventListener('click', function (e) {
-      if (!wrap.contains(e.target)) close();
-    });
-
-    // Close menu when a menu item is clicked
-    wrap.addEventListener('click', function (e) {
-      var item = e.target.closest('button');
-      if (item && item !== btn) {
-        // Defer close so the item's own click handler still runs
-        setTimeout(close, 0);
-      }
-    });
-  }
-
-  // ───── Init ────────────────────────────────────────────────────────────
+// ───── Init ────────────────────────────────────────────────────────────
   function init() {
     initTheme();
     moveControlsIntoLayout();
     initRailPanels();
     initSheet();
-    initMoreMenu();
   }
 
   if (document.readyState === 'loading') {
