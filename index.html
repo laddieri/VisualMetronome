@@ -48,10 +48,6 @@
           <span class="brand-title">Visual Metronome</span>
         </div>
         <div class="header-actions">
-          <button id="theme-toggle" class="header-btn theme-toggle" title="Toggle theme" aria-label="Toggle theme">
-            <span class="theme-icon-light" aria-hidden="true">🌙</span>
-            <span class="theme-icon-dark"  aria-hidden="true">☀️</span>
-          </button>
           <span id="header-reset-slot"></span>
           <button id="fullscreen-btn" class="header-btn" title="Fullscreen" aria-label="Fullscreen">⛶</button>
           <button id="settings-btn" class="header-btn" title="Settings" aria-label="Settings">⚙</button>
@@ -309,6 +305,15 @@
     <div id="settings-modal" class="settings-modal hidden">
       <div class="settings-container">
         <h2>Advanced Settings</h2>
+
+        <div class="setting-group">
+          <label class="setting-label" for="theme-select">Theme</label>
+          <select id="theme-select" class="control-dropdown">
+            <option value="">System default</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
 
         <div class="setting-group">
           <label class="setting-label">

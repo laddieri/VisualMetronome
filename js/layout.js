@@ -70,22 +70,18 @@
     try { stored = localStorage.getItem(THEME_KEY); } catch (e) { stored = null; }
     applyTheme(stored);
 
-    var btn = document.getElementById('theme-toggle');
-    if (!btn) return;
-    btn.addEventListener('click', function () {
-      var current = document.documentElement.getAttribute('data-theme');
-      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var nextTheme;
-      if (current === 'dark') {
-        nextTheme = 'light';
-      } else if (current === 'light') {
-        nextTheme = 'dark';
-      } else {
-        nextTheme = prefersDark ? 'light' : 'dark';
-      }
-      applyTheme(nextTheme);
-      try { localStorage.setItem(THEME_KEY, nextTheme); } catch (e) { /* ignore */ }
-    });
+    var sel = document.getElementById('theme-select');
+    if (sel) {
+      sel.value = stored || '';
+      sel.addEventListener('change', function () {
+        var val = sel.value; // '' | 'light' | 'dark'
+        applyTheme(val);
+        try {
+          if (val) localStorage.setItem(THEME_KEY, val);
+          else localStorage.removeItem(THEME_KEY);
+        } catch (e) { /* ignore */ }
+      });
+    }
 
     // If the user changes their OS preference while the app is open AND they
     // haven't picked an explicit theme, keep the canvas color in sync.
