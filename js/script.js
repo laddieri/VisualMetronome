@@ -2132,7 +2132,7 @@ function scheduleMainBeat() {
     if (currentBeat === 0 && practiceRhythmEnabled) {
       practiceRhythmMeasureIdx++;
       const _prSilent = practiceRhythmMeasureIdx % 2 === 1;
-      const _prColor  = _prSilent ? '#3a5c2a' : '#696969';
+      const _prColor  = _prSilent ? '#3a5c2a' : (window.vmCanvasBg || '#e2e8f0');
       Tone.Draw.schedule(function() {
         document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', _prColor); });
         var prRow = document.getElementById('practice-rhythm-row');
@@ -2142,7 +2142,7 @@ function scheduleMainBeat() {
       // Feature was just disabled mid-session — reset colour
       practiceRhythmMeasureIdx = -1;
       Tone.Draw.schedule(function() {
-        document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
+        document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', window.vmCanvasBg || '#e2e8f0'); });
         var prRow = document.getElementById('practice-rhythm-row');
         if (prRow) prRow.className = 'practice-rhythm-row';
       }, time);
@@ -2831,7 +2831,7 @@ function _syncPracticeRow() {
     practiceRhythmMeasureIdx = -1;
     var cb = document.getElementById('practice-rhythm-cb');
     if (cb) cb.checked = false;
-    document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
+    document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', window.vmCanvasBg || '#e2e8f0'); });
   }
   _syncBeatNoteRow();
 }
@@ -3644,7 +3644,7 @@ function draw() {
   // the ramp window; inverting it (1 - rampProgress) makes the tint
   // brightest at the first ramp beat and fades to normal as the new tempo
   // is reached.
-  const baseColor        = color(105, 105, 105);   // #696969 — normal grey
+  const baseColor        = color(window.vmCanvasBg || '#e2e8f0');
   const rampColor        = color(180, 120,  40);   // warm amber for transition ramp
   const ritardandoColor  = color( 40, 140, 180);   // teal blue for ritardando
   const bgColor = (ritardandoProgress > 0)
@@ -5088,7 +5088,7 @@ function crRenderNotationDisplay() {
   var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet">';
 
   // Canvas background — changes colour when practice-rhythm silent measure is active
-  var _prBg = (practiceRhythmEnabled && practiceRhythmMeasureIdx % 2 === 1) ? '#3a5c2a' : '#696969';
+  var _prBg = (practiceRhythmEnabled && practiceRhythmMeasureIdx % 2 === 1) ? '#3a5c2a' : (window.vmCanvasBg || '#e2e8f0');
   svg += '<rect class="nd-bg-rect" width="640" height="360" fill="' + _prBg + '"/>';
 
   // Drop-shadow filter — works for both ball and shoe
@@ -6156,7 +6156,7 @@ if (document.readyState === 'loading') {
     practiceRhythmMeasureIdx = -1;
     // Reset background to gray immediately when disabled
     if (!practiceRhythmEnabled) {
-      document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', '#696969'); });
+      document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', window.vmCanvasBg || '#e2e8f0'); });
       var row = document.getElementById('practice-rhythm-row');
       if (row) row.className = 'practice-rhythm-row';
     }
