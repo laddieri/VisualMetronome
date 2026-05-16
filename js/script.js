@@ -5485,25 +5485,7 @@ function crUpdateNotationBall() {
     var x0 = notationBeatXPositions[currentIdx];
     var x1 = notationBeatXPositions[nextIdx];
 
-    if (nextIdx < currentIdx) {
-      // Measure wraparound: instead of lerping back left, the ball continues
-      // rightward off-screen and flies in from the left for the next measure.
-      // exitX / entryX are in SVG viewBox coordinates (viewBox width = 640).
-      var exitX  = 670; // just past the right edge
-      var entryX = -30; // just past the left edge
-      var distExit  = exitX  - x0;
-      var distEnter = x1     - entryX;
-      var totalDist = distExit + distEnter;
-      var pExit = distExit / totalDist; // progress fraction at which ball exits right
-      if (progress <= pExit) {
-        ballX = x0 + distExit * (progress / pExit);
-      } else {
-        var pIn = (progress - pExit) / (1 - pExit);
-        ballX = entryX + distEnter * pIn;
-      }
-    } else {
-      ballX = x0 + (x1 - x0) * progress;
-    }
+    ballX = x0 + (x1 - x0) * progress;
 
     // Parabolic arc: lands (progress=0,1) at notationBallLandingY, peaks (progress=0.5) 110px above
     ballY = notationBallLandingY - 110 * 4 * progress * (1 - progress);
