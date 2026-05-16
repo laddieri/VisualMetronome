@@ -1029,19 +1029,24 @@ input[type="text"] {
   border-color: var(--vm-border);
 }
 
-/* Stop button reset — was absolute-positioned over a 120px box; in the new
-   transport it sits next to the play group inline. */
-.transport-play #stop-btn {
-  position: static !important;
-  width: auto !important;
-  padding: 0 14px !important;
-  height: 38px !important;
+/* Stop button overlays the play-button group: same absolute position
+   as the legacy layout, sized to the group so nothing shifts when
+   play -> stop switches. */
+.transport-play .play-button-group {
+  position: relative;
+  min-width: 0;
 }
 
-.transport-play .play-button-group {
-  /* Drop the absolute-positioning container behavior */
-  width: auto;
-  min-width: 0;
+.transport-play #stop-btn {
+  position: absolute !important;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  width: 100% !important;
+  height: 44px !important;
+  padding: 0 14px !important;
+  margin: 0 !important;
 }
 
 /* In fullscreen, restore the stop button's original absolute positioning
@@ -1056,6 +1061,7 @@ input[type="text"] {
   width: 120px !important;
   height: 44px !important;
   padding: 0 !important;
+  transform: none;
 }
 
 /* Make the legacy beat-note row that lives inside the panel render
