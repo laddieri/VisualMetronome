@@ -2743,9 +2743,19 @@ function updateColorPickerVisibility() {
   if (colorPickerGroup) colorPickerGroup.style.display = (animalType === 'circle') ? '' : 'none';
 
   const isConductor = (animalType === 'conductor');
+  const isCircle = (animalType === 'circle');
   const conductorSelfieBtn = document.getElementById('conductor-selfie-btn');
   if (conductorSelfieBtn) {
     conductorSelfieBtn.style.display = isConductor ? '' : 'none';
+  }
+  const circleSelfieBtn = document.getElementById('circle-selfie-btn');
+  if (circleSelfieBtn) {
+    circleSelfieBtn.style.display = isCircle ? '' : 'none';
+  }
+  // Hide the selfie option from the shape dropdown in circle mode — the button handles it there
+  const selfieShapeOption = document.getElementById('selfie-shape-option');
+  if (selfieShapeOption) {
+    selfieShapeOption.hidden = isCircle;
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
@@ -3080,6 +3090,16 @@ function setup() {
     cameraTarget = 'conductor';
     openCamera();
   });
+
+  // Circle selfie button — sets the circle shape to the user's selfie
+  const circleSelfieBtn = document.getElementById('circle-selfie-btn');
+  if (circleSelfieBtn) {
+    circleSelfieBtn.addEventListener('click', () => {
+      cameraTarget = 'selfie';
+      notationBallStyle = 'selfie';
+      openCamera();
+    });
+  }
 
   // Bounce direction dropdown
   document.querySelector('#bounce-direction').addEventListener('change', e => {

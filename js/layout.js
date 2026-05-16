@@ -196,6 +196,8 @@
       animRow.appendChild(animSelect);
       var selfieBtn = $('conductor-selfie-btn');
       if (selfieBtn) animRow.appendChild(selfieBtn);
+      var circleSelfieBtn = $('circle-selfie-btn');
+      if (circleSelfieBtn) animRow.appendChild(circleSelfieBtn);
       animMeta.appendChild(animRow);
       // Place animation at the start of the meta slot so it reads as
       // the "mode" before beats / beat note.
