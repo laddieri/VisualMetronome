@@ -188,9 +188,6 @@ main {
 }
 
 /* ── Beat note row (score mode, below the score SVG) ────────────────────────── */
-.beat-note-select {
-  min-width: 120px;
-}
 
 /* ── Rhythm picker popover (score mode) ─────────────────────────────────────── */
 .rhythm-picker-backdrop {
@@ -581,6 +578,11 @@ main {
   gap: 6px;
   flex: 1;
   min-width: 100px;
+}
+
+.control-group--fixed {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .control-label {
