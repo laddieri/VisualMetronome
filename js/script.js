@@ -4983,8 +4983,8 @@ function crRenderNotation() {
   // Time signature (stacked: beats on top, beat note value on bottom)
   var bnBottom = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
   var bnTop = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
-  svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnTop + '</text>';
-  svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
+  svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTop + '</text>';
+  svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
 
   var xStart = 40;
 
@@ -4993,11 +4993,11 @@ function crRenderNotation() {
     var pat = customRhythmPattern[b];
 
     // Beat number below — aligned under the first note/rest of the beat
-    svg += '<text x="' + crGetBeatLabelX(pat, x, beatWidth) + '" y="' + (staffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    svg += '<text x="' + crGetBeatLabelX(pat, x, beatWidth) + '" y="' + (staffY + 40) + '" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Draw barline before beat 1 equivalent
     if (b === 0) {
-      svg += '<line x1="' + (x - 5) + '" y1="' + (staffY - 20) + '" x2="' + (x - 5) + '" y2="' + (staffY + 20) + '" stroke="#333" stroke-width="1.5"/>';
+      svg += '<line x1="' + (x - 5) + '" y1="' + (staffY - 20) + '" x2="' + (x - 5) + '" y2="' + (staffY + 20) + '" stroke="currentColor" stroke-width="1.5"/>';
     }
 
     svg += crDrawBeatPattern(pat, x, staffY, beatWidth);
@@ -5032,8 +5032,8 @@ function crRenderNotation() {
   }
 
   // Final barline
-  svg += '<line x1="' + (xStart + beatCount * beatWidth + 2) + '" y1="' + (staffY - 20) + '" x2="' + (xStart + beatCount * beatWidth + 2) + '" y2="' + (staffY + 20) + '" stroke="#333" stroke-width="2.5"/>';
-  svg += '<line x1="' + (xStart + beatCount * beatWidth - 2) + '" y1="' + (staffY - 20) + '" x2="' + (xStart + beatCount * beatWidth - 2) + '" y2="' + (staffY + 20) + '" stroke="#333" stroke-width="1"/>';
+  svg += '<line x1="' + (xStart + beatCount * beatWidth + 2) + '" y1="' + (staffY - 20) + '" x2="' + (xStart + beatCount * beatWidth + 2) + '" y2="' + (staffY + 20) + '" stroke="currentColor" stroke-width="2.5"/>';
+  svg += '<line x1="' + (xStart + beatCount * beatWidth - 2) + '" y1="' + (staffY - 20) + '" x2="' + (xStart + beatCount * beatWidth - 2) + '" y2="' + (staffY + 20) + '" stroke="currentColor" stroke-width="1"/>';
 
   svg += '</svg>';
   container.innerHTML = svg;
@@ -5180,8 +5180,8 @@ function crNotationBallSVG(id, color, style, ballX, ballY, radius) {
       g += '<circle cx="8"  cy="8"  r="5" fill="#f06292"/>';
       g += '<circle cx="42" cy="8"  r="5" fill="#f06292"/>';
       g += '<circle cx="25" cy="22" r="20" fill="#f9a8c9" stroke="rgba(0,0,0,0.10)" stroke-width="1"/>'; // face
-      g += '<circle cx="18" cy="18" r="3"  fill="#333"/>'; // eyes
-      g += '<circle cx="32" cy="18" r="3"  fill="#333"/>';
+      g += '<circle cx="18" cy="18" r="3"  fill="currentColor"/>'; // eyes
+      g += '<circle cx="32" cy="18" r="3"  fill="currentColor"/>';
       g += '<ellipse cx="25" cy="29" rx="9" ry="7" fill="#f06292"/>'; // snout
       g += '<circle cx="21" cy="29" r="2.5" fill="#c2185b"/>'; // nostrils
       g += '<circle cx="29" cy="29" r="2.5" fill="#c2185b"/>';
@@ -5306,11 +5306,11 @@ function crRenderNotationDisplay() {
   // Time signature (stacked: beats on top, beat note value on bottom)
   var bnBottomD = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
   var bnTopD = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
-  svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnTopD + '</text>';
-  svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="#333" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
+  svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTopD + '</text>';
+  svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
 
   // Opening barline
-  svg += '<line x1="' + (baseXStart - 5) + '" y1="' + (baseStaffY - 20) + '" x2="' + (baseXStart - 5) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="1.5"/>';
+  svg += '<line x1="' + (baseXStart - 5) + '" y1="' + (baseStaffY - 20) + '" x2="' + (baseXStart - 5) + '" y2="' + (baseStaffY + 20) + '" stroke="currentColor" stroke-width="1.5"/>';
 
   for (var b = 0; b < beatCount; b++) {
     var x = baseXStart + b * baseBeatWidth;
@@ -5319,7 +5319,7 @@ function crRenderNotationDisplay() {
     svg += crDrawBeatPattern(pat, x, baseStaffY, baseBeatWidth);
 
     // Beat number below staff — aligned under the first note/rest of the beat
-    svg += '<text x="' + crGetBeatLabelX(pat, x, baseBeatWidth) + '" y="' + (baseStaffY + 40) + '" text-anchor="middle" font-size="11" fill="#666" font-family="sans-serif">' + (b + 1) + '</text>';
+    svg += '<text x="' + crGetBeatLabelX(pat, x, baseBeatWidth) + '" y="' + (baseStaffY + 40) + '" text-anchor="middle" font-size="11" fill="currentColor" font-family="sans-serif">' + (b + 1) + '</text>';
 
     // Accent marks
     if (customRhythmAccents[b] && customRhythmAccents[b].length > 0) {
@@ -5351,8 +5351,8 @@ function crRenderNotationDisplay() {
 
   // Final double barline
   var finalBarX = baseXStart + beatCount * baseBeatWidth;
-  svg += '<line x1="' + (finalBarX + 2) + '" y1="' + (baseStaffY - 20) + '" x2="' + (finalBarX + 2) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="2.5"/>';
-  svg += '<line x1="' + (finalBarX - 2) + '" y1="' + (baseStaffY - 20) + '" x2="' + (finalBarX - 2) + '" y2="' + (baseStaffY + 20) + '" stroke="#333" stroke-width="1"/>';
+  svg += '<line x1="' + (finalBarX + 2) + '" y1="' + (baseStaffY - 20) + '" x2="' + (finalBarX + 2) + '" y2="' + (baseStaffY + 20) + '" stroke="currentColor" stroke-width="2.5"/>';
+  svg += '<line x1="' + (finalBarX - 2) + '" y1="' + (baseStaffY - 20) + '" x2="' + (finalBarX - 2) + '" y2="' + (baseStaffY + 20) + '" stroke="currentColor" stroke-width="1"/>';
 
   svg += '</g>'; // end notation group
 
@@ -5720,14 +5720,14 @@ function crDrawBeatPattern(pat, x, y, w) {
       // Shorter stems leave room for the triplet "3" above the beam
       var beamY = y - 20;
       svg += crNoteHead(t1, y, false);
-      svg += '<line x1="' + (t1+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t1+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="1.5"/>';
+      svg += '<line x1="' + (t1+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t1+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="currentColor" stroke-width="1.5"/>';
       svg += crNoteHead(t2, y, false);
-      svg += '<line x1="' + (t2+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t2+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="1.5"/>';
+      svg += '<line x1="' + (t2+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t2+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="currentColor" stroke-width="1.5"/>';
       svg += crNoteHead(t3, y, false);
-      svg += '<line x1="' + (t3+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t3+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="1.5"/>';
-      svg += '<line x1="' + (t1+4.5).toFixed(1) + '" y1="' + beamY + '" x2="' + (t3+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="#333" stroke-width="3"/>';
+      svg += '<line x1="' + (t3+4.5).toFixed(1) + '" y1="' + y + '" x2="' + (t3+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="currentColor" stroke-width="1.5"/>';
+      svg += '<line x1="' + (t1+4.5).toFixed(1) + '" y1="' + beamY + '" x2="' + (t3+4.5).toFixed(1) + '" y2="' + beamY + '" stroke="currentColor" stroke-width="3"/>';
       var tmx = ((t1 + t3) / 2 + 4.5).toFixed(1);
-      svg += '<text x="' + tmx + '" y="' + (beamY - 3) + '" text-anchor="middle" font-size="8" fill="#333" font-family="serif" font-style="italic">3</text>';
+      svg += '<text x="' + tmx + '" y="' + (beamY - 3) + '" text-anchor="middle" font-size="8" fill="currentColor" font-family="serif" font-style="italic">3</text>';
       break;
     }
 
@@ -5999,17 +5999,17 @@ function crDrawBeatPattern(pat, x, y, w) {
 
 function crNoteHead(cx, cy, open) {
   if (open) {
-    return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="5" ry="3.5" fill="none" stroke="#333" stroke-width="1.5" transform="rotate(-15,' + cx + ',' + cy + ')"/>';
+    return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="5" ry="3.5" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-15,' + cx + ',' + cy + ')"/>';
   }
-  return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="5" ry="3.5" fill="#333" transform="rotate(-15,' + cx + ',' + cy + ')"/>';
+  return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="5" ry="3.5" fill="currentColor" transform="rotate(-15,' + cx + ',' + cy + ')"/>';
 }
 
 function crStem(x, y) {
-  return '<line x1="' + (x + 4.5) + '" y1="' + y + '" x2="' + (x + 4.5) + '" y2="' + (y - 25) + '" stroke="#333" stroke-width="1.5"/>';
+  return '<line x1="' + (x + 4.5) + '" y1="' + y + '" x2="' + (x + 4.5) + '" y2="' + (y - 25) + '" stroke="currentColor" stroke-width="1.5"/>';
 }
 
 function crBeam(x1, x2, y) {
-  return '<line x1="' + (x1 + 4.5) + '" y1="' + y + '" x2="' + (x2 + 4.5) + '" y2="' + y + '" stroke="#333" stroke-width="3"/>';
+  return '<line x1="' + (x1 + 4.5) + '" y1="' + y + '" x2="' + (x2 + 4.5) + '" y2="' + y + '" stroke="currentColor" stroke-width="3"/>';
 }
 
 function crFlag(x, y) {
@@ -6019,7 +6019,7 @@ function crFlag(x, y) {
   return '<path d="M' + sx + ',' + sy +
     ' c1,3 8,5 6,14' +   // outward curve down
     ' c-2,-2 -5,-4 -6,-6' + // inward curve back
-    '" fill="#333" stroke="none"/>';
+    '" fill="currentColor" stroke="none"/>';
 }
 
 function crQuarterRest(cx, cy) {
@@ -6032,43 +6032,43 @@ function crQuarterRest(cx, cy) {
     ' l-5,5' +                                 // slash down-left to middle
     ' c2,0 5,2 3,6' +                         // curve into lower bump
     ' c-1,2 -3,4 -1,6' +                      // curve to bottom
-    '" fill="none" stroke="#333" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+    '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
 }
 
 function crEighthRest(cx, cy) {
   // Eighth rest — a dot with a curved tail descending to the right.
   var dotX = cx + 3, dotY = cy - 5;
-  return '<circle cx="' + dotX + '" cy="' + dotY + '" r="2.2" fill="#333"/>' +
+  return '<circle cx="' + dotX + '" cy="' + dotY + '" r="2.2" fill="currentColor"/>' +
     '<path d="M' + (dotX + 0.5) + ',' + (dotY + 1) +
-    ' c-1,3 -4,7 -5,12" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>';
+    ' c-1,3 -4,7 -5,12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
 }
 
 function crDot(x, y) {
   // Augmentation dot to the right of a note head (slightly above the staff line)
-  return '<circle cx="' + x.toFixed(1) + '" cy="' + (y - 2) + '" r="2.2" fill="#333"/>';
+  return '<circle cx="' + x.toFixed(1) + '" cy="' + (y - 2) + '" r="2.2" fill="currentColor"/>';
 }
 
 function crHalfRest(cx, cy) {
   // Filled rectangle sitting ON the staff line (like a hat)
-  return '<rect x="' + (cx - 5.5).toFixed(1) + '" y="' + (cy - 5) + '" width="11" height="4.5" fill="#333"/>';
+  return '<rect x="' + (cx - 5.5).toFixed(1) + '" y="' + (cy - 5) + '" width="11" height="4.5" fill="currentColor"/>';
 }
 
 function crWholeNote(cx, cy) {
-  return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="6.5" ry="4.5" fill="none" stroke="#333" stroke-width="1.8"/>';
+  return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="6.5" ry="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/>';
 }
 
 function crDoubleFlag(x, y) {
   // Two flags for a standalone sixteenth note
   var sx = x + 4.5, sy = y - 25;
-  return '<path d="M' + sx + ',' + sy + ' c1,3 8,5 6,14 c-2,-2 -5,-4 -6,-6" fill="#333" stroke="none"/>' +
-         '<path d="M' + sx + ',' + (sy + 7) + ' c1,3 7,4 5,12 c-2,-2 -4,-4 -5,-5" fill="#333" stroke="none"/>';
+  return '<path d="M' + sx + ',' + sy + ' c1,3 8,5 6,14 c-2,-2 -5,-4 -6,-6" fill="currentColor" stroke="none"/>' +
+         '<path d="M' + sx + ',' + (sy + 7) + ' c1,3 7,4 5,12 c-2,-2 -4,-4 -5,-5" fill="currentColor" stroke="none"/>';
 }
 
 function crSixteenthRest(cx, cy) {
   var dx = cx + 3, dy = cy - 5;
-  return '<circle cx="' + dx + '" cy="' + dy + '" r="2.2" fill="#333"/>' +
-    '<path d="M' + (dx + 0.5) + ',' + (dy + 1) + ' c-1,3 -4,7 -5,12" fill="none" stroke="#333" stroke-width="1.8" stroke-linecap="round"/>' +
-    '<circle cx="' + (dx - 2.5) + '" cy="' + (dy + 13) + '" r="1.8" fill="#333"/>';
+  return '<circle cx="' + dx + '" cy="' + dy + '" r="2.2" fill="currentColor"/>' +
+    '<path d="M' + (dx + 0.5) + ',' + (dy + 1) + ' c-1,3 -4,7 -5,12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+    '<circle cx="' + (dx - 2.5) + '" cy="' + (dy + 13) + '" r="1.8" fill="currentColor"/>';
 }
 
 function crDottedQuarterRest(cx, cy) {
@@ -6082,7 +6082,7 @@ function crTieArc(x1, x2, staffY) {
   var cpY = staffY + 18;  // control point further below for a nice curve
   return '<path d="M' + x1 + ',' + arcY +
     ' Q' + midX + ',' + cpY + ' ' + x2 + ',' + arcY +
-    '" fill="none" stroke="#333" stroke-width="1.5"/>';
+    '" fill="none" stroke="currentColor" stroke-width="1.5"/>';
 }
 
 function crAccentMark(cx, cy) {
