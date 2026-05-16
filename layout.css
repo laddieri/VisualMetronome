@@ -152,13 +152,6 @@ body > .container {
   color: var(--vm-danger) !important;
 }
 
-.theme-toggle .theme-icon-dark { display: none; }
-:root[data-theme="dark"] .theme-toggle .theme-icon-light { display: none; }
-:root[data-theme="dark"] .theme-toggle .theme-icon-dark { display: inline; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .theme-toggle .theme-icon-light { display: none; }
-  :root:not([data-theme="light"]) .theme-toggle .theme-icon-dark { display: inline; }
-}
 
 @keyframes vm-pop {
   from { opacity: 0; transform: translateY(-4px) scale(0.98); }

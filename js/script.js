@@ -22,6 +22,7 @@ var selfieImageDataURL = null; // Raw data URL of current selfie for saving
 var conductorSelfieImage = null; // Selfie for the conductor's face (optional)
 var cameraTarget = 'selfie'; // 'selfie' or 'conductor' — controls where capturePhoto() stores the result
 var cameraStream = null;
+var cameraFacingMode = 'user'; // 'user' (front) or 'environment' (rear)
 var recordedSoundURL = null; // URL for recorded selfie sound
 var recordedSoundPlayer = null; // Tone.js Player for recorded sound
 var mediaRecorder = null;
@@ -1078,6 +1079,23 @@ class Conductor {
 }
 
 // Camera functions
+function startCameraStream(video) {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  return navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: cameraFacingMode,
+      width: { ideal: 640 },
+      height: { ideal: 480 }
+    }
+  }).then(stream => {
+    cameraStream = stream;
+    video.srcObject = stream;
+  });
+}
+
 function openCamera() {
   const modal = document.getElementById('camera-modal');
   const video = document.getElementById('camera-video');
@@ -1085,22 +1103,20 @@ function openCamera() {
   modal.classList.remove('hidden');
   renderSavedSelfiesList();
 
-  // Request camera access
-  navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: 'user',
-      width: { ideal: 640 },
-      height: { ideal: 480 }
-    }
-  })
-  .then(stream => {
-    cameraStream = stream;
-    video.srcObject = stream;
-  })
-  .catch(err => {
+  startCameraStream(video).catch(err => {
     console.error('Camera access denied:', err);
     alert('Could not access camera. Please allow camera access and try again.');
     closeCamera();
+  });
+}
+
+function switchCamera() {
+  cameraFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user';
+  const video = document.getElementById('camera-video');
+  startCameraStream(video).catch(err => {
+    // Roll back if the requested facing mode isn't available
+    cameraFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user';
+    console.warn('Could not switch camera:', err);
   });
 }
 
@@ -1110,12 +1126,12 @@ function closeCamera() {
 
   modal.classList.add('hidden');
 
-  // Stop camera stream
   if (cameraStream) {
     cameraStream.getTracks().forEach(track => track.stop());
     cameraStream = null;
   }
   video.srcObject = null;
+  cameraFacingMode = 'user';
 }
 
 function capturePhoto() {
@@ -1492,6 +1508,11 @@ function initCameraListeners() {
   }
   if (recordBtn) {
     recordBtn.addEventListener('click', toggleRecording);
+  }
+
+  const flipBtn = document.getElementById('flip-camera-btn');
+  if (flipBtn) {
+    flipBtn.addEventListener('click', switchCamera);
   }
 
   // Mirror selfies checkbox

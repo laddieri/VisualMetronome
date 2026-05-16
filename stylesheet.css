@@ -1292,6 +1292,17 @@ footer p {
   background: var(--vm-border-strong);
 }
 
+.camera-btn.flip {
+  background: var(--vm-bg-panel);
+  color: var(--vm-fg-2);
+  border: 1px solid var(--vm-border);
+}
+
+.camera-btn.flip:hover {
+  background: var(--vm-border);
+  color: var(--vm-fg-1);
+}
+
 .camera-btn.record {
   background: var(--vm-success);
   color: white;
