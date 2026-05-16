@@ -143,84 +143,21 @@ body > .container {
   border-color: transparent;
 }
 
+.header-btn--danger {
+  color: var(--vm-danger);
+}
+.header-btn--danger:hover {
+  background: var(--vm-danger-soft-bg) !important;
+  border-color: transparent !important;
+  color: var(--vm-danger) !important;
+}
+
 .theme-toggle .theme-icon-dark { display: none; }
 :root[data-theme="dark"] .theme-toggle .theme-icon-light { display: none; }
 :root[data-theme="dark"] .theme-toggle .theme-icon-dark { display: inline; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .theme-toggle .theme-icon-light { display: none; }
   :root:not([data-theme="light"]) .theme-toggle .theme-icon-dark { display: inline; }
-}
-
-/* ---- More menu (overflow) ----------------------------------------------- */
-.more-menu {
-  position: relative;
-}
-
-.more-menu-list {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 220px;
-  background: var(--vm-bg-chrome);
-  border: 1px solid var(--vm-border);
-  border-radius: 12px;
-  box-shadow: var(--vm-elev-popover);
-  padding: 6px;
-  display: none;
-  z-index: 80;
-}
-
-.more-menu.open .more-menu-list {
-  display: block;
-  animation: vm-pop 0.12s ease-out;
-}
-
-.more-menu-list button,
-.more-menu-list .more-divider {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.92rem;
-  color: var(--vm-fg-2);
-  padding: 8px 12px;
-  cursor: pointer;
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.more-menu-list button:hover {
-  background: var(--vm-bg-panel);
-  color: var(--vm-fg-1);
-}
-
-.more-menu-list button.danger {
-  color: var(--vm-danger);
-}
-
-.more-menu-list button.danger:hover {
-  background: var(--vm-danger-soft-bg);
-}
-
-.more-divider {
-  height: 1px;
-  background: var(--vm-border);
-  margin: 4px 0;
-  padding: 0 !important;
-  cursor: default !important;
-}
-
-/* Hide the divider when the slot above it has no rendered button.
-   `:has` is widely supported in evergreen browsers; degrades to a
-   thin visible line otherwise, which is harmless. */
-.more-menu-list:has(> #more-remote-slot:empty) .more-divider {
-  display: none;
-}
-.more-menu-list #more-remote-slot:has(> .hidden) ~ .more-divider {
-  display: none;
 }
 
 @keyframes vm-pop {
