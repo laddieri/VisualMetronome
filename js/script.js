@@ -995,10 +995,15 @@ class Conductor {
 
     // Draw silhouette and head — once only from the direction===1 instance
     if (this.direction === 1) {
-      // Body silhouette (always shown)
+      // Body silhouette — light in dark mode so it's visible against the dark canvas
+      const silhouetteIsDark = window.vmCanvasBg === '#1e293b';
       push();
       noStroke();
-      fill(0, 0, 0, 60);
+      if (silhouetteIsDark) {
+        fill(200, 215, 230, 160);
+      } else {
+        fill(0, 0, 0, 60);
+      }
 
       ellipse(headX, headY, headDiam, headDiam);
       rect(headX - neckW / 2, neckTop, neckW, 35);
