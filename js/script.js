@@ -1099,6 +1099,175 @@ class Conductor {
   }
 }
 
+class PendulumMetronome {
+  constructor() {
+    this.direction = 1; // kept for API compatibility
+  }
+
+  pigmove() {}
+
+  display() {
+    const progress = getAnimationProgress();
+    const isRunning = Tone.Transport.state === 'started' && lastBeatTime > 0;
+
+    // Swing from one extreme to the other each beat; animBeat parity picks the start side
+    let angle = 0;
+    if (isRunning) {
+      const maxAngle = 0.42;
+      const sideSign = (animBeat % 2 === 0) ? 1 : -1;
+      angle = Math.cos(progress * Math.PI) * maxAngle * sideSign;
+    }
+
+    const cx = 320;
+
+    // Body geometry
+    const bodyBotY  = 445;
+    const bodyTopY  = 195;
+    const bodyBotHW = 90;
+    const bodyTopHW = 22;
+
+    // Inset panel
+    const panelBotY  = bodyBotY - 6;
+    const panelTopY  = bodyTopY + 8;
+    const panelBotHW = bodyBotHW - 10;
+    const panelTopHW = bodyTopHW - 5;
+
+    // Pendulum geometry
+    const pivotX   = cx;
+    const pivotY   = bodyTopY + 14;
+    const rodLen   = 178;
+    const weightDst = 98;
+
+    // ── Metronome body ────────────────────────────────────────────
+    push();
+    translate(cx, 0);
+
+    // Drop shadow
+    fill(0, 0, 0, 40);
+    noStroke();
+    beginShape();
+    vertex(-bodyBotHW + 6, bodyBotY + 6);
+    vertex( bodyBotHW + 6, bodyBotY + 6);
+    vertex( bodyTopHW + 6, bodyTopY + 6);
+    vertex(-bodyTopHW + 6, bodyTopY + 6);
+    endShape(CLOSE);
+
+    // Main body — dark mahogany
+    fill(95, 52, 22);
+    noStroke();
+    beginShape();
+    vertex(-bodyBotHW, bodyBotY);
+    vertex( bodyBotHW, bodyBotY);
+    vertex( bodyTopHW, bodyTopY);
+    vertex(-bodyTopHW, bodyTopY);
+    endShape(CLOSE);
+
+    // Left wood-grain highlight
+    fill(130, 75, 35, 70);
+    beginShape();
+    vertex(-bodyBotHW,      bodyBotY);
+    vertex(-bodyBotHW + 22, bodyBotY);
+    vertex(-bodyTopHW + 8,  bodyTopY);
+    vertex(-bodyTopHW,      bodyTopY);
+    endShape(CLOSE);
+
+    // Right-edge darkening
+    fill(60, 30, 10, 60);
+    beginShape();
+    vertex( bodyBotHW,      bodyBotY);
+    vertex( bodyBotHW - 12, bodyBotY);
+    vertex( bodyTopHW - 4,  bodyTopY);
+    vertex( bodyTopHW,      bodyTopY);
+    endShape(CLOSE);
+
+    // Front panel — lighter face
+    fill(140, 95, 48);
+    beginShape();
+    vertex(-panelBotHW, panelBotY);
+    vertex( panelBotHW, panelBotY);
+    vertex( panelTopHW, panelTopY);
+    vertex(-panelTopHW, panelTopY);
+    endShape(CLOSE);
+
+    // Tempo scale lines etched on panel
+    stroke(70, 45, 20);
+    strokeWeight(1.5);
+    const lineCount = 8;
+    for (let i = 0; i <= lineCount; i++) {
+      const t  = i / lineCount;
+      const ly = panelBotY + (panelTopY - panelBotY) * t;
+      const hw = panelBotHW + (panelTopHW - panelBotHW) * t;
+      const ml = (i === 0 || i === lineCount || i === Math.round(lineCount / 2)) ? 12 : 7;
+      line(-hw + 4, ly, -hw + 4 + ml, ly);
+      line( hw - 4, ly,  hw - 4 - ml, ly);
+    }
+    noStroke();
+
+    // Narrow slot at top for pendulum rod to exit
+    fill(75, 40, 15);
+    rect(-3, bodyTopY - 1, 6, 18);
+
+    // Base platform
+    fill(65, 35, 12);
+    rect(-bodyBotHW - 10, bodyBotY, bodyBotHW * 2 + 20, 14, 3);
+
+    // Feet
+    fill(50, 25, 8);
+    rect(-bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
+    rect( bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
+
+    pop();
+
+    // ── Pendulum rod (rotated from pivot) ─────────────────────────
+    push();
+    translate(pivotX, pivotY);
+    rotate(angle);
+
+    stroke(55, 55, 62);
+    strokeWeight(3.5);
+    line(0, 0, 0, -rodLen);
+    noStroke();
+
+    // Sliding weight (diamond / lozenge)
+    push();
+    translate(0, -weightDst);
+    const ww = 20, wh = 30;
+    fill(75, 75, 82);
+    stroke(45, 45, 52);
+    strokeWeight(1);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        wh / 2);
+    vertex(-ww / 2,  0);
+    endShape(CLOSE);
+    // Highlight facet
+    noStroke();
+    fill(130, 130, 138, 140);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        0);
+    vertex(-ww / 4, -wh / 4);
+    endShape(CLOSE);
+    pop();
+
+    // Pointer tip (triangle at top of rod)
+    noStroke();
+    fill(45, 45, 52);
+    triangle(-5, -rodLen + 5, 5, -rodLen + 5, 0, -rodLen - 12);
+
+    pop();
+
+    // ── Pivot cap (drawn on top of everything) ────────────────────
+    fill(70, 70, 78);
+    noStroke();
+    ellipse(pivotX, pivotY, 13, 13);
+    fill(110, 110, 118);
+    ellipse(pivotX, pivotY, 7, 7);
+  }
+}
+
 // Camera functions
 function startCameraStream(video) {
   if (cameraStream) {
@@ -2872,7 +3041,7 @@ function updateColorPickerVisibility() {
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = (isConductor || animalType === 'score') ? 'none' : '';
+    directionGroup.style.display = (isConductor || animalType === 'score' || animalType === 'pendulum') ? 'none' : '';
   }
   // Notation ball color picker — shown only for Score animation
   const notationBallColorGroup = document.getElementById('notation-ball-color-group');
@@ -2908,6 +3077,10 @@ function createAnimals() {
     case 'conductor':
       animal1 = new Conductor(1);  // right hand
       animal2 = new Conductor(-1); // left hand
+      break;
+    case 'pendulum':
+      animal1 = new PendulumMetronome();
+      animal2 = null;
       break;
     // case 'conductor3d': // disabled — re-enable by restoring conductor3d.js script tag
     //   animal1 = new Circle(1);
@@ -3890,6 +4063,9 @@ function draw() {
     animal2.pigmove();
     animal1.display();
     animal2.display();
+  } else if (animalType === 'pendulum') {
+    // Pendulum metronome: single object, no direction or bounce-line needed
+    animal1.display();
   } else if (bounceDirection === 'vertical') {
     // Vertical mode: one object bouncing against a horizontal line
     const lineY = 420;
