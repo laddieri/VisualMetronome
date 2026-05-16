@@ -33,6 +33,28 @@
     });
   }
 
+  // Default circle/ball color follows the theme — black on a light stage,
+  // white on a dark stage. We only retarget the color when the input is
+  // still sitting on one of the two defaults, so a user-picked color is
+  // left untouched across theme toggles.
+  function syncBallDefault() {
+    var input = document.getElementById('circle-color');
+    if (!input) return;
+    var cur = (input.value || '').toLowerCase();
+    if (cur !== '#000000' && cur !== '#ffffff') return;
+    var hasExplicit = document.documentElement.getAttribute('data-theme');
+    var prefersDark = window.matchMedia &&
+                      window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var isDark = hasExplicit ? hasExplicit === 'dark' : prefersDark;
+    var next = isDark ? '#ffffff' : '#000000';
+    if (cur === next) return;
+    input.value = next;
+    // script.js exposes circleColor as a global `var` at module top-level,
+    // so updating window.circleColor reaches the draw loop immediately.
+    if (typeof window.circleColor !== 'undefined') window.circleColor = next;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   function applyTheme(theme) {
     if (theme === 'dark' || theme === 'light') {
       document.documentElement.setAttribute('data-theme', theme);
@@ -40,6 +62,7 @@
       document.documentElement.removeAttribute('data-theme');
     }
     syncCanvasBg();
+    syncBallDefault();
   }
 
   function initTheme() {
@@ -161,14 +184,34 @@
       beatNoteRow.style.overflow = 'hidden';
     }
 
+    // ── Animation type → transport meta (always visible) ──
+    var animSelect = $('animal-selector');
+    if (animSelect && transportMetaSlot) {
+      var origAnimGroup = animSelect.closest('.control-group');
+      var animMeta = document.createElement('div');
+      animMeta.className = 'meta-group meta-group--anim';
+      animMeta.id = 'tr-animation-group';
+      var animLabel = document.createElement('span');
+      animLabel.className = 'meta-label';
+      animLabel.textContent = 'Animation';
+      animMeta.appendChild(animLabel);
+      var animRow = document.createElement('div');
+      animRow.className = 'meta-anim-row';
+      animRow.appendChild(animSelect);
+      var selfieBtn = $('conductor-selfie-btn');
+      if (selfieBtn) animRow.appendChild(selfieBtn);
+      animMeta.appendChild(animRow);
+      // Place animation at the start of the meta slot so it reads as
+      // the "mode" before beats / beat note.
+      transportMetaSlot.insertBefore(animMeta, transportMetaSlot.firstChild);
+      if (origAnimGroup && origAnimGroup.parentNode) {
+        origAnimGroup.parentNode.removeChild(origAnimGroup);
+      }
+    }
+
     // ── Display panel ──
     var displayBody = $('panel-display-body');
     if (displayBody) {
-      // Animation selector (lives inside its own .control-group)
-      var animSelect = $('animal-selector');
-      var animGroup  = animSelect && animSelect.closest('.control-group');
-      if (animGroup) displayBody.appendChild(animGroup);
-
       // Direction
       var dirGroup = $('direction-group');
       if (dirGroup) displayBody.appendChild(dirGroup);
@@ -407,7 +450,6 @@
         showTab(t.dataset.panel);
       });
     });
-    if (tabs.length) showTab(tabs[0].dataset.panel);
 
     // Sync DOM: on small screens, move the panel content into the
     // mobile host; on larger screens, into the desktop host. We do this
@@ -452,7 +494,18 @@
       }
     }
     syncHosts(mq.matches);
-    var listener = function (e) { syncHosts(e.matches); };
+    // Now that the panels live in the correct host for this viewport,
+    // pick the default tab so the sheet has content the first time the
+    // user opens it (instead of expanding to an empty panel area).
+    if (tabs.length) showTab(tabs[0].dataset.panel);
+
+    var listener = function (e) {
+      syncHosts(e.matches);
+      // After the panels move between hosts, re-apply the active tab.
+      var active = sheet.querySelector('.sheet-tab[aria-pressed="true"]');
+      if (active) showTab(active.dataset.panel);
+      else if (tabs.length) showTab(tabs[0].dataset.panel);
+    };
     if (mq.addEventListener) mq.addEventListener('change', listener);
     else mq.addListener(listener);
   }

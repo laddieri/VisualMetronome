@@ -709,6 +709,34 @@ body > .container {
   text-align: center;
 }
 
+/* Animation type lives in the transport meta as a small dropdown +
+   optional conductor-selfie button. Stretches wider than the other
+   meta-groups since the option text ("⚫ Circles", etc.) is longer. */
+.transport-meta .meta-group--anim {
+  min-width: 158px;
+}
+
+.meta-anim-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.meta-anim-row > select {
+  flex: 1;
+  min-width: 0;
+}
+
+.meta-anim-row .conductor-selfie-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  font-size: 1.05rem;
+  border-radius: 9px;
+  border: 1px solid var(--vm-border);
+  background: var(--vm-bg-page);
+}
+
 .transport-meta select {
   width: 100%;
   padding: 8px 28px 8px 10px;
