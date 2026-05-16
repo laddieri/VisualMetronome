@@ -5296,8 +5296,8 @@ function crRenderNotationDisplay() {
   svg += '</filter>';
   svg += '</defs>';
 
-  // Score paper (white sheet look)
-  svg += '<rect x="' + paperX + '" y="' + paperY + '" width="' + paperW + '" height="' + paperH + '" rx="12" fill="#fafaf8" stroke="#ddd" stroke-width="1"/>';
+  // Score paper — adapts to theme via CSS variable
+  svg += '<rect x="' + paperX + '" y="' + paperY + '" width="' + paperW + '" height="' + paperH + '" rx="12" style="fill: var(--vm-bg-panel); stroke: var(--vm-border)" stroke-width="1"/>';
 
   // Notation content — scaled group, same coordinate system as crRenderNotation
   svg += '<g transform="translate(' + tx.toFixed(2) + ',' + ty.toFixed(2) + ') scale(' + scale.toFixed(4) + ')">';
