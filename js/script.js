@@ -29,6 +29,22 @@ var mediaRecorder = null;
 var audioChunks = [];
 var mirrorSelfies = true; // When true, selfie images face each other
 
+// Tempo presets
+var TEMPO_PRESETS_KEY = 'vm.tempoPresets';
+var DEFAULT_TEMPO_PRESETS = [
+  { name: 'Largo',       bpm: 60  },
+  { name: 'Larghetto',   bpm: 66  },
+  { name: 'Adagio',      bpm: 72  },
+  { name: 'Andante',     bpm: 84  },
+  { name: 'Moderato',    bpm: 100 },
+  { name: 'Allegretto',  bpm: 116 },
+  { name: 'Allegro',     bpm: 132 },
+  { name: 'Vivace',      bpm: 168 },
+  { name: 'Presto',      bpm: 184 },
+  { name: 'Prestissimo', bpm: 208 }
+];
+var tempoPresets = [];
+
 // Advanced metronome settings
 var beatsPerMeasure = 4;
 var currentBeat = 0;
@@ -2693,7 +2709,98 @@ function toggleTransport(withCountIn) {
   sendStateUpdate();
 }
 
-// Helper: apply a BPM value to all tempo controls (slider, number input, fullscreen)
+// ── Tempo preset helpers ──────────────────────────────────────────────────
+
+function loadTempoPresets() {
+  try {
+    var stored = localStorage.getItem(TEMPO_PRESETS_KEY);
+    tempoPresets = stored
+      ? JSON.parse(stored)
+      : DEFAULT_TEMPO_PRESETS.map(function(p) { return Object.assign({}, p); });
+  } catch (e) {
+    tempoPresets = DEFAULT_TEMPO_PRESETS.map(function(p) { return Object.assign({}, p); });
+  }
+}
+
+function saveTempoPresets() {
+  try { localStorage.setItem(TEMPO_PRESETS_KEY, JSON.stringify(tempoPresets)); } catch (e) {}
+}
+
+function populateTempoMarkingDropdown(preserveValue) {
+  var sel = document.getElementById('tempo-marking');
+  if (!sel) return;
+  var cur = preserveValue ? sel.value : '';
+  while (sel.options.length > 1) sel.remove(1);
+  tempoPresets.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = String(p.bpm);
+    opt.textContent = p.name + ' — ' + p.bpm + ' bpm';
+    sel.appendChild(opt);
+  });
+  sel.value = cur;
+}
+
+function syncTempoMarkingDropdown() {
+  var sel = document.getElementById('tempo-marking');
+  if (!sel) return;
+  for (var i = 1; i < sel.options.length; i++) {
+    if (parseInt(sel.options[i].value) === cachedBPM) {
+      sel.value = sel.options[i].value;
+      return;
+    }
+  }
+  sel.value = '';
+}
+
+function renderTempoPresetsList() {
+  var list = document.getElementById('tempo-presets-list');
+  if (!list) return;
+  list.innerHTML = '';
+  tempoPresets.forEach(function(preset, idx) {
+    var row = document.createElement('div');
+    row.className = 'tempo-preset-row';
+
+    var nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.className = 'tempo-preset-name-input';
+    nameInput.value = preset.name;
+    nameInput.maxLength = 24;
+    nameInput.addEventListener('change', function() {
+      var v = this.value.trim();
+      tempoPresets[idx].name = v || DEFAULT_TEMPO_PRESETS[idx].name;
+      this.value = tempoPresets[idx].name;
+      saveTempoPresets();
+      populateTempoMarkingDropdown(true);
+      syncTempoMarkingDropdown();
+    });
+
+    var bpmInput = document.createElement('input');
+    bpmInput.type = 'number';
+    bpmInput.className = 'tempo-preset-bpm-input';
+    bpmInput.value = preset.bpm;
+    bpmInput.min = 20;
+    bpmInput.max = 300;
+    bpmInput.addEventListener('change', function() {
+      var v = Math.max(20, Math.min(300, parseInt(this.value) || DEFAULT_TEMPO_PRESETS[idx].bpm));
+      tempoPresets[idx].bpm = v;
+      this.value = v;
+      saveTempoPresets();
+      populateTempoMarkingDropdown(true);
+      syncTempoMarkingDropdown();
+    });
+
+    var bpmLabel = document.createElement('span');
+    bpmLabel.className = 'tempo-preset-bpm-label';
+    bpmLabel.textContent = 'bpm';
+
+    row.appendChild(nameInput);
+    row.appendChild(bpmInput);
+    row.appendChild(bpmLabel);
+    list.appendChild(row);
+  });
+}
+
+// ── Helper: apply a BPM value to all tempo controls (slider, number input, fullscreen)
 function applyBPM(bpm) {
   bpm = Math.max(30, Math.min(300, Math.round(bpm)));
   Tone.Transport.bpm.value = bpm;
@@ -2717,6 +2824,7 @@ function applyBPM(bpm) {
   }
 
   sendStateUpdate();
+  syncTempoMarkingDropdown();
 }
 
 // Update BPM from range slider
@@ -3110,15 +3218,48 @@ function setup() {
   // Initial color picker visibility
   updateColorPickerVisibility();
 
-  // Tempo marking dropdown - sets BPM based on Italian tempo terms
+  // Populate tempo presets dropdown from localStorage (or defaults)
+  loadTempoPresets();
+  populateTempoMarkingDropdown(false);
+
+  // Tempo marking dropdown - sets BPM and keeps the selection visible
   document.querySelector('#tempo-marking').addEventListener('change', e => {
     const bpm = parseInt(e.target.value);
-    if (bpm) {
-      applyBPM(bpm);
-      // Reset dropdown to placeholder so it can be re-selected
-      e.target.value = '';
-    }
+    if (bpm) applyBPM(bpm);
   });
+
+  // Tempo presets edit modal
+  var tempoPresetsModal   = document.getElementById('tempo-presets-modal');
+  var tempoPresetsEditBtn = document.getElementById('tempo-presets-edit-btn');
+  var tempoPresetsCloseBtn = document.getElementById('tempo-presets-close-btn');
+  var tempoPresetsResetBtn = document.getElementById('tempo-presets-reset-btn');
+
+  if (tempoPresetsEditBtn) {
+    tempoPresetsEditBtn.addEventListener('click', function() {
+      renderTempoPresetsList();
+      tempoPresetsModal.classList.remove('hidden');
+    });
+  }
+  if (tempoPresetsCloseBtn) {
+    tempoPresetsCloseBtn.addEventListener('click', function() {
+      tempoPresetsModal.classList.add('hidden');
+    });
+  }
+  if (tempoPresetsResetBtn) {
+    tempoPresetsResetBtn.addEventListener('click', function() {
+      if (!confirm('Reset all tempo presets to defaults?')) return;
+      tempoPresets = DEFAULT_TEMPO_PRESETS.map(function(p) { return Object.assign({}, p); });
+      saveTempoPresets();
+      populateTempoMarkingDropdown(false);
+      syncTempoMarkingDropdown();
+      renderTempoPresetsList();
+    });
+  }
+  if (tempoPresetsModal) {
+    tempoPresetsModal.addEventListener('click', function(e) {
+      if (e.target === tempoPresetsModal) tempoPresetsModal.classList.add('hidden');
+    });
+  }
 
   // Start WebSocket remote control (only active when running from local server)
   initRemoteControl();
