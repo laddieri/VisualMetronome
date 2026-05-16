@@ -3169,6 +3169,7 @@ function setup() {
     // _syncWebGPUCanvas(); // disabled
     _syncNotationDisplay();
     _syncAnimSize();
+    _syncPracticeRow();
     sendStateUpdate();
   });
 
@@ -4307,6 +4308,7 @@ function applyRemoteCommand(msg) {
       _syncWebGPUCanvas();
       _syncNotationDisplay();
       _syncAnimSize();
+      _syncPracticeRow();
       sendStateUpdate();
       break;
     }
