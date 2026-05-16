@@ -781,19 +781,43 @@ body > .container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px 12px 0;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 12px;
+    height: 36px;
+    min-height: 36px;
     cursor: pointer;
-    touch-action: none;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
     flex-shrink: 0;
+    position: relative;
   }
 
   .sheet-grip::before {
     content: '';
-    width: 40px;
-    height: 4px;
+    width: 44px;
+    height: 5px;
     background: var(--vm-border-strong);
     border-radius: 999px;
+    transition: background var(--vm-duration-fast) var(--vm-ease);
+  }
+
+  .sheet-grip:hover::before,
+  .sheet-grip:active::before {
+    background: var(--vm-accent);
+  }
+
+  .sheet-grip::after {
+    content: '⌃';
+    font-size: 0.85rem;
+    line-height: 1;
+    color: var(--vm-fg-4);
+    transform: scaleY(-1);
+    transition: transform var(--vm-duration-base) var(--vm-ease);
+  }
+
+  .sheet.collapsed .sheet-grip::after {
+    transform: scaleY(1);
   }
 
   .sheet-transport {

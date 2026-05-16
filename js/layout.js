@@ -376,20 +376,21 @@
         if (sheet.classList.contains('collapsed')) expand(); else collapse();
       });
 
-      // Touch drag
+      // Drag-to-dismiss: if the user is expanded and drags the grip down by
+      // 24px or more, collapse the sheet. We don't drive the expand direction
+      // here — the click handler covers tap-to-expand and feels more reliable.
       var startY = null;
-      var startCollapsed = false;
       grip.addEventListener('touchstart', function (e) {
+        if (sheet.classList.contains('collapsed')) return;
         startY = e.touches[0].clientY;
-        startCollapsed = sheet.classList.contains('collapsed');
       }, { passive: true });
       grip.addEventListener('touchmove', function (e) {
         if (startY == null) return;
         var dy = e.touches[0].clientY - startY;
-        if (startCollapsed && dy < -16) { expand(); startY = null; }
-        else if (!startCollapsed && dy > 24) { collapse(); startY = null; }
+        if (dy > 24) { collapse(); startY = null; }
       }, { passive: true });
       grip.addEventListener('touchend', function () { startY = null; });
+      grip.addEventListener('touchcancel', function () { startY = null; });
     }
 
     // Tabs
