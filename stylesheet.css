@@ -118,6 +118,7 @@ main {
 /* Notation score display */
 .notation-display-wrapper {
   width: 100%;
+  color: var(--vm-fg-1);
 }
 
 .notation-display-wrapper svg {
@@ -237,6 +238,7 @@ main {
   align-items: center;
   gap: 2px;
   overflow: hidden;
+  color: var(--vm-fg-1);
   transition: background 0.1s, border-color 0.1s;
 }
 
@@ -2509,7 +2511,8 @@ footer p {
 }
 
 .custom-rhythm-notation {
-  background: #fff;
+  background: var(--vm-bg-panel);
+  color: var(--vm-fg-1);
   border-radius: 8px;
   padding: 16px 8px;
   margin-bottom: 16px;
