@@ -335,7 +335,7 @@ function enterFullscreen() {
   const overlay = document.getElementById('fullscreen-overlay');
   const canvas = document.querySelector('.canvas-wrapper canvas');
   const fullscreenWrapper = document.querySelector('.fullscreen-canvas-wrapper');
-  const playButtonGroup = document.querySelector('.controls .play-button-group');
+  const playButtonGroup = document.querySelector('.play-button-group');
   const togglePlaceholder = document.getElementById('fullscreen-toggle-placeholder');
 
   // Move canvas to fullscreen wrapper

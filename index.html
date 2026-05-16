@@ -14,9 +14,117 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="colors_and_type.css">
     <link rel="stylesheet" href="stylesheet.css" type="text/css">
+    <link rel="stylesheet" href="layout.css" type="text/css">
+    <script>
+      // Apply saved theme before paint to avoid flash.
+      (function () {
+        try {
+          var t = localStorage.getItem('vm.theme');
+          if (t === 'dark' || t === 'light') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   </head>
   <body>
+    <!-- ───── New app shell (Layout v2) ─────
+         Provides the header, icon rail, stage, transport, and mobile sheet.
+         Existing modals and the legacy .controls container live below and
+         are populated/relocated by js/layout.js at startup. -->
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <img class="brand-mark" src="assets/logo.svg" alt="">
+          <span class="brand-title">Visual Metronome</span>
+        </div>
+        <div class="header-actions">
+          <button id="theme-toggle" class="header-btn theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+            <span class="theme-icon-light" aria-hidden="true">🌙</span>
+            <span class="theme-icon-dark"  aria-hidden="true">☀️</span>
+          </button>
+          <button id="fullscreen-btn" class="header-btn" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+          <button id="settings-btn" class="header-btn" title="Settings" aria-label="Settings">⚙</button>
+          <div id="more-menu" class="more-menu">
+            <button id="more-btn" class="header-btn" title="More" aria-label="More" aria-haspopup="menu" aria-expanded="false">⋯</button>
+            <div class="more-menu-list" role="menu">
+              <span id="more-remote-slot"></span>
+              <div class="more-divider" role="separator"></div>
+              <span id="more-reset-slot"></span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <nav id="icon-rail" class="icon-rail" aria-label="Control panels">
+        <button class="rail-btn" data-panel="display" aria-pressed="false">
+          <span class="rail-icon" aria-hidden="true">🎨</span>
+          <span class="rail-label">Display</span>
+        </button>
+        <button class="rail-btn" data-panel="sound" aria-pressed="false">
+          <span class="rail-icon" aria-hidden="true">🔊</span>
+          <span class="rail-label">Sound</span>
+        </button>
+        <button class="rail-btn" data-panel="rhythm" aria-pressed="false">
+          <span class="rail-icon" aria-hidden="true">🎵</span>
+          <span class="rail-label">Rhythm</span>
+        </button>
+      </nav>
+
+      <section class="stage">
+        <div class="canvas-wrapper">
+          <!-- p5.js canvas will be inserted here -->
+        </div>
+
+        <div id="panel-scrim" class="scrim" aria-hidden="true"></div>
+
+        <!-- Desktop panel flyout -->
+        <aside id="panel-host" class="panel-host" aria-hidden="true">
+          <div class="panel-header">
+            <span class="panel-title">
+              <span class="panel-emoji" aria-hidden="true" id="panel-host-emoji">🎨</span>
+              <span id="panel-host-name">Display</span>
+            </span>
+            <button class="panel-close" aria-label="Close panel">✕</button>
+          </div>
+          <div class="panel" data-panel="display">
+            <div class="panel-body" id="panel-display-body"></div>
+          </div>
+          <div class="panel" data-panel="sound">
+            <div class="panel-body" id="panel-sound-body"></div>
+          </div>
+          <div class="panel" data-panel="rhythm">
+            <div class="panel-body" id="panel-rhythm-body"></div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- Desktop transport bar -->
+      <div id="transport-bar" class="transport">
+        <div class="transport-play" id="transport-play-slot"></div>
+        <div class="transport-tempo" id="transport-tempo-slot"></div>
+        <div class="transport-meta" id="transport-meta-slot"></div>
+      </div>
+
+      <!-- Mobile bottom sheet -->
+      <div id="mobile-sheet" class="sheet collapsed">
+        <div class="sheet-grip" aria-label="Drag to expand"></div>
+        <div class="sheet-transport" id="sheet-transport">
+          <div class="transport-play" id="sheet-play-slot"></div>
+          <div class="tempo-slider-row" id="sheet-tempo-slot"></div>
+          <div class="transport-meta" id="sheet-meta-slot"></div>
+        </div>
+        <div class="sheet-tabs" role="tablist">
+          <button class="sheet-tab" data-panel="display" role="tab" aria-pressed="false">🎨 Display</button>
+          <button class="sheet-tab" data-panel="sound"   role="tab" aria-pressed="false">🔊 Sound</button>
+          <button class="sheet-tab" data-panel="rhythm"  role="tab" aria-pressed="false">🎵 Rhythm</button>
+        </div>
+        <div class="panel-host-mobile" id="panel-host-mobile"></div>
+      </div>
+    </div>
+
+    <!-- ───── Legacy container (controls live here until layout.js relocates them) ───── -->
     <div class="container">
       <header>
         <h1><img src="assets/logo.svg" alt="" width="32" height="32"> Visual Metronome</h1>
@@ -24,8 +132,8 @@
       </header>
 
       <main>
-        <div class="canvas-wrapper">
-          <!-- p5.js canvas will be inserted here -->
+        <div class="canvas-wrapper-legacy" hidden>
+          <!-- p5.js canvas no longer mounts here; the stage above hosts it. -->
         </div>
 
         <!--
@@ -636,6 +744,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
     <!-- <script src="./js/conductor3d.js" type="text/javascript"></script> -->
     <script src="./js/script.js" type="text/javascript"></script>
+    <script src="./js/layout.js" type="text/javascript"></script>
     <!-- <script src="./js/webgpu-ball.js" type="text/javascript"></script> -->
 
     <!-- Rhythm picker popover (score mode — click a beat to change its pattern) -->

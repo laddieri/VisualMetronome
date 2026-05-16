@@ -29,6 +29,7 @@ const MIME = {
   '.wav':  'audio/wav',
   '.json': 'application/json',
   '.png':  'image/png',
+  '.svg':  'image/svg+xml',
   '.ico':  'image/x-icon',
 };
 
