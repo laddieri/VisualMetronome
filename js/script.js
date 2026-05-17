@@ -1120,25 +1120,72 @@ class PendulumMetronome {
 
     const cx = 320;
 
-    // Body geometry
-    const bodyBotY  = 445;
+    // Body: classic pyramidal case at the bottom of the canvas (wide base, narrow top)
+    // This matches a real metronome sitting on a surface.
     const bodyTopY  = 195;
-    const bodyBotHW = 90;
+    const bodyBotY  = 445;
     const bodyTopHW = 22;
+    const bodyBotHW = 90;
 
-    // Inset panel
-    const panelBotY  = bodyBotY - 6;
+    // Inset front panel
     const panelTopY  = bodyTopY + 8;
-    const panelBotHW = bodyBotHW - 10;
+    const panelBotY  = bodyBotY - 6;
     const panelTopHW = bodyTopHW - 5;
+    const panelBotHW = bodyBotHW - 10;
 
-    // Pendulum geometry
+    // Pivot is near the base of the case (hidden inside the wood).
+    // The rod passes upward through the body; the pointer and weight emerge above.
     const pivotX   = cx;
-    const pivotY   = bodyTopY + 14;
-    const rodLen   = 178;
-    const weightDst = 98;
+    const pivotY   = 428;
+    const rodLen   = 345; // tip at y ≈ 428-345 = 83
 
-    // ── Metronome body ────────────────────────────────────────────
+    // Weight: slow BPM → high on the rod (far from pivot); fast BPM → lower (near case top)
+    // Both positions land above bodyTopY=195 so the weight stays visible
+    const bpm       = constrain(cachedBPM, 40, 240);
+    const weightDst = map(bpm, 40, 240, 322, 248);
+
+    // ── 1. Pendulum drawn first so the body covers the inner part ────
+    push();
+    translate(pivotX, pivotY);
+    rotate(angle);
+
+    // Rod going upward (negative y = visually up in p5)
+    stroke(55, 55, 62);
+    strokeWeight(3.5);
+    line(0, 0, 0, -rodLen);
+    noStroke();
+
+    // Pointer tip — triangle at the very top of the rod
+    fill(45, 45, 52);
+    triangle(-5, -rodLen + 5, 5, -rodLen + 5, 0, -rodLen - 12);
+
+    // Sliding weight (diamond / lozenge) — position varies with BPM
+    push();
+    translate(0, -weightDst);
+    const ww = 22, wh = 32;
+    fill(75, 75, 82);
+    stroke(45, 45, 52);
+    strokeWeight(1);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        wh / 2);
+    vertex(-ww / 2,  0);
+    endShape(CLOSE);
+    // Highlight facet
+    noStroke();
+    fill(130, 130, 138, 140);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        0);
+    vertex(-ww / 4, -wh / 4);
+    endShape(CLOSE);
+    pop();
+
+    pop();
+
+    // ── 2. Body drawn on top — covers the rod inside the case ────────
     push();
     translate(cx, 0);
 
@@ -1203,9 +1250,9 @@ class PendulumMetronome {
     }
     noStroke();
 
-    // Narrow slot at top for pendulum rod to exit
+    // Narrow slot at top of case where the rod exits
     fill(75, 40, 15);
-    rect(-3, bodyTopY - 1, 6, 18);
+    rect(-3, bodyTopY - 1, 6, 14);
 
     // Base platform
     fill(65, 35, 12);
@@ -1217,56 +1264,9 @@ class PendulumMetronome {
     rect( bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
 
     pop();
-
-    // ── Pendulum rod (rotated from pivot) ─────────────────────────
-    push();
-    translate(pivotX, pivotY);
-    rotate(angle);
-
-    stroke(55, 55, 62);
-    strokeWeight(3.5);
-    line(0, 0, 0, -rodLen);
-    noStroke();
-
-    // Sliding weight (diamond / lozenge)
-    push();
-    translate(0, -weightDst);
-    const ww = 20, wh = 30;
-    fill(75, 75, 82);
-    stroke(45, 45, 52);
-    strokeWeight(1);
-    beginShape();
-    vertex(0,       -wh / 2);
-    vertex( ww / 2,  0);
-    vertex(0,        wh / 2);
-    vertex(-ww / 2,  0);
-    endShape(CLOSE);
-    // Highlight facet
-    noStroke();
-    fill(130, 130, 138, 140);
-    beginShape();
-    vertex(0,       -wh / 2);
-    vertex( ww / 2,  0);
-    vertex(0,        0);
-    vertex(-ww / 4, -wh / 4);
-    endShape(CLOSE);
-    pop();
-
-    // Pointer tip (triangle at top of rod)
-    noStroke();
-    fill(45, 45, 52);
-    triangle(-5, -rodLen + 5, 5, -rodLen + 5, 0, -rodLen - 12);
-
-    pop();
-
-    // ── Pivot cap (drawn on top of everything) ────────────────────
-    fill(70, 70, 78);
-    noStroke();
-    ellipse(pivotX, pivotY, 13, 13);
-    fill(110, 110, 118);
-    ellipse(pivotX, pivotY, 7, 7);
   }
 }
+
 
 // Camera functions
 function startCameraStream(video) {
