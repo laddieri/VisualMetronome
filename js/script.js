@@ -1110,7 +1110,6 @@ class PendulumMetronome {
     const progress = getAnimationProgress();
     const isRunning = Tone.Transport.state === 'started' && lastBeatTime > 0;
 
-    // Swing from one extreme to the other each beat; animBeat parity picks the start side
     let angle = 0;
     if (isRunning) {
       const maxAngle = 0.42;
@@ -1120,72 +1119,30 @@ class PendulumMetronome {
 
     const cx = 320;
 
-    // Body: classic pyramidal case at the bottom of the canvas (wide base, narrow top)
-    // This matches a real metronome sitting on a surface.
+    // Classic pyramidal case: wide base at bottom, narrow tip at top
     const bodyTopY  = 195;
     const bodyBotY  = 445;
     const bodyTopHW = 22;
     const bodyBotHW = 90;
 
-    // Inset front panel
     const panelTopY  = bodyTopY + 8;
     const panelBotY  = bodyBotY - 6;
     const panelTopHW = bodyTopHW - 5;
     const panelBotHW = bodyBotHW - 10;
 
-    // Pivot is near the base of the case (hidden inside the wood).
-    // The rod passes upward through the body; the pointer and weight emerge above.
+    // Pivot is near the base, hidden inside the wood
     const pivotX   = cx;
     const pivotY   = 428;
-    const rodLen   = 345; // tip at y ≈ 428-345 = 83
+    const rodLen   = 345; // tip at y = 428-345 = 83
 
-    // Weight: slow BPM → high on the rod (far from pivot); fast BPM → lower (near case top)
-    // Both positions land above bodyTopY=195 so the weight stays visible
+    // exitDist: how far from pivot to the case top opening
+    const exitDist = pivotY - bodyTopY; // 233
+
+    // Weight: slow BPM → high (far from pivot), fast BPM → lower (near case top)
     const bpm       = constrain(cachedBPM, 40, 240);
     const weightDst = map(bpm, 40, 240, 322, 248);
 
-    // ── 1. Pendulum drawn first so the body covers the inner part ────
-    push();
-    translate(pivotX, pivotY);
-    rotate(angle);
-
-    // Rod going upward (negative y = visually up in p5)
-    stroke(55, 55, 62);
-    strokeWeight(3.5);
-    line(0, 0, 0, -rodLen);
-    noStroke();
-
-    // Pointer tip — triangle at the very top of the rod
-    fill(45, 45, 52);
-    triangle(-5, -rodLen + 5, 5, -rodLen + 5, 0, -rodLen - 12);
-
-    // Sliding weight (diamond / lozenge) — position varies with BPM
-    push();
-    translate(0, -weightDst);
-    const ww = 22, wh = 32;
-    fill(75, 75, 82);
-    stroke(45, 45, 52);
-    strokeWeight(1);
-    beginShape();
-    vertex(0,       -wh / 2);
-    vertex( ww / 2,  0);
-    vertex(0,        wh / 2);
-    vertex(-ww / 2,  0);
-    endShape(CLOSE);
-    // Highlight facet
-    noStroke();
-    fill(130, 130, 138, 140);
-    beginShape();
-    vertex(0,       -wh / 2);
-    vertex( ww / 2,  0);
-    vertex(0,        0);
-    vertex(-ww / 4, -wh / 4);
-    endShape(CLOSE);
-    pop();
-
-    pop();
-
-    // ── 2. Body drawn on top — covers the rod inside the case ────────
+    // ── 1. Body drawn first (behind the pendulum) ─────────────────
     push();
     translate(cx, 0);
 
@@ -1250,7 +1207,7 @@ class PendulumMetronome {
     }
     noStroke();
 
-    // Narrow slot at top of case where the rod exits
+    // Slot at top of case where the rod exits
     fill(75, 40, 15);
     rect(-3, bodyTopY - 1, 6, 14);
 
@@ -1262,6 +1219,47 @@ class PendulumMetronome {
     fill(50, 25, 8);
     rect(-bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
     rect( bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
+
+    pop();
+
+    // ── 2. Pendulum drawn on top of body, only the above-case portion ─
+    // Only draw from the case-top exit point to the rod tip — this keeps
+    // the rod from visually crossing the body face below the exit slot.
+    push();
+    translate(pivotX, pivotY);
+    rotate(angle);
+
+    stroke(55, 55, 62);
+    strokeWeight(3.5);
+    line(0, -exitDist, 0, -rodLen);
+    noStroke();
+
+    // Pointer tip — triangle at top of rod
+    fill(45, 45, 52);
+    triangle(-5, -rodLen + 5, 5, -rodLen + 5, 0, -rodLen - 12);
+
+    // Sliding weight (diamond / lozenge)
+    push();
+    translate(0, -weightDst);
+    const ww = 22, wh = 32;
+    fill(75, 75, 82);
+    stroke(45, 45, 52);
+    strokeWeight(1);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        wh / 2);
+    vertex(-ww / 2,  0);
+    endShape(CLOSE);
+    noStroke();
+    fill(130, 130, 138, 140);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        0);
+    vertex(-ww / 4, -wh / 4);
+    endShape(CLOSE);
+    pop();
 
     pop();
   }
