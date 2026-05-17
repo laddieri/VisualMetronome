@@ -1140,7 +1140,9 @@ class PendulumMetronome {
 
     // Weight: slow BPM → high (far from pivot), fast BPM → lower (near case top)
     const bpm       = constrain(cachedBPM, 40, 240);
-    const weightDst = map(bpm, 40, 240, 322, 248);
+    // weightDst is the signed distance from pivot along the rod (positive = above pivot).
+    // Range: 310 (near tip, slow) → -10 (near case bottom, fast)
+    const weightDst = map(bpm, 40, 240, 310, -10);
 
     // ── 1. Body drawn first (behind the pendulum) ─────────────────
     push();
