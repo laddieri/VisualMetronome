@@ -1120,28 +1120,72 @@ class PendulumMetronome {
 
     const cx = 320;
 
-    // Body: pyramidal case (narrow at top, wide at bottom) in upper canvas
-    const bodyTopY  = 48;
-    const bodyBotY  = 228;
+    // Body: classic pyramidal case at the bottom of the canvas (wide base, narrow top)
+    // This matches a real metronome sitting on a surface.
+    const bodyTopY  = 195;
+    const bodyBotY  = 445;
     const bodyTopHW = 22;
     const bodyBotHW = 90;
 
-    // Inset panel
-    const panelTopY  = 56;
-    const panelBotY  = 218;
-    const panelTopHW = 14;
-    const panelBotHW = 79;
+    // Inset front panel
+    const panelTopY  = bodyTopY + 8;
+    const panelBotY  = bodyBotY - 6;
+    const panelTopHW = bodyTopHW - 5;
+    const panelBotHW = bodyBotHW - 10;
 
-    // Pendulum: pivot at bottom-center of body, rod hangs downward
+    // Pivot is near the base of the case (hidden inside the wood).
+    // The rod passes upward through the body; the pointer and weight emerge above.
     const pivotX   = cx;
-    const pivotY   = bodyBotY;
-    const rodLen   = 218;
+    const pivotY   = 428;
+    const rodLen   = 345; // tip at y ≈ 428-345 = 83
 
-    // Weight slides up for slower BPM, down for faster BPM
+    // Weight: slow BPM → high on the rod (far from pivot); fast BPM → lower (near case top)
+    // Both positions land above bodyTopY=195 so the weight stays visible
     const bpm       = constrain(cachedBPM, 40, 240);
-    const weightDst = map(bpm, 40, 240, 46, 188);
+    const weightDst = map(bpm, 40, 240, 322, 248);
 
-    // ── Metronome body ────────────────────────────────────────────
+    // ── 1. Pendulum drawn first so the body covers the inner part ────
+    push();
+    translate(pivotX, pivotY);
+    rotate(angle);
+
+    // Rod going upward (negative y = visually up in p5)
+    stroke(55, 55, 62);
+    strokeWeight(3.5);
+    line(0, 0, 0, -rodLen);
+    noStroke();
+
+    // Pointer tip — triangle at the very top of the rod
+    fill(45, 45, 52);
+    triangle(-5, -rodLen + 5, 5, -rodLen + 5, 0, -rodLen - 12);
+
+    // Sliding weight (diamond / lozenge) — position varies with BPM
+    push();
+    translate(0, -weightDst);
+    const ww = 22, wh = 32;
+    fill(75, 75, 82);
+    stroke(45, 45, 52);
+    strokeWeight(1);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        wh / 2);
+    vertex(-ww / 2,  0);
+    endShape(CLOSE);
+    // Highlight facet
+    noStroke();
+    fill(130, 130, 138, 140);
+    beginShape();
+    vertex(0,       -wh / 2);
+    vertex( ww / 2,  0);
+    vertex(0,        0);
+    vertex(-ww / 4, -wh / 4);
+    endShape(CLOSE);
+    pop();
+
+    pop();
+
+    // ── 2. Body drawn on top — covers the rod inside the case ────────
     push();
     translate(cx, 0);
 
@@ -1198,80 +1242,31 @@ class PendulumMetronome {
     const lineCount = 8;
     for (let i = 0; i <= lineCount; i++) {
       const t  = i / lineCount;
-      const ly = panelTopY + (panelBotY - panelTopY) * t;
-      const hw = panelTopHW + (panelBotHW - panelTopHW) * t;
+      const ly = panelBotY + (panelTopY - panelBotY) * t;
+      const hw = panelBotHW + (panelTopHW - panelBotHW) * t;
       const ml = (i === 0 || i === lineCount || i === Math.round(lineCount / 2)) ? 12 : 7;
       line(-hw + 4, ly, -hw + 4 + ml, ly);
       line( hw - 4, ly,  hw - 4 - ml, ly);
     }
     noStroke();
 
-    // Decorative cap at top
-    fill(65, 35, 12);
-    rect(-bodyTopHW - 4, bodyTopY - 10, bodyTopHW * 2 + 8, 10, 3);
+    // Narrow slot at top of case where the rod exits
+    fill(75, 40, 15);
+    rect(-3, bodyTopY - 1, 6, 14);
 
-    // Base platform with pivot hole
+    // Base platform
     fill(65, 35, 12);
     rect(-bodyBotHW - 10, bodyBotY, bodyBotHW * 2 + 20, 14, 3);
 
     // Feet
     fill(50, 25, 8);
-    rect(-bodyBotHW - 10, bodyBotY + 14, 22, 7, 2);
-    rect( bodyBotHW - 12, bodyBotY + 14, 22, 7, 2);
+    rect(-bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
+    rect( bodyBotHW - 10, bodyBotY + 14, 20, 7, 2);
 
     pop();
-
-    // ── Pendulum rod (pivot at body bottom, hanging down) ─────────
-    push();
-    translate(pivotX, pivotY + 7); // start just below base platform
-    rotate(angle);
-
-    stroke(55, 55, 62);
-    strokeWeight(3.5);
-    line(0, 0, 0, rodLen);
-    noStroke();
-
-    // Sliding weight (diamond / lozenge) — position varies with BPM
-    push();
-    translate(0, weightDst);
-    const ww = 22, wh = 32;
-    fill(75, 75, 82);
-    stroke(45, 45, 52);
-    strokeWeight(1);
-    beginShape();
-    vertex(0,       -wh / 2);
-    vertex( ww / 2,  0);
-    vertex(0,        wh / 2);
-    vertex(-ww / 2,  0);
-    endShape(CLOSE);
-    // Highlight facet
-    noStroke();
-    fill(130, 130, 138, 140);
-    beginShape();
-    vertex(0,       -wh / 2);
-    vertex( ww / 2,  0);
-    vertex(0,        0);
-    vertex(-ww / 4, -wh / 4);
-    endShape(CLOSE);
-    pop();
-
-    // Bob at the tip of the rod
-    noStroke();
-    fill(55, 55, 62);
-    ellipse(0, rodLen, 18, 18);
-    fill(80, 80, 88);
-    ellipse(0, rodLen, 11, 11);
-
-    pop();
-
-    // ── Pivot cap ─────────────────────────────────────────────────
-    fill(70, 70, 78);
-    noStroke();
-    ellipse(pivotX, pivotY + 7, 14, 14);
-    fill(110, 110, 118);
-    ellipse(pivotX, pivotY + 7, 8, 8);
   }
 }
+
 
 // Camera functions
 function startCameraStream(video) {
