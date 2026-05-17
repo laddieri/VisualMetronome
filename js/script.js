@@ -1231,7 +1231,7 @@ class PendulumMetronome {
 
     stroke(55, 55, 62);
     strokeWeight(3.5);
-    line(0, -exitDist, 0, -rodLen);
+    line(0, bodyBotY - pivotY, 0, -rodLen);
     noStroke();
 
     // Pointer tip — triangle at top of rod
