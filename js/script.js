@@ -5166,8 +5166,12 @@ function crRenderNotation() {
   // Time signature (stacked: beats on top, beat note value on bottom)
   var bnBottom = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
   var bnTop = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
-  svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTop + '</text>';
-  svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
+  if (bnTop === 4 && bnBottom === '4') {
+    svg += '<text x="16" y="' + (staffY + 12) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
+  } else {
+    svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTop + '</text>';
+    svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
+  }
 
   var xStart = 40;
 
@@ -5489,8 +5493,12 @@ function crRenderNotationDisplay() {
   // Time signature (stacked: beats on top, beat note value on bottom)
   var bnBottomD = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
   var bnTopD = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
-  svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTopD + '</text>';
-  svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
+  if (bnTopD === 4 && bnBottomD === '4') {
+    svg += '<text x="16" y="' + (baseStaffY + 12) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
+  } else {
+    svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTopD + '</text>';
+    svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
+  }
 
   // Opening barline
   svg += '<line x1="' + (baseXStart - 5) + '" y1="' + (baseStaffY - 20) + '" x2="' + (baseXStart - 5) + '" y2="' + (baseStaffY + 20) + '" stroke="currentColor" stroke-width="1.5"/>';
