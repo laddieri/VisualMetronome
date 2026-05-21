@@ -4762,27 +4762,33 @@ var CR_BACK_HALF_OPTIONS = [
 
 // Number of additional beat slots consumed after the slot holding `pat`.
 function crContinuationsNeeded(pat) {
-  if (pat === 'h' || pat === 'dq' || pat === 'eqe' || pat === 'rqe' || pat === 'eqr' || pat === 'rqr' || pat === 'HW' || pat === 'EQ' || pat === 'DDH') return 1;
+  if (pat === 'h' || pat === 'dq' || pat === 'eqe' || pat === 'rqe' || pat === 'eqr' || pat === 'rqr' ||
+      pat === 'ssqe' || pat === 'eqss' || pat === 'ssqss' || pat === 'rqss' || pat === 'ssqr' ||
+      pat === 'HW' || pat === 'EQ' || pat === 'DDH') return 1;
   if (pat === 'dh') return 2;
   return 0;
 }
 
 // Returns the default pattern string for the i-th continuation slot (0-based).
 function crDefaultContinuation(originPat) {
-  if (originPat === 'dq' || originPat === 'eqe' || originPat === 'rqe') return '_e';
-  if (originPat === 'eqr' || originPat === 'rqr') return '_r';
+  if (originPat === 'dq' || originPat === 'eqe' || originPat === 'rqe' || originPat === 'ssqe') return '_e';
+  if (originPat === 'eqr' || originPat === 'rqr' || originPat === 'ssqr') return '_r';
+  if (originPat === 'eqss' || originPat === 'rqss' || originPat === 'ssqss') return '_ss';
   if (originPat === 'HW' || originPat === 'EQ' || originPat === 'DDH') return '_';
   return '_';
 }
 
 // True when `pat` is a continuation marker (not a primary beat choice).
 function crIsContinuation(pat) {
-  return pat === '_' || pat === '_e' || pat === '_r';
+  return pat === '_' || pat === '_e' || pat === '_r' || pat === '_ss';
 }
 
 // True when `pat` itself starts a multi-beat group.
 function crIsMultiBeat(pat) {
-  return pat === 'h' || pat === 'dq' || pat === 'dh' || pat === 'eqe' || pat === 'rqe' || pat === 'eqr' || pat === 'rqr' || pat === 'HW' || pat === 'EQ' || pat === 'DDH';
+  return pat === 'h' || pat === 'dq' || pat === 'dh' ||
+         pat === 'eqe' || pat === 'rqe' || pat === 'eqr' || pat === 'rqr' ||
+         pat === 'ssqe' || pat === 'eqss' || pat === 'ssqss' || pat === 'rqss' || pat === 'ssqr' ||
+         pat === 'HW' || pat === 'EQ' || pat === 'DDH';
 }
 
 // Set beat at beatIdx to newPat, cascading continuation setup.
@@ -4863,6 +4869,12 @@ function crGetSubBeats(patternValue) {
     case 'rqe':  return [{offset: 0.5, vel: 0.8}];
     case 'eqr':  return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.8}];
     case 'rqr':  return [{offset: 0.5, vel: 0.8}];
+    case 'ssqe':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.6}, {offset: 0.5, vel: 0.8}];
+    case 'ssqr':  return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.6}, {offset: 0.5, vel: 0.8}];
+    case 'ssqss': return [{offset: 0, vel: 1.0}, {offset: 0.25, vel: 0.6}, {offset: 0.5, vel: 0.8}];
+    case 'eqss':  return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.8}];
+    case 'rqss':  return [{offset: 0.5, vel: 0.8}];
+    case '_ss':   return [{offset: 0.5, vel: 0.7}, {offset: 0.75, vel: 0.5}];
     case 'H':     return [{offset: 0, vel: 1.0}];
     case 'HR':    return [];
     case 'HQQ':   return [{offset: 0, vel: 1.0}, {offset: 0.5, vel: 0.7}];
@@ -5118,6 +5130,12 @@ function crGetAllNoteXPositions(pat, x, w) {
     case 'rqe':  return [x + w * 0.70];
     case 'eqr':  return [x + w * 0.2,  x + w * 0.72];
     case 'rqr':  return [x + w * 0.70];
+    case 'ssqe':  return [x + w * 0.12, x + w * 0.37, x + w * 0.70];
+    case 'ssqr':  return [x + w * 0.12, x + w * 0.37, x + w * 0.70];
+    case 'ssqss': return [x + w * 0.12, x + w * 0.37, x + w * 0.70];
+    case 'eqss':  return [x + w * 0.2,  x + w * 0.72];
+    case 'rqss':  return [x + w * 0.70];
+    case '_ss':   return [x + w * 0.5,  x + w * 0.75];
     case 'er':   return [x + w * 0.25];
     case 're':   return [x + w * 0.7];
     case 'ssss': return [x + w * 0.12, x + w * 0.37, x + w * 0.62, x + w * 0.87];
@@ -5259,6 +5277,12 @@ function crGetBallLandingX(pat, x, w) {
     case 'rqe':  return x + w * 0.2;
     case 'eqr':  return x + w * 0.2;
     case 'rqr':  return x + w * 0.2;
+    case 'ssqe':  return x + w * 0.12;
+    case 'ssqr':  return x + w * 0.12;
+    case 'ssqss': return x + w * 0.12;
+    case 'eqss':  return x + w * 0.2;
+    case 'rqss':  return x + w * 0.2;
+    case '_ss':   return x + w * 0.5;
     case 'H':  case 'HR': case 'HW': return x + w * 0.5;
     case 'HQQ': case 'HQR': return x + w * 0.25;
     case 'HRQ': return x + w * 0.25;
@@ -5706,10 +5730,15 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     if (beatIdx + 1 < beatCount) {
       patterns.push({ pat: 'h',   label: 'Half Note'       });
       patterns.push({ pat: 'dq',  label: 'Dotted Quarter'  });
-      patterns.push({ pat: 'eqe', label: '8th+Q+8th'       });
-      patterns.push({ pat: 'rqe', label: 'Rest+Q+8th'      });
-      patterns.push({ pat: 'eqr', label: '8th+Q+Rest'      });
-      patterns.push({ pat: 'rqr', label: 'Rest+Q+Rest'     });
+      patterns.push({ pat: 'eqe',   label: '8th+Q+8th'    });
+      patterns.push({ pat: 'rqe',   label: 'Rest+Q+8th'   });
+      patterns.push({ pat: 'eqr',   label: '8th+Q+Rest'   });
+      patterns.push({ pat: 'rqr',   label: 'Rest+Q+Rest'  });
+      patterns.push({ pat: 'ssqe',  label: '2/16+Q+8th'   });
+      patterns.push({ pat: 'eqss',  label: '8th+Q+2/16'   });
+      patterns.push({ pat: 'ssqss', label: '2/16+Q+2/16'  });
+      patterns.push({ pat: 'rqss',  label: 'Rest+Q+2/16'  });
+      patterns.push({ pat: 'ssqr',  label: '2/16+Q+Rest'  });
     }
   }
 
@@ -6011,6 +6040,39 @@ function crDrawBeatPattern(pat, x, y, w) {
       break;
     }
 
+    case 'ssqe':  // Two 16ths + syncopated quarter + eighth (♬♩♪)
+    case 'ssqr':  // Two 16ths + syncopated quarter + rest  (♬♩𝄾)
+    case 'ssqss': { // Two 16ths + syncopated quarter + two 16ths (♬♩♬)
+      var sq1 = x + w * 0.12, sq2 = x + w * 0.37, sqq = x + w * 0.70;
+      svg += crNoteHead(sq1, y, false);
+      svg += crStem(sq1, y);
+      svg += crNoteHead(sq2, y, false);
+      svg += crStem(sq2, y);
+      svg += crBeam(sq1, sq2, y - 25);
+      svg += crBeam(sq1, sq2, y - 21);
+      svg += crNoteHead(sqq, y, false);
+      svg += crStem(sqq, y);
+      break;
+    }
+
+    case 'eqss': { // Eighth + syncopated quarter + two 16ths (♪♩♬)
+      var eqs1 = x + w * 0.2, eqsq = x + w * 0.72;
+      svg += crNoteHead(eqs1, y, false);
+      svg += crStem(eqs1, y);
+      svg += crFlag(eqs1, y);
+      svg += crNoteHead(eqsq, y, false);
+      svg += crStem(eqsq, y);
+      break;
+    }
+
+    case 'rqss': { // Rest + syncopated quarter + two 16ths (𝄾♩♬)
+      var rqsrx = x + w * 0.18, rqsq = x + w * 0.70;
+      svg += crEighthRest(rqsrx, y);
+      svg += crNoteHead(rqsq, y, false);
+      svg += crStem(rqsq, y);
+      break;
+    }
+
     case 'H': // Half note, 1 beat
       svg += crNoteHead(x + w * 0.5, y, true);
       svg += crStem(x + w * 0.5, y);
@@ -6164,6 +6226,17 @@ function crDrawBeatPattern(pat, x, y, w) {
     case '_r': // Back-half eighth rest (continuation of dotted quarter)
       svg += crEighthRest(x + w * 0.5, y);
       break;
+
+    case '_ss': { // Back-half two sixteenth notes
+      var ss1 = x + w * 0.5, ss2 = x + w * 0.75;
+      svg += crNoteHead(ss1, y, false);
+      svg += crStem(ss1, y);
+      svg += crNoteHead(ss2, y, false);
+      svg += crStem(ss2, y);
+      svg += crBeam(ss1, ss2, y - 25);
+      svg += crBeam(ss1, ss2, y - 21);
+      break;
+    }
   }
   return svg;
 }
