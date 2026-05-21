@@ -5663,21 +5663,26 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     ];
     if (beatIdx + 1 < beatCount) patterns.push({ pat: 'DDH', label: 'Dot Half (2b)' });
   } else {
-    // Quarter note beat (default)
+    // Quarter note beat (default) — ordered from simplest to most complex
     patterns = [
-      { pat: 'q',    label: 'Quarter'        },
-      { pat: 'r',    label: 'Rest'           },
-      { pat: 'ee',   label: '2 Eighths'      },
-      { pat: 'eee',  label: 'Triplets'       },
-      { pat: 'er',   label: 'Eighth + Rest'  },
-      { pat: 're',   label: 'Rest + Eighth'  },
-      { pat: 'ssss', label: '4 Sixteenths'   },
-      { pat: 'sse',  label: '2/16 + Eighth'  },
-      { pat: 'ess',  label: 'Eighth + 2/16'  },
+      { pat: 'q',    label: 'Quarter'         },
+      { pat: 'r',    label: 'Rest'            },
+      { pat: 'ee',   label: '2 Eighths'       },
+      { pat: 'er',   label: 'Eighth + Rest'   },
+      { pat: 're',   label: 'Rest + Eighth'   },
+      { pat: 'eee',  label: 'Triplets'        },
+      { pat: 'ssss', label: '4 Sixteenths'    },
+      { pat: 'sse',  label: '2/16 + Eighth'   },
+      { pat: 'ess',  label: 'Eighth + 2/16'   },
+      { pat: 'des',  label: 'Dotted 8th+16th' },
+      { pat: 'sed',  label: '16th+Dotted 8th' },
+      { pat: 'ses',  label: '16th+8th+16th'   },
     ];
     if (beatIdx + 1 < beatCount) {
-      patterns.push({ pat: 'h',  label: 'Half Note'       });
-      patterns.push({ pat: 'dq', label: 'Dotted Quarter'  });
+      patterns.push({ pat: 'h',   label: 'Half Note'      });
+      patterns.push({ pat: 'dq',  label: 'Dotted Quarter' });
+      patterns.push({ pat: 'eqe', label: '8th+Q+8th'      });
+      patterns.push({ pat: 'rqe', label: 'Rest+Q+8th'     });
     }
   }
 
@@ -5687,7 +5692,6 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
     btn.title = opt.label;
 
-    // Mini SVG preview of the rhythm pattern — no fixed width/height so CSS can scale it
     var mW = 56, mH = 44, mY = 30;
     var mini  = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '">';
     mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY
@@ -5709,69 +5713,8 @@ function crShowRhythmPicker(beatIdx, anchorX, anchorY) {
     grid.appendChild(btn);
   });
 
-  // ── Advanced section (quarter-note beat only) ────────────────────────────
   var oldAdv = picker.querySelector('.rhythm-advanced-section');
   if (oldAdv) picker.removeChild(oldAdv);
-
-  if (beatNoteValue === 'q') {
-    var advancedPatterns = [
-      { pat: 'des', label: 'Dotted 8th+16th' },
-      { pat: 'sed', label: '16th+Dotted 8th' },
-      { pat: 'ses', label: '16th+8th+16th'   },
-      // 2-beat syncopated patterns — only available when the next beat slot exists
-      { pat: 'eqe', label: '8th+Q+8th', span: 2 },
-      { pat: 'rqe', label: 'Rest+Q+8th', span: 2 },
-    ].filter(function(o) {
-      return !o.span || beatIdx + o.span <= beatCount;
-    });
-
-    var anyAdvancedActive = advancedPatterns.some(function(o) { return o.pat === currentPat; });
-
-    var advSection = document.createElement('div');
-    advSection.className = 'rhythm-advanced-section';
-
-    var advToggle = document.createElement('button');
-    advToggle.className = 'rhythm-advanced-toggle';
-    advToggle.innerHTML = '<span class="rhythm-adv-arrow">' + (anyAdvancedActive ? '▾' : '▸') + '</span> Advanced';
-
-    var advGrid = document.createElement('div');
-    advGrid.className = 'rhythm-picker-grid rhythm-advanced-grid';
-    advGrid.style.display = anyAdvancedActive ? '' : 'none';
-
-    advancedPatterns.forEach(function(opt) {
-      var btn = document.createElement('button');
-      btn.className = 'rhythm-option' + (opt.pat === currentPat ? ' active' : '');
-      btn.title = opt.label;
-      var mW = 56, mH = 44, mY = 30;
-      var mini = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + mW + ' ' + mH + '">';
-      mini += '<line x1="2" y1="' + mY + '" x2="' + (mW - 2) + '" y2="' + mY + '" stroke="#ccc" stroke-width="0.8"/>';
-      mini += crDrawBeatPattern(opt.pat, 0, mY, mW);
-      mini += '</svg>';
-      var lbl = document.createElement('div');
-      lbl.className = 'rhythm-option-label';
-      lbl.textContent = opt.label;
-      btn.innerHTML = mini;
-      btn.appendChild(lbl);
-      btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        crApplyRhythmOption(beatIdx, opt.pat);
-        crHideRhythmPicker();
-      });
-      advGrid.appendChild(btn);
-    });
-
-    advToggle.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var open = advGrid.style.display !== 'none';
-      advGrid.style.display = open ? 'none' : '';
-      var arrow = advToggle.querySelector('.rhythm-adv-arrow');
-      if (arrow) arrow.textContent = open ? '▸' : '▾';
-    });
-
-    advSection.appendChild(advToggle);
-    advSection.appendChild(advGrid);
-    picker.appendChild(advSection);
-  }
 
   picker.style.display = 'block';
   if (backdrop) backdrop.style.display = 'block';
