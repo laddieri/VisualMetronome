@@ -5167,10 +5167,10 @@ function crRenderNotation() {
   var bnBottom = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
   var bnTop = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
   if (bnTop === 4 && bnBottom === '4') {
-    svg += '<text x="16" y="' + (staffY + 12) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
+    svg += '<text x="16" y="' + (staffY + 8) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
   } else if (bnTop === 2 && bnBottom === '2') {
-    svg += '<text x="16" y="' + (staffY + 12) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
-    svg += '<line x1="16" y1="' + (staffY - 3) + '" x2="16" y2="' + (staffY + 13) + '" stroke="currentColor" stroke-width="1.5"/>';
+    svg += '<text x="16" y="' + (staffY + 8) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
+    svg += '<line x1="16" y1="' + (staffY - 9) + '" x2="16" y2="' + (staffY + 9) + '" stroke="currentColor" stroke-width="1.5"/>';
   } else {
     svg += '<text x="16" y="' + (staffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTop + '</text>';
     svg += '<text x="16" y="' + (staffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottom + '</text>';
@@ -5497,10 +5497,10 @@ function crRenderNotationDisplay() {
   var bnBottomD = { q: '4', h: '2', e: '8', dq: '8' }[beatNoteValue] || '4';
   var bnTopD = beatNoteValue === 'dq' ? beatCount * 3 : beatCount;
   if (bnTopD === 4 && bnBottomD === '4') {
-    svg += '<text x="16" y="' + (baseStaffY + 12) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
+    svg += '<text x="16" y="' + (baseStaffY + 8) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
   } else if (bnTopD === 2 && bnBottomD === '2') {
-    svg += '<text x="16" y="' + (baseStaffY + 12) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
-    svg += '<line x1="16" y1="' + (baseStaffY - 3) + '" x2="16" y2="' + (baseStaffY + 13) + '" stroke="currentColor" stroke-width="1.5"/>';
+    svg += '<text x="16" y="' + (baseStaffY + 8) + '" font-size="22" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">C</text>';
+    svg += '<line x1="16" y1="' + (baseStaffY - 9) + '" x2="16" y2="' + (baseStaffY + 9) + '" stroke="currentColor" stroke-width="1.5"/>';
   } else {
     svg += '<text x="16" y="' + (baseStaffY - 4) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnTopD + '</text>';
     svg += '<text x="16" y="' + (baseStaffY + 13) + '" font-size="14" font-weight="bold" fill="currentColor" font-family="serif" text-anchor="middle">' + bnBottomD + '</text>';
