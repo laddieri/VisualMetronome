@@ -6473,7 +6473,7 @@ if (document.readyState === 'loading') {
   sel.value = beatNoteValue;
   sel.addEventListener('change', function() {
     beatNoteValue = sel.value;
-    // Re-render the score with new beat note (don't clear existing pattern)
+    crCancelCustomRhythm();
     if (animalType === 'score') {
       crRenderNotationDisplay();
       crRenderNotation();
