@@ -6280,10 +6280,11 @@ function crQuarterRest(cx, cy) {
 }
 
 function crEighthRest(cx, cy) {
-  // Eighth rest — a dot with a curved tail descending to the right.
-  var dotX = cx + 3, dotY = cy - 5;
-  return '<circle cx="' + dotX + '" cy="' + dotY + '" r="2.2" fill="currentColor"/>' +
-    '<path d="M' + (dotX + 0.5) + ',' + (dotY + 1) +
+  // Eighth rest — leftward arm with dot at tip, curving body descending to the right.
+  var jx = cx + 3, jy = cy - 5;  // top of curving body
+  var dx = cx - 4, dy = cy - 7;  // dot at left tip of arm
+  return '<circle cx="' + dx + '" cy="' + dy + '" r="2.2" fill="currentColor"/>' +
+    '<path d="M' + dx + ',' + dy + ' L' + jx + ',' + jy +
     ' c-1,3 -4,7 -5,12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
 }
 
