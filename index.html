@@ -150,6 +150,14 @@
           <span class="practice-rhythm-hint">Plays 1 measure, then silent 1 measure — repeat</span>
         </div>
 
+        <div id="crm-toggle-row" class="crm-toggle-row" style="display:none">
+          <label class="crm-toggle-label">
+            <input type="checkbox" id="crm-toggle-cb">
+            Check my rhythm
+          </label>
+          <span class="crm-toggle-hint">Listens while you play, then shows your accuracy</span>
+        </div>
+
         <div class="controls">
           <!-- Primary Controls: Play and Tempo -->
           <div class="controls-primary">
@@ -765,6 +773,19 @@
     <div id="rhythm-picker" class="rhythm-picker" role="dialog" aria-modal="true" style="display:none">
       <div class="rhythm-picker-header">Beat <span id="rhythm-picker-beat-num">1</span></div>
       <div class="rhythm-picker-grid" id="rhythm-picker-grid"></div>
+    </div>
+
+    <!-- Check My Rhythm feedback panel -->
+    <div id="crm-feedback-panel" class="crm-feedback-panel" style="display:none">
+      <div class="crm-feedback-inner">
+        <h3 class="crm-feedback-title">How'd you do?</h3>
+        <div id="crm-feedback-notes" class="crm-feedback-notes"></div>
+        <div id="crm-feedback-score" class="crm-feedback-score"></div>
+        <div class="crm-feedback-btns">
+          <button id="crm-try-again-btn" class="crm-btn crm-btn-primary">Try Again</button>
+          <button id="crm-close-btn" class="crm-btn crm-btn-secondary">Close</button>
+        </div>
+      </div>
     </div>
 
     <!-- Animation size slider (desktop only) -->

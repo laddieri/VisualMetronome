@@ -60,6 +60,17 @@ var spacebarAction = 'play'; // 'play' | 'count-in-1' | 'count-in-2'
 var beatNoteValue = 'q'; // 'q'=quarter | 'h'=half | 'e'=eighth | 'dq'=dotted-quarter
 var practiceRhythmEnabled = false;  // alternates sound/silent measures
 var practiceRhythmMeasureIdx = -1;  // incremented at each measure start; even=sound, odd=silent
+var checkMyRhythmEnabled = false;   // mic-based accuracy feedback for practice rhythm
+var crmMicStream        = null;     // MediaStream from getUserMedia
+var crmAnalyserNode     = null;     // AnalyserNode on the mic stream
+var crmSourceNode       = null;     // MediaStreamSourceNode
+var crmDetectedHits     = [];       // AudioContext timestamps of detected onset peaks
+var crmSilentStartTime  = 0;        // AudioContext time when silent measure began
+var crmSilentEndTime    = 0;        // AudioContext time when silent measure ends
+var crmMonitoring       = false;    // true only during the silent measure
+var crmLastHitTime      = -999;     // debounce: last detected hit time
+var crmRAF              = null;     // requestAnimationFrame id
+var crmTimeSamples      = null;     // reusable Float32Array for analyser reads
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
 var lastBeatTime = 0;   // Track when last beat fired for animation sync
@@ -2352,8 +2363,31 @@ function scheduleMainBeat() {
     // ── Practice Rhythm: track measure boundaries ──────────────────────────
     if (currentBeat === 0 && practiceRhythmEnabled) {
       practiceRhythmMeasureIdx++;
+
+      // Check My Rhythm: stop after silent measure ends (would-be idx 2)
+      if (checkMyRhythmEnabled && practiceRhythmMeasureIdx === 2) {
+        const _t2 = time;
+        Tone.Draw.schedule(function() {
+          crmEndMonitoring();
+          crmShowFeedback();
+          toggleTransport(false);
+        }, _t2);
+        return;
+      }
+
       const _prSilent = practiceRhythmMeasureIdx % 2 === 1;
       const _prColor  = _prSilent ? '#3a5c2a' : (window.vmCanvasBg || '#e2e8f0');
+
+      // Check My Rhythm: begin mic monitoring when the silent measure starts
+      if (checkMyRhythmEnabled && _prSilent && crmMicStream) {
+        const _silentT    = time;
+        const _beatDurS   = Tone.Time("4n").toSeconds();
+        const _silentEndT = _silentT + beatsPerMeasure * _beatDurS;
+        Tone.Draw.schedule(function() {
+          crmBeginMonitoring(_silentT, _silentEndT);
+        }, _silentT);
+      }
+
       Tone.Draw.schedule(function() {
         document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', _prColor); });
         var prRow = document.getElementById('practice-rhythm-row');
@@ -2809,6 +2843,7 @@ function toggleTransport(withCountIn) {
     // Reset two-measure pattern state
     twoMeasureCurrentMeasure = 0;
     practiceRhythmMeasureIdx = -1;
+    if (checkMyRhythmEnabled) crmEndMonitoring();
     _countIn1Btn.classList.remove('active');
     _countInBtn.classList.remove('active');
     _setPlayTogglePlaying(false);
@@ -3160,6 +3195,7 @@ function _syncPracticeRow() {
     if (cb) cb.checked = false;
     document.querySelectorAll('.nd-bg-rect').forEach(function(r) { r.setAttribute('fill', window.vmCanvasBg || '#e2e8f0'); });
   }
+  crmSyncToggleRow();
   _syncBeatNoteRow();
 }
 
@@ -6597,6 +6633,7 @@ if (document.readyState === 'loading') {
       var row = document.getElementById('practice-rhythm-row');
       if (row) row.className = 'practice-rhythm-row';
     }
+    crmSyncToggleRow();
   });
 })();
 
@@ -6606,6 +6643,205 @@ if (document.readyState === 'loading') {
 } else {
   initSongSectionsListeners();
 }
+
+// ── Check My Rhythm ───────────────────────────────────────────────────────────
+
+function crmSyncToggleRow() {
+  var row = document.getElementById('crm-toggle-row');
+  if (!row) return;
+  var show = practiceRhythmEnabled;
+  row.style.display = show ? '' : 'none';
+  if (!show && checkMyRhythmEnabled) {
+    checkMyRhythmEnabled = false;
+    var cb = document.getElementById('crm-toggle-cb');
+    if (cb) cb.checked = false;
+    crmReleaseMic();
+    crmHideFeedback();
+  }
+}
+
+function crmInitMic(onDone) {
+  if (crmMicStream) { if (onDone) onDone(null); return; }
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(function(stream) {
+      crmMicStream = stream;
+      var rawCtx = Tone.getContext().rawContext;
+      crmSourceNode = rawCtx.createMediaStreamSource(stream);
+      crmAnalyserNode = rawCtx.createAnalyser();
+      crmAnalyserNode.fftSize = 1024;
+      crmAnalyserNode.smoothingTimeConstant = 0;
+      crmSourceNode.connect(crmAnalyserNode);
+      crmTimeSamples = new Float32Array(crmAnalyserNode.fftSize);
+      if (onDone) onDone(null);
+    })
+    .catch(function(err) {
+      console.warn('CRM: microphone access denied', err);
+      if (onDone) onDone(err);
+    });
+}
+
+function crmReleaseMic() {
+  crmMonitoring = false;
+  if (crmRAF) { cancelAnimationFrame(crmRAF); crmRAF = null; }
+  if (crmAnalyserNode) { crmAnalyserNode.disconnect(); crmAnalyserNode = null; }
+  if (crmSourceNode) { crmSourceNode.disconnect(); crmSourceNode = null; }
+  if (crmMicStream) { crmMicStream.getTracks().forEach(function(t) { t.stop(); }); crmMicStream = null; }
+  crmTimeSamples = null;
+}
+
+function crmMonitorLoop() {
+  if (!crmMonitoring || !crmAnalyserNode) return;
+  var rawCtx = Tone.getContext().rawContext;
+  var now = rawCtx.currentTime;
+  if (now >= crmSilentStartTime && now < crmSilentEndTime) {
+    crmAnalyserNode.getFloatTimeDomainData(crmTimeSamples);
+    var sumSq = 0, len = crmTimeSamples.length;
+    for (var i = 0; i < len; i++) sumSq += crmTimeSamples[i] * crmTimeSamples[i];
+    var rms = Math.sqrt(sumSq / len);
+    if (rms > 0.05 && (now - crmLastHitTime) > 0.12) {
+      crmDetectedHits.push(now);
+      crmLastHitTime = now;
+    }
+  }
+  crmRAF = requestAnimationFrame(crmMonitorLoop);
+}
+
+function crmBeginMonitoring(silentStart, silentEnd) {
+  crmSilentStartTime = silentStart;
+  crmSilentEndTime   = silentEnd;
+  crmDetectedHits    = [];
+  crmLastHitTime     = -999;
+  crmMonitoring      = true;
+  if (crmRAF) cancelAnimationFrame(crmRAF);
+  crmRAF = requestAnimationFrame(crmMonitorLoop);
+}
+
+function crmEndMonitoring() {
+  crmMonitoring = false;
+  if (crmRAF) { cancelAnimationFrame(crmRAF); crmRAF = null; }
+}
+
+function crmComputeExpectedHits() {
+  var expected = [];
+  var beatDur = Tone.Time("4n").toSeconds();
+  for (var b = 0; b < customRhythmPattern.length; b++) {
+    var pat = customRhythmPattern[b];
+    if (crIsContinuation(pat)) continue;
+    var subs = crGetSubBeats(pat);
+    var prevB = (b - 1 + beatsPerMeasure) % beatsPerMeasure;
+    var prevSubs = crGetSubBeats(customRhythmPattern[prevB]);
+    var tiedFromPrev = b > 0 && prevSubs.length > 0 &&
+      customRhythmNoteTies[prevB] &&
+      customRhythmNoteTies[prevB][prevSubs.length - 1] === true;
+    for (var i = 0; i < subs.length; i++) {
+      var tied = (i === 0) ? tiedFromPrev
+               : (customRhythmNoteTies[b] && customRhythmNoteTies[b][i - 1] === true);
+      if (tied) continue;
+      expected.push(crmSilentStartTime + b * beatDur + subs[i].offset * beatDur);
+    }
+  }
+  return expected;
+}
+
+function crmAnalyze(expectedHits) {
+  var beatDur    = Tone.Time("4n").toSeconds();
+  var onWindow   = beatDur * 0.20;   // ±20% of a beat = "on time"
+  var maxWindow  = beatDur * 0.45;   // up to ±45% = matched but off
+  var used       = new Array(crmDetectedHits.length).fill(false);
+  var notes      = [];
+  for (var e = 0; e < expectedHits.length; e++) {
+    var bestDiff = Infinity, bestIdx = -1;
+    for (var d = 0; d < crmDetectedHits.length; d++) {
+      if (used[d]) continue;
+      var diff = crmDetectedHits[d] - expectedHits[e];
+      if (Math.abs(diff) < Math.abs(bestDiff)) { bestDiff = diff; bestIdx = d; }
+    }
+    if (bestIdx >= 0 && Math.abs(bestDiff) <= maxWindow) {
+      used[bestIdx] = true;
+      var status = Math.abs(bestDiff) < onWindow ? 'on' : (bestDiff < 0 ? 'early' : 'late');
+      notes.push({ status: status, diff: bestDiff });
+    } else {
+      notes.push({ status: 'missed', diff: null });
+    }
+  }
+  var extra = 0;
+  for (var d = 0; d < used.length; d++) { if (!used[d]) extra++; }
+  return { notes: notes, extra: extra };
+}
+
+function crmShowFeedback() {
+  var expected = crmComputeExpectedHits();
+  var result   = crmAnalyze(expected);
+  var panel    = document.getElementById('crm-feedback-panel');
+  var notesEl  = document.getElementById('crm-feedback-notes');
+  var scoreEl  = document.getElementById('crm-feedback-score');
+  if (!panel) return;
+
+  notesEl.innerHTML = '';
+  var onCount = 0;
+  result.notes.forEach(function(n) {
+    var icon = { on: '✓', missed: '✗', early: '◀', late: '▶' }[n.status] || '?';
+    var dot = document.createElement('div');
+    dot.className = 'crm-note-dot crm-note-' + n.status;
+    dot.textContent = icon;
+    var lbl = document.createElement('div');
+    lbl.className = 'crm-note-label';
+    var base = { on: 'on time', early: 'early', late: 'late', missed: 'missed' }[n.status] || '';
+    lbl.textContent = (n.status === 'early' || n.status === 'late') && n.diff !== null
+      ? base + ' (' + Math.round(Math.abs(n.diff) * 1000) + 'ms)'
+      : base;
+    if (n.status === 'on') onCount++;
+    var wrap = document.createElement('div');
+    wrap.className = 'crm-note-wrap';
+    wrap.appendChild(dot);
+    wrap.appendChild(lbl);
+    notesEl.appendChild(wrap);
+  });
+
+  var total = result.notes.length;
+  var scoreText = onCount + ' of ' + total + ' note' + (total !== 1 ? 's' : '') + ' on time';
+  if (result.extra > 0) scoreText += ' · ' + result.extra + ' extra hit' + (result.extra !== 1 ? 's' : '');
+  scoreEl.textContent = scoreText;
+  panel.style.display = '';
+}
+
+function crmHideFeedback() {
+  var panel = document.getElementById('crm-feedback-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+(function() {
+  var cb = document.getElementById('crm-toggle-cb');
+  if (!cb) return;
+  cb.addEventListener('change', function() {
+    checkMyRhythmEnabled = cb.checked;
+    if (checkMyRhythmEnabled) {
+      crmInitMic(function(err) {
+        if (err) {
+          checkMyRhythmEnabled = false;
+          cb.checked = false;
+          alert('Microphone access is required for "Check my rhythm". Please allow microphone access and try again.');
+        }
+      });
+    } else {
+      crmReleaseMic();
+      crmHideFeedback();
+    }
+  });
+
+  var tryAgainBtn = document.getElementById('crm-try-again-btn');
+  if (tryAgainBtn) {
+    tryAgainBtn.addEventListener('click', function() {
+      crmHideFeedback();
+      _ensureAudioContext(function() { toggleTransport(false); });
+    });
+  }
+
+  var closeBtn = document.getElementById('crm-close-btn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function() { crmHideFeedback(); });
+  }
+})();
 
 // ── Two-Measure Pattern ────────────────────────────────────────────────────
 
