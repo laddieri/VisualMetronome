@@ -310,9 +310,11 @@
     var stage = document.querySelector('.app-shell .stage');
     var notation = $('notation-display-wrapper');
     var practice = $('practice-rhythm-row');
+    var crmToggle = $('crm-toggle-row');
     if (stage) {
       if (notation) stage.appendChild(notation);
       if (practice) stage.appendChild(practice);
+      if (crmToggle) stage.appendChild(crmToggle);
     }
 
     // ── Hide the legacy container completely ──
