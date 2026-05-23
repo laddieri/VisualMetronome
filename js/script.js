@@ -6706,7 +6706,7 @@ function crmMonitorLoop() {
     var sumSq = 0, len = crmTimeSamples.length;
     for (var i = 0; i < len; i++) sumSq += crmTimeSamples[i] * crmTimeSamples[i];
     var rms = Math.sqrt(sumSq / len);
-    if (rms > 0.05 && (now - crmLastHitTime) > 0.12) {
+    if (rms > 0.08 && (now - crmLastHitTime) > 0.18) {
       // Subtract half the analysis buffer duration: the onset happened somewhere in the
       // last fftSize samples, not at the rAF frame boundary.
       var halfBuf = crmAnalyserNode.fftSize / (2 * Tone.context.rawContext.sampleRate);
@@ -6876,16 +6876,6 @@ function crmRenderFeedbackOnStaff(result, visualXs) {
       var dispX = expectedDispX + pixelShift;
       var color = n.status === 'on' ? '#27ae60' : '#e67e22';
       g.appendChild(makeHead(dispX, noteY, color));
-    }
-  });
-
-  // Gray note heads for extra (unmatched) hits
-  result.extraHits.forEach(function(hitTime) {
-    var relBeats = (hitTime - crmSilentStartTime) / beatDur;
-    var baseX    = 40 + relBeats * 70;
-    var dispX    = notationTx + baseX * sc;
-    if (dispX > 30 && dispX < 610) {
-      g.appendChild(makeHead(dispX, noteY, '#95a5a6'));
     }
   });
 
