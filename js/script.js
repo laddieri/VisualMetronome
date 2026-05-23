@@ -12,6 +12,8 @@ var circleColor = '#000000'; // Color for circle animation
 var notationBeatXPositions = []; // display-space X where ball lands for each beat
 var notationBallLandingY = 0;    // display-space Y where ball lands (just above note heads)
 var notationScale = 1;           // scale factor applied to the notation content group
+var notationStaffDisplayY = 0;   // display-space Y of the staff line (note-head centres)
+var notationTx = 0;              // display-space X translation of the notation group
 var notationBallColor = '#ff6600'; // fill colour for the ball / shoe
 var notationBallStyle = 'ball';    // 'ball' or 'shoe'
 var notationBallRadius = 12;       // pixel radius saved from last render (used for shoe sizing)
@@ -2853,6 +2855,7 @@ function toggleTransport(withCountIn) {
     currentBeat = 0;
     lastBeatTime = 0;
     animBeat = 0;
+    crmClearFeedbackMarkers();
     // Reset counting trainer for fresh start
     ctPhase = 'idle';
     ctBeatsRemaining = 0;
@@ -5523,6 +5526,8 @@ function crRenderNotationDisplay() {
 
   // Staff line in display space (note-head centres sit here)
   var staffDisplayY = ty + baseStaffY * scale;
+  notationStaffDisplayY = staffDisplayY;
+  notationTx = tx;
 
   // Ball lands so its bottom just touches the top of the note-head ellipse (ry=3.5)
   notationBallLandingY = staffDisplayY - 3.5 * scale - ballRadius - 1;
@@ -6766,43 +6771,133 @@ function crmAnalyze(expectedHits) {
       notes.push({ status: 'missed', diff: null });
     }
   }
-  var extra = 0;
-  for (var d = 0; d < used.length; d++) { if (!used[d]) extra++; }
-  return { notes: notes, extra: extra };
+  var extraHits = [];
+  for (var d = 0; d < used.length; d++) { if (!used[d]) extraHits.push(crmDetectedHits[d]); }
+  return { notes: notes, extraHits: extraHits };
+}
+
+function crmGetExpectedNoteVisualXs() {
+  var xs = [];
+  for (var b = 0; b < customRhythmPattern.length; b++) {
+    var pat = customRhythmPattern[b];
+    if (crIsContinuation(pat)) continue;
+    var beatBaseX = 40 + b * 70;
+    var noteXs = crGetAllNoteXPositions(pat, beatBaseX, 70);
+    var subs = crGetSubBeats(pat);
+    var prevB = (b - 1 + beatsPerMeasure) % beatsPerMeasure;
+    var prevSubs = crGetSubBeats(customRhythmPattern[prevB]);
+    var tiedFromPrev = b > 0 && prevSubs.length > 0 &&
+      customRhythmNoteTies[prevB] &&
+      customRhythmNoteTies[prevB][prevSubs.length - 1] === true;
+    for (var i = 0; i < subs.length; i++) {
+      var tied = (i === 0) ? tiedFromPrev
+               : (customRhythmNoteTies[b] && customRhythmNoteTies[b][i - 1] === true);
+      if (tied) continue;
+      xs.push(noteXs[i]);
+    }
+  }
+  return xs;
+}
+
+function crmClearFeedbackMarkers() {
+  var wrapper = document.getElementById('notation-display-wrapper');
+  if (!wrapper) return;
+  var svg = wrapper.querySelector('svg');
+  if (!svg) return;
+  var overlay = svg.querySelector('.crm-hit-overlay');
+  if (overlay) overlay.parentNode.removeChild(overlay);
+}
+
+function crmRenderFeedbackOnStaff(result, visualXs) {
+  var wrapper = document.getElementById('notation-display-wrapper');
+  if (!wrapper) return;
+  var svg = wrapper.querySelector('svg');
+  if (!svg) return;
+  crmClearFeedbackMarkers();
+
+  var NS  = 'http://www.w3.org/2000/svg';
+  var sc  = notationScale;
+  var g   = document.createElementNS(NS, 'g');
+  g.setAttribute('class', 'crm-hit-overlay');
+
+  // Note heads float above the staff line
+  var noteY   = notationStaffDisplayY - 16 * sc;
+  var rx      = (5  * sc).toFixed(2);
+  var ry      = (3.5 * sc).toFixed(2);
+  var beatDur = Tone.Time("4n").toSeconds();
+
+  function makeHead(cx, cy, color) {
+    var el = document.createElementNS(NS, 'ellipse');
+    el.setAttribute('cx', cx.toFixed(2));
+    el.setAttribute('cy', cy.toFixed(2));
+    el.setAttribute('rx', rx);
+    el.setAttribute('ry', ry);
+    el.setAttribute('fill', color);
+    el.setAttribute('transform', 'rotate(-15,' + cx.toFixed(2) + ',' + cy.toFixed(2) + ')');
+    return el;
+  }
+
+  // Draw one marker per expected note
+  result.notes.forEach(function(n, i) {
+    var baseX = visualXs[i];
+    if (baseX === undefined) return;
+    var expectedDispX = notationTx + baseX * sc;
+
+    if (n.status === 'missed') {
+      // Red × at the expected position
+      var ms  = (4 * sc).toFixed(1);
+      var cx  = expectedDispX.toFixed(1);
+      var cy  = noteY.toFixed(1);
+      var sw  = (2 * sc).toFixed(1);
+      var x1  = (expectedDispX - 4 * sc).toFixed(1);
+      var x2  = (expectedDispX + 4 * sc).toFixed(1);
+      var y1  = (noteY - 4 * sc).toFixed(1);
+      var y2  = (noteY + 4 * sc).toFixed(1);
+      [[[x1,y1],[x2,y2]], [[x2,y1],[x1,y2]]].forEach(function(pts) {
+        var l = document.createElementNS(NS, 'line');
+        l.setAttribute('x1', pts[0][0]); l.setAttribute('y1', pts[0][1]);
+        l.setAttribute('x2', pts[1][0]); l.setAttribute('y2', pts[1][1]);
+        l.setAttribute('stroke', '#e74c3c');
+        l.setAttribute('stroke-width', sw);
+        l.setAttribute('stroke-linecap', 'round');
+        g.appendChild(l);
+      });
+    } else {
+      // Shift the note head left/right by how much the user was off
+      var pixelShift = (n.diff / beatDur) * 70 * sc;
+      var dispX = expectedDispX + pixelShift;
+      var color = n.status === 'on' ? '#27ae60' : '#e67e22';
+      g.appendChild(makeHead(dispX, noteY, color));
+    }
+  });
+
+  // Gray note heads for extra (unmatched) hits
+  result.extraHits.forEach(function(hitTime) {
+    var relBeats = (hitTime - crmSilentStartTime) / beatDur;
+    var baseX    = 40 + relBeats * 70;
+    var dispX    = notationTx + baseX * sc;
+    if (dispX > 30 && dispX < 610) {
+      g.appendChild(makeHead(dispX, noteY, '#95a5a6'));
+    }
+  });
+
+  svg.appendChild(g);
 }
 
 function crmShowFeedback() {
-  var expected = crmComputeExpectedHits();
-  var result   = crmAnalyze(expected);
-  var panel    = document.getElementById('crm-feedback-panel');
-  var notesEl  = document.getElementById('crm-feedback-notes');
-  var scoreEl  = document.getElementById('crm-feedback-score');
+  var expected  = crmComputeExpectedHits();
+  var visualXs  = crmGetExpectedNoteVisualXs();
+  var result    = crmAnalyze(expected);
+  var panel     = document.getElementById('crm-feedback-panel');
+  var scoreEl   = document.getElementById('crm-feedback-score');
   if (!panel) return;
 
-  notesEl.innerHTML = '';
-  var onCount = 0;
-  result.notes.forEach(function(n) {
-    var icon = { on: '✓', missed: '✗', early: '◀', late: '▶' }[n.status] || '?';
-    var dot = document.createElement('div');
-    dot.className = 'crm-note-dot crm-note-' + n.status;
-    dot.textContent = icon;
-    var lbl = document.createElement('div');
-    lbl.className = 'crm-note-label';
-    var base = { on: 'on time', early: 'early', late: 'late', missed: 'missed' }[n.status] || '';
-    lbl.textContent = (n.status === 'early' || n.status === 'late') && n.diff !== null
-      ? base + ' (' + Math.round(Math.abs(n.diff) * 1000) + 'ms)'
-      : base;
-    if (n.status === 'on') onCount++;
-    var wrap = document.createElement('div');
-    wrap.className = 'crm-note-wrap';
-    wrap.appendChild(dot);
-    wrap.appendChild(lbl);
-    notesEl.appendChild(wrap);
-  });
+  crmRenderFeedbackOnStaff(result, visualXs);
 
-  var total = result.notes.length;
+  var onCount   = result.notes.filter(function(n) { return n.status === 'on'; }).length;
+  var total     = result.notes.length;
   var scoreText = onCount + ' of ' + total + ' note' + (total !== 1 ? 's' : '') + ' on time';
-  if (result.extra > 0) scoreText += ' · ' + result.extra + ' extra hit' + (result.extra !== 1 ? 's' : '');
+  if (result.extraHits.length > 0) scoreText += ' · ' + result.extraHits.length + ' extra';
   scoreEl.textContent = scoreText;
   panel.style.display = '';
 }
@@ -6810,6 +6905,7 @@ function crmShowFeedback() {
 function crmHideFeedback() {
   var panel = document.getElementById('crm-feedback-panel');
   if (panel) panel.style.display = 'none';
+  crmClearFeedbackMarkers();
 }
 
 (function() {
