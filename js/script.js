@@ -6828,18 +6828,27 @@ function crmHideFeedback() {
       crmHideFeedback();
     }
   });
+})();
 
-  var tryAgainBtn = document.getElementById('crm-try-again-btn');
-  if (tryAgainBtn) {
-    tryAgainBtn.addEventListener('click', function() {
-      crmHideFeedback();
-      _ensureAudioContext(function() { toggleTransport(false); });
-    });
+// Feedback panel buttons are in HTML after the script tag, so defer until DOM is ready.
+(function() {
+  function attachCrmPanelListeners() {
+    var tryAgainBtn = document.getElementById('crm-try-again-btn');
+    if (tryAgainBtn) {
+      tryAgainBtn.addEventListener('click', function() {
+        crmHideFeedback();
+        _ensureAudioContext(function() { toggleTransport(false); });
+      });
+    }
+    var closeBtn = document.getElementById('crm-close-btn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() { crmHideFeedback(); });
+    }
   }
-
-  var closeBtn = document.getElementById('crm-close-btn');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', function() { crmHideFeedback(); });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachCrmPanelListeners);
+  } else {
+    attachCrmPanelListeners();
   }
 })();
 
