@@ -6664,14 +6664,17 @@ function crmInitMic(onDone) {
   if (crmMicStream) { if (onDone) onDone(null); return; }
   navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     .then(function(stream) {
-      crmMicStream = stream;
-      var rawCtx = Tone.getContext().rawContext;
-      crmSourceNode = rawCtx.createMediaStreamSource(stream);
-      crmAnalyserNode = rawCtx.createAnalyser();
-      crmAnalyserNode.fftSize = 1024;
-      crmAnalyserNode.smoothingTimeConstant = 0;
-      crmSourceNode.connect(crmAnalyserNode);
-      crmTimeSamples = new Float32Array(crmAnalyserNode.fftSize);
+      var rawCtx = Tone.context.rawContext;
+      var source = rawCtx.createMediaStreamSource(stream);
+      var analyser = rawCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0;
+      source.connect(analyser);
+      // Only commit state after everything succeeds
+      crmMicStream     = stream;
+      crmSourceNode    = source;
+      crmAnalyserNode  = analyser;
+      crmTimeSamples   = new Float32Array(analyser.fftSize);
       if (onDone) onDone(null);
     })
     .catch(function(err) {
@@ -6691,8 +6694,7 @@ function crmReleaseMic() {
 
 function crmMonitorLoop() {
   if (!crmMonitoring || !crmAnalyserNode) return;
-  var rawCtx = Tone.getContext().rawContext;
-  var now = rawCtx.currentTime;
+  var now = Tone.context.rawContext.currentTime;
   if (now >= crmSilentStartTime && now < crmSilentEndTime) {
     crmAnalyserNode.getFloatTimeDomainData(crmTimeSamples);
     var sumSq = 0, len = crmTimeSamples.length;
