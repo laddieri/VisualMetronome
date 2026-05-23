@@ -2371,9 +2371,10 @@ function scheduleMainBeat() {
         const _t2 = time;
         Tone.Draw.schedule(function() {
           crmEndMonitoring();
-          crmShowFeedback();
+          try { crmShowFeedback(); } catch(e) { console.warn('CRM feedback error', e); }
           toggleTransport(false);
         }, _t2);
+        currentBeat = (currentBeat + 1) % beatsPerMeasure;
         return;
       }
 
