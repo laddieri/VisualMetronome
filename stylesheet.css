@@ -224,96 +224,40 @@ main {
   font-style: italic;
 }
 
-/* ── Check My Rhythm feedback panel ─────────────────────────────────────────── */
+/* ── Check My Rhythm feedback pill (non-blocking, floats above the staff) ────── */
 .crm-feedback-panel {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9000;
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.crm-feedback-inner {
-  background: var(--vm-surface, #fff);
-  border-radius: 16px;
-  padding: 28px 32px;
-  max-width: 440px;
-  width: 90vw;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.28);
-  text-align: center;
-}
-
-.crm-feedback-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0 0 18px;
-  color: var(--vm-fg-1, #1a1a2e);
-}
-
-.crm-feedback-notes {
-  display: flex;
-  flex-wrap: wrap;
   gap: 12px;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-
-.crm-note-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-
-.crm-note-dot {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
-}
-
-.crm-note-on     { background: #27ae60; }
-.crm-note-early  { background: #e67e22; }
-.crm-note-late   { background: #e67e22; }
-.crm-note-missed { background: #e74c3c; }
-
-.crm-note-label {
-  font-size: 11px;
-  color: var(--vm-fg-3, #555);
+  padding: 10px 16px;
+  background: var(--vm-surface, #fff);
+  border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22);
   white-space: nowrap;
 }
 
 .crm-feedback-score {
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--vm-fg-2, #333);
-  margin-bottom: 22px;
-  font-weight: 500;
-}
-
-.crm-feedback-btns {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
 }
 
 .crm-btn {
-  padding: 10px 26px;
-  border-radius: 8px;
+  padding: 7px 18px;
+  border-radius: 999px;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   transition: opacity 0.15s;
 }
 
-.crm-btn:hover { opacity: 0.85; }
+.crm-btn:hover { opacity: 0.82; }
 
 .crm-btn-primary {
   background: var(--vm-indigo, #5B5FEF);
