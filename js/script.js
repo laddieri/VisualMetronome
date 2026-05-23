@@ -6673,7 +6673,7 @@ function crmInitMic(onDone) {
       var rawCtx = Tone.context.rawContext;
       var source = rawCtx.createMediaStreamSource(stream);
       var analyser = rawCtx.createAnalyser();
-      analyser.fftSize = 1024;
+      analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0;
       source.connect(analyser);
       // Only commit state after everything succeeds
@@ -6707,7 +6707,10 @@ function crmMonitorLoop() {
     for (var i = 0; i < len; i++) sumSq += crmTimeSamples[i] * crmTimeSamples[i];
     var rms = Math.sqrt(sumSq / len);
     if (rms > 0.05 && (now - crmLastHitTime) > 0.12) {
-      crmDetectedHits.push(now);
+      // Subtract half the analysis buffer duration: the onset happened somewhere in the
+      // last fftSize samples, not at the rAF frame boundary.
+      var halfBuf = crmAnalyserNode.fftSize / (2 * Tone.context.rawContext.sampleRate);
+      crmDetectedHits.push(now - halfBuf);
       crmLastHitTime = now;
     }
   }
@@ -6732,6 +6735,10 @@ function crmEndMonitoring() {
 function crmComputeExpectedHits() {
   var expected = [];
   var beatDur = Tone.Time("4n").toSeconds();
+  var rawCtx = Tone.context.rawContext;
+  // The user hears the metronome at T + outputLatency, so their timing reference is
+  // shifted later by that amount. Offset expected hits to match their perception.
+  var outputLatency = rawCtx.outputLatency || 0;
   for (var b = 0; b < customRhythmPattern.length; b++) {
     var pat = customRhythmPattern[b];
     if (crIsContinuation(pat)) continue;
@@ -6745,7 +6752,7 @@ function crmComputeExpectedHits() {
       var tied = (i === 0) ? tiedFromPrev
                : (customRhythmNoteTies[b] && customRhythmNoteTies[b][i - 1] === true);
       if (tied) continue;
-      expected.push(crmSilentStartTime + b * beatDur + subs[i].offset * beatDur);
+      expected.push(crmSilentStartTime + outputLatency + b * beatDur + subs[i].offset * beatDur);
     }
   }
   return expected;
