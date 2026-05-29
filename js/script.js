@@ -64,15 +64,27 @@ var practiceRhythmEnabled = false;  // alternates sound/silent measures
 var practiceRhythmMeasureIdx = -1;  // incremented at each measure start; even=sound, odd=silent
 var checkMyRhythmEnabled = false;   // mic-based accuracy feedback for practice rhythm
 var crmMicStream        = null;     // MediaStream from getUserMedia
-var crmAnalyserNode     = null;     // AnalyserNode on the mic stream
 var crmSourceNode       = null;     // MediaStreamSourceNode
+var crmProcessorNode    = null;     // ScriptProcessorNode that inspects every sample block
+var crmSinkNode         = null;     // muted GainNode so the processor keeps firing without feedback
 var crmDetectedHits     = [];       // AudioContext timestamps of detected onset peaks
 var crmSilentStartTime  = 0;        // AudioContext time when silent measure began
 var crmSilentEndTime    = 0;        // AudioContext time when silent measure ends
 var crmMonitoring       = false;    // true only during the silent measure
-var crmLastHitTime      = -999;     // debounce: last detected hit time
-var crmRAF              = null;     // requestAnimationFrame id
-var crmTimeSamples      = null;     // reusable Float32Array for analyser reads
+var crmLastHitTime      = -999;     // refractory: time of last detected hit
+var crmNoiseFloor       = 0;        // running estimate of background level (adaptive threshold)
+var crmHpPrevIn         = 0;        // one-pole high-pass filter state (previous input sample)
+var crmHpPrevOut        = 0;        // one-pole high-pass filter state (previous output sample)
+var crmArmed            = true;     // true when energy is below threshold (ready for next onset)
+
+// Onset-detection tuning constants
+var CRM_BLOCK_SIZE   = 512;   // ScriptProcessor block (~11.6 ms @ 44.1 kHz); fires continuously
+var CRM_HOP          = 64;    // sub-block analysed for fine onset timing (~1.5 ms @ 44.1 kHz)
+var CRM_ABS_MIN_RMS  = 0.018; // absolute energy floor — below this is treated as silence
+var CRM_RISE_FACTOR  = 2.5;   // onset must exceed this multiple of the adaptive noise floor
+var CRM_REARM_FACTOR = 0.55;  // energy must fall back below threshold*this before another onset
+var CRM_REFRACTORY_S = 0.07;  // min seconds between onsets (~214 bpm sixteenth notes)
+var CRM_HP_R         = 0.97;  // high-pass coefficient (~210 Hz cutoff) to reject rumble/hum
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
 var lastBeatTime = 0;   // Track when last beat fired for animation sync
@@ -6668,19 +6680,32 @@ function crmSyncToggleRow() {
 
 function crmInitMic(onDone) {
   if (crmMicStream) { if (onDone) onDone(null); return; }
-  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  // Disable the browser's own processing: AGC/noise-suppression distort onset
+  // energy and timing, which is exactly what we're measuring.
+  navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    video: false
+  })
     .then(function(stream) {
       var rawCtx = Tone.context.rawContext;
       var source = rawCtx.createMediaStreamSource(stream);
-      var analyser = rawCtx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0;
-      source.connect(analyser);
+      // A ScriptProcessorNode fires onaudioprocess for *every* block of samples,
+      // so no audio is dropped between animation frames (the old AnalyserNode+rAF
+      // approach inspected only ~5.8 ms out of every ~16.7 ms). Route its output
+      // through a muted gain node so the graph stays "pulled" without feeding the
+      // microphone back to the speakers.
+      var processor = rawCtx.createScriptProcessor(CRM_BLOCK_SIZE, 1, 1);
+      var sink = rawCtx.createGain();
+      sink.gain.value = 0;
+      processor.onaudioprocess = crmProcessBlock;
+      source.connect(processor);
+      processor.connect(sink);
+      sink.connect(rawCtx.destination);
       // Only commit state after everything succeeds
       crmMicStream     = stream;
       crmSourceNode    = source;
-      crmAnalyserNode  = analyser;
-      crmTimeSamples   = new Float32Array(analyser.fftSize);
+      crmProcessorNode = processor;
+      crmSinkNode      = sink;
       if (onDone) onDone(null);
     })
     .catch(function(err) {
@@ -6691,30 +6716,54 @@ function crmInitMic(onDone) {
 
 function crmReleaseMic() {
   crmMonitoring = false;
-  if (crmRAF) { cancelAnimationFrame(crmRAF); crmRAF = null; }
-  if (crmAnalyserNode) { crmAnalyserNode.disconnect(); crmAnalyserNode = null; }
+  if (crmProcessorNode) { crmProcessorNode.onaudioprocess = null; crmProcessorNode.disconnect(); crmProcessorNode = null; }
+  if (crmSinkNode) { crmSinkNode.disconnect(); crmSinkNode = null; }
   if (crmSourceNode) { crmSourceNode.disconnect(); crmSourceNode = null; }
   if (crmMicStream) { crmMicStream.getTracks().forEach(function(t) { t.stop(); }); crmMicStream = null; }
-  crmTimeSamples = null;
 }
 
-function crmMonitorLoop() {
-  if (!crmMonitoring || !crmAnalyserNode) return;
-  var now = Tone.context.rawContext.currentTime;
-  if (now >= crmSilentStartTime && now < crmSilentEndTime) {
-    crmAnalyserNode.getFloatTimeDomainData(crmTimeSamples);
-    var sumSq = 0, len = crmTimeSamples.length;
-    for (var i = 0; i < len; i++) sumSq += crmTimeSamples[i] * crmTimeSamples[i];
-    var rms = Math.sqrt(sumSq / len);
-    if (rms > 0.08 && (now - crmLastHitTime) > 0.18) {
-      // Subtract half the analysis buffer duration: the onset happened somewhere in the
-      // last fftSize samples, not at the rAF frame boundary.
-      var halfBuf = crmAnalyserNode.fftSize / (2 * Tone.context.rawContext.sampleRate);
-      crmDetectedHits.push(now - halfBuf);
-      crmLastHitTime = now;
+// Called for every captured audio block. Detects percussive onsets by tracking
+// the rising edge of high-passed energy above an adaptive noise floor, and
+// timestamps each onset to the sub-block (~1.5 ms) where the rise occurred.
+function crmProcessBlock(e) {
+  if (!crmMonitoring) return;
+  var rawCtx = Tone.context.rawContext;
+  var data   = e.inputBuffer.getChannelData(0);
+  var sr     = rawCtx.sampleRate;
+  var n      = data.length;
+  // Approximate capture time of the block's first sample. The block was just
+  // delivered, so its audio spans roughly [now - blockDur, now]; subtract the
+  // graph's base latency to compensate for input buffering.
+  var blockStart = rawCtx.currentTime - (n / sr) - (rawCtx.baseLatency || 0);
+
+  for (var h = 0; h + CRM_HOP <= n; h += CRM_HOP) {
+    // High-pass each sample (one-pole) then accumulate energy for this hop.
+    var sumSq = 0;
+    for (var i = 0; i < CRM_HOP; i++) {
+      var x  = data[h + i];
+      var hp = CRM_HP_R * (crmHpPrevOut + x - crmHpPrevIn);
+      crmHpPrevIn  = x;
+      crmHpPrevOut = hp;
+      sumSq += hp * hp;
     }
+    var rms     = Math.sqrt(sumSq / CRM_HOP);
+    var hopTime = blockStart + h / sr;
+    var thresh  = Math.max(CRM_ABS_MIN_RMS, crmNoiseFloor * CRM_RISE_FACTOR);
+
+    if (crmArmed && rms > thresh && hopTime >= crmSilentStartTime && hopTime < crmSilentEndTime
+        && (hopTime - crmLastHitTime) > CRM_REFRACTORY_S) {
+      crmDetectedHits.push(hopTime);
+      crmLastHitTime = hopTime;
+      crmArmed = false;
+    } else if (!crmArmed && rms < thresh * CRM_REARM_FACTOR) {
+      crmArmed = true;
+    }
+
+    // Adapt the noise floor: track quiet hops quickly, loud hops slowly so a
+    // sustained note doesn't ratchet the threshold up and swallow later notes.
+    if (rms < thresh) crmNoiseFloor = crmNoiseFloor * 0.92 + rms * 0.08;
+    else              crmNoiseFloor = crmNoiseFloor * 0.995 + rms * 0.005;
   }
-  crmRAF = requestAnimationFrame(crmMonitorLoop);
 }
 
 function crmBeginMonitoring(silentStart, silentEnd) {
@@ -6722,14 +6771,15 @@ function crmBeginMonitoring(silentStart, silentEnd) {
   crmSilentEndTime   = silentEnd;
   crmDetectedHits    = [];
   crmLastHitTime     = -999;
+  crmNoiseFloor      = 0;
+  crmHpPrevIn        = 0;
+  crmHpPrevOut       = 0;
+  crmArmed           = true;
   crmMonitoring      = true;
-  if (crmRAF) cancelAnimationFrame(crmRAF);
-  crmRAF = requestAnimationFrame(crmMonitorLoop);
 }
 
 function crmEndMonitoring() {
   crmMonitoring = false;
-  if (crmRAF) { cancelAnimationFrame(crmRAF); crmRAF = null; }
 }
 
 function crmComputeExpectedHits() {
@@ -6762,25 +6812,41 @@ function crmAnalyze(expectedHits) {
   var beatDur    = Tone.Time("4n").toSeconds();
   var onWindow   = beatDur * 0.20;   // ±20% of a beat = "on time"
   var maxWindow  = beatDur * 0.45;   // up to ±45% = matched but off
-  var used       = new Array(crmDetectedHits.length).fill(false);
-  var notes      = [];
+  var usedD      = new Array(crmDetectedHits.length).fill(false);
+  var matchOfE   = new Array(expectedHits.length).fill(-1);
+
+  // Global nearest-pair assignment: consider every (expected, detected) pair
+  // within the match window, then commit them shortest-difference first. This
+  // avoids the in-order greedy mistake of letting an early expected note grab a
+  // detected hit that actually belongs to its neighbour.
+  var pairs = [];
   for (var e = 0; e < expectedHits.length; e++) {
-    var bestDiff = Infinity, bestIdx = -1;
     for (var d = 0; d < crmDetectedHits.length; d++) {
-      if (used[d]) continue;
       var diff = crmDetectedHits[d] - expectedHits[e];
-      if (Math.abs(diff) < Math.abs(bestDiff)) { bestDiff = diff; bestIdx = d; }
+      if (Math.abs(diff) <= maxWindow) pairs.push({ e: e, d: d, abs: Math.abs(diff), diff: diff });
     }
-    if (bestIdx >= 0 && Math.abs(bestDiff) <= maxWindow) {
-      used[bestIdx] = true;
-      var status = Math.abs(bestDiff) < onWindow ? 'on' : (bestDiff < 0 ? 'early' : 'late');
-      notes.push({ status: status, diff: bestDiff });
-    } else {
+  }
+  pairs.sort(function(a, b) { return a.abs - b.abs; });
+  for (var p = 0; p < pairs.length; p++) {
+    var pr = pairs[p];
+    if (matchOfE[pr.e] !== -1 || usedD[pr.d]) continue;
+    matchOfE[pr.e] = pr.d;
+    usedD[pr.d] = true;
+  }
+
+  var notes = [];
+  for (var e2 = 0; e2 < expectedHits.length; e2++) {
+    var di = matchOfE[e2];
+    if (di === -1) {
       notes.push({ status: 'missed', diff: null });
+    } else {
+      var d2 = crmDetectedHits[di] - expectedHits[e2];
+      var status = Math.abs(d2) < onWindow ? 'on' : (d2 < 0 ? 'early' : 'late');
+      notes.push({ status: status, diff: d2 });
     }
   }
   var extraHits = [];
-  for (var d = 0; d < used.length; d++) { if (!used[d]) extraHits.push(crmDetectedHits[d]); }
+  for (var d3 = 0; d3 < usedD.length; d3++) { if (!usedD[d3]) extraHits.push(crmDetectedHits[d3]); }
   return { notes: notes, extraHits: extraHits };
 }
 
