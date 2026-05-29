@@ -6945,6 +6945,27 @@ function crmRenderFeedbackOnStaff(result, visualXs) {
     }
   });
 
+  // Draw extra (unexpected) hits as red marks below the note row. Without this,
+  // playing a dense stream of notes (e.g. straight 16ths) would light up every
+  // expected note green and hide the spurious in-between hits, making a sloppy
+  // performance look perfect. Map each hit's time linearly onto the beat grid.
+  var rawCtx = Tone.context.rawContext;
+  var outLat = (rawCtx && rawCtx.outputLatency) || 0;
+  var dotR   = (2.5 * sc);
+  var extraY = noteY + 13 * sc;
+  result.extraHits.forEach(function(t) {
+    var p = (t - crmSilentStartTime - outLat) / beatDur;       // beats from measure start
+    if (p < -0.25 || p > beatsPerMeasure + 0.25) return;       // ignore stray edge captures
+    var baseX = 40 + p * 70;
+    var dispX = notationTx + baseX * sc;
+    var c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', dispX.toFixed(1));
+    c.setAttribute('cy', extraY.toFixed(1));
+    c.setAttribute('r', dotR.toFixed(1));
+    c.setAttribute('fill', '#e74c3c');
+    g.appendChild(c);
+  });
+
   svg.appendChild(g);
 }
 
@@ -6990,7 +7011,9 @@ function crmShowFeedback() {
   var onCount   = result.notes.filter(function(n) { return n.status === 'on'; }).length;
   var total     = result.notes.length;
   var scoreText = onCount + ' of ' + total + ' note' + (total !== 1 ? 's' : '') + ' on time';
-  if (result.extraHits.length > 0) scoreText += ' · ' + result.extraHits.length + ' extra';
+  if (result.extraHits.length > 0) {
+    scoreText += ' · ' + result.extraHits.length + ' extra hit' + (result.extraHits.length !== 1 ? 's' : '');
+  }
   scoreEl.textContent = scoreText;
   panel.style.display = '';
 }
