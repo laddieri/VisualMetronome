@@ -6945,7 +6945,50 @@ function crmRenderFeedbackOnStaff(result, visualXs) {
     }
   });
 
+  // Draw extra (unexpected) hits as red marks below the note row. Without this,
+  // playing a dense stream of notes (e.g. straight 16ths) would light up every
+  // expected note green and hide the spurious in-between hits, making a sloppy
+  // performance look perfect. Map each hit's time linearly onto the beat grid.
+  var rawCtx = Tone.context.rawContext;
+  var outLat = (rawCtx && rawCtx.outputLatency) || 0;
+  var dotR   = (2.5 * sc);
+  var extraY = noteY + 13 * sc;
+  result.extraHits.forEach(function(t) {
+    var p = (t - crmSilentStartTime - outLat) / beatDur;       // beats from measure start
+    if (p < -0.25 || p > beatsPerMeasure + 0.25) return;       // ignore stray edge captures
+    var baseX = 40 + p * 70;
+    var dispX = notationTx + baseX * sc;
+    var c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', dispX.toFixed(1));
+    c.setAttribute('cy', extraY.toFixed(1));
+    c.setAttribute('r', dotR.toFixed(1));
+    c.setAttribute('fill', '#e74c3c');
+    g.appendChild(c);
+  });
+
   svg.appendChild(g);
+}
+
+function crmComputeScore(result) {
+  // 100% means every expected note was clapped within the green "on-time"
+  // window with no missed and no extra hits. Notes outside the on-time window
+  // but still matched earn partial credit that fades to 0 at the match limit;
+  // missed notes earn nothing, and spurious extra hits dilute the score like
+  // wrong notes would.
+  var beatDur   = Tone.Time("4n").toSeconds();
+  var onWindow  = beatDur * 0.20;   // must match crmAnalyze
+  var maxWindow = beatDur * 0.45;
+  var total     = result.notes.length;
+  if (total === 0) return 0;
+  var sum = 0;
+  result.notes.forEach(function(n) {
+    if (n.status === 'missed') return;                 // no credit
+    var ad = Math.abs(n.diff);
+    if (ad <= onWindow) { sum += 1; return; }          // full credit (green)
+    sum += Math.max(0, 1 - (ad - onWindow) / (maxWindow - onWindow));
+  });
+  var denom = total + result.extraHits.length;
+  return Math.round((sum / denom) * 100);
 }
 
 function crmShowFeedback() {
@@ -6954,14 +6997,23 @@ function crmShowFeedback() {
   var result    = crmAnalyze(expected);
   var panel     = document.getElementById('crm-feedback-panel');
   var scoreEl   = document.getElementById('crm-feedback-score');
+  var pctEl     = document.getElementById('crm-feedback-pct');
   if (!panel) return;
 
   crmRenderFeedbackOnStaff(result, visualXs);
 
+  var pct       = crmComputeScore(result);
+  if (pctEl) {
+    pctEl.textContent = pct + '%';
+    pctEl.style.color = pct >= 90 ? '#27ae60' : (pct >= 60 ? '#e67e22' : '#e74c3c');
+  }
+
   var onCount   = result.notes.filter(function(n) { return n.status === 'on'; }).length;
   var total     = result.notes.length;
   var scoreText = onCount + ' of ' + total + ' note' + (total !== 1 ? 's' : '') + ' on time';
-  if (result.extraHits.length > 0) scoreText += ' · ' + result.extraHits.length + ' extra';
+  if (result.extraHits.length > 0) {
+    scoreText += ' · ' + result.extraHits.length + ' extra hit' + (result.extraHits.length !== 1 ? 's' : '');
+  }
   scoreEl.textContent = scoreText;
   panel.style.display = '';
 }
