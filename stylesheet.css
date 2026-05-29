@@ -241,6 +241,13 @@ main {
   white-space: nowrap;
 }
 
+.crm-feedback-pct {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+
 .crm-feedback-score {
   font-size: 14px;
   font-weight: 600;

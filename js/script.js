@@ -6948,15 +6948,44 @@ function crmRenderFeedbackOnStaff(result, visualXs) {
   svg.appendChild(g);
 }
 
+function crmComputeScore(result) {
+  // 100% means every expected note was clapped within the green "on-time"
+  // window with no missed and no extra hits. Notes outside the on-time window
+  // but still matched earn partial credit that fades to 0 at the match limit;
+  // missed notes earn nothing, and spurious extra hits dilute the score like
+  // wrong notes would.
+  var beatDur   = Tone.Time("4n").toSeconds();
+  var onWindow  = beatDur * 0.20;   // must match crmAnalyze
+  var maxWindow = beatDur * 0.45;
+  var total     = result.notes.length;
+  if (total === 0) return 0;
+  var sum = 0;
+  result.notes.forEach(function(n) {
+    if (n.status === 'missed') return;                 // no credit
+    var ad = Math.abs(n.diff);
+    if (ad <= onWindow) { sum += 1; return; }          // full credit (green)
+    sum += Math.max(0, 1 - (ad - onWindow) / (maxWindow - onWindow));
+  });
+  var denom = total + result.extraHits.length;
+  return Math.round((sum / denom) * 100);
+}
+
 function crmShowFeedback() {
   var expected  = crmComputeExpectedHits();
   var visualXs  = crmGetExpectedNoteVisualXs();
   var result    = crmAnalyze(expected);
   var panel     = document.getElementById('crm-feedback-panel');
   var scoreEl   = document.getElementById('crm-feedback-score');
+  var pctEl     = document.getElementById('crm-feedback-pct');
   if (!panel) return;
 
   crmRenderFeedbackOnStaff(result, visualXs);
+
+  var pct       = crmComputeScore(result);
+  if (pctEl) {
+    pctEl.textContent = pct + '%';
+    pctEl.style.color = pct >= 90 ? '#27ae60' : (pct >= 60 ? '#e67e22' : '#e74c3c');
+  }
 
   var onCount   = result.notes.filter(function(n) { return n.status === 'on'; }).length;
   var total     = result.notes.length;
