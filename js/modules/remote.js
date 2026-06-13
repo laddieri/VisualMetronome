@@ -251,7 +251,9 @@ function _closeRemoteModal() {
 
 // ── State broadcast ───────────────────────────────────────────────────────────
 export function sendStateUpdate() {
-  var state = {
+  // Note: this local was named `state` in the original script.js; renamed to
+  // avoid shadowing the shared `state` module object read below.
+  var payload = {
     type:             'stateUpdate',
     playing:          Tone.Transport.state === 'started',
     bpm:              state.cachedBPM,
@@ -277,12 +279,12 @@ export function sendStateUpdate() {
     beatNoteValue: state.beatNoteValue,
   };
   if (_remoteMode === 'ws' && _remoteWS && _remoteWS.readyState === WebSocket.OPEN) {
-    _remoteWS.send(JSON.stringify(state));
+    _remoteWS.send(JSON.stringify(payload));
   }
   // Send to any active PeerJS connections regardless of primary transport mode.
   // In WS mode, PeerJS runs as a backup for restricted networks (e.g. school WiFi).
   _peerConns.forEach(function (conn) {
-    if (conn.open) conn.send(state);
+    if (conn.open) conn.send(payload);
   });
 }
 
