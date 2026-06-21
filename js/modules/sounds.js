@@ -239,6 +239,7 @@ export function triggerSound(time, isAccent = false){
   switch(state.animalType) {
     case 'circle':
     case 'conductor':
+    case 'conductor3d':
     default:
       triggerClickSound(time);
       break;

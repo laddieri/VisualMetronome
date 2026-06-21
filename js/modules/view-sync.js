@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { crmSyncToggleRow } from './check-rhythm.js';
 import { crRenderNotationDisplay } from './custom-rhythm.js';
+import { start3DConductor, stop3DConductor } from './conductor3d.js';
 
 
 // Show/hide color picker based on animation type
@@ -26,7 +27,7 @@ export function updateColorPickerVisibility() {
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = (isConductor || state.animalType === 'score' || state.animalType === 'pendulum') ? 'none' : '';
+    directionGroup.style.display = (isConductor || state.animalType === 'conductor3d' || state.animalType === 'score' || state.animalType === 'pendulum') ? 'none' : '';
   }
   // Notation ball color picker — shown only for Score animation
   const notationBallColorGroup = document.getElementById('notation-ball-color-group');
@@ -46,16 +47,15 @@ export function _syncWebGPUCanvas() {
   // if (canvasWrapper) canvasWrapper.style.display  = isWebGPU ? 'none' : '';
 }
 
-// ── 3D Conductor lifecycle (disabled) ───────────────────────────────────────
-// Re-enable by restoring conductor3d.js script tag in index.html
+// ── 3D Conductor lifecycle ───────────────────────────────────────────────────
+// Start the Three.js render loop only while the 3D conductor is selected; stop
+// it (and hide its overlay) otherwise so it costs nothing in other modes.
 export function _sync3DConductor() {
-  // if (animalType === 'conductor3d') {
-  //   if (!conductor3dInstance) { conductor3dInstance = new Conductor3D(); }
-  //   if (!conductor3dInstance.initialized) { conductor3dInstance.init('.canvas-wrapper'); }
-  //   conductor3dInstance.start();
-  // } else {
-  //   if (conductor3dInstance) { conductor3dInstance.stop(); }
-  // }
+  if (state.animalType === 'conductor3d') {
+    start3DConductor();
+  } else {
+    stop3DConductor();
+  }
 }
 
 // ── Notation Score Display lifecycle ─────────────────────────────────────────

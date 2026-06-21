@@ -4,6 +4,7 @@
 import './modules/voice.js';
 import './modules/stage.js';
 import './modules/animations.js';
+import './modules/conductor3d.js';
 import './modules/camera.js';
 import './modules/settings.js';
 import './modules/audio-context.js';
