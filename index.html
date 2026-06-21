@@ -5,10 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
     <title>Visual Metronome</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
-    <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/logo-192.png">
-    <link rel="apple-touch-icon" href="assets/logo-192.png">
+    <link rel="icon" type="image/svg+xml" href="assets/pig.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/pig-favicon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/pig-192.png">
+    <link rel="apple-touch-icon" href="assets/pig-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pig Metronome">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -225,8 +231,8 @@
                   <!-- <option value="pig">🐷 Pig</option> -->
                   <!-- <option value="selfie">📸 Selfie</option> -->
                   <option value="conductor">🎼 Conductor</option>
+                  <option value="conductor3d">🎭 3D Conductor</option>
                   <option value="pendulum">🕰️ Pendulum</option>
-                  <!-- <option value="conductor3d">🎭 3D Conductor</option> -->
                   <!-- <option value="webgpu">✨ WebGPU</option> -->
                   <option id="notation-score-option" value="score">🎵 Score</option>
                 </select>
@@ -794,5 +800,17 @@
              aria-label="Animation size">
       <span class="anim-size-label" aria-hidden="true">−</span>
     </div>
+
+    <!-- PWA: register the service worker so the app is installable and works
+         offline. Skipped on file:// (service workers require http/https). -->
+    <script>
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('sw.js').catch(function (err) {
+            console.warn('Service worker registration failed:', err);
+          });
+        });
+      }
+    </script>
   </body>
 </html>

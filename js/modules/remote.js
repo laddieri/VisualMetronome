@@ -325,7 +325,7 @@ function applyRemoteCommand(msg) {
 
     case 'setAnimation': {
       var val = msg.value;
-      if (['circle', 'conductor', 'score'].indexOf(val) === -1) break;
+      if (['circle', 'conductor', 'conductor3d', 'score'].indexOf(val) === -1) break;
       state.animalType = val;
       var selector = document.getElementById('animal-selector');
       if (selector) selector.value = val;

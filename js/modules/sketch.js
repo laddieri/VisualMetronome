@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { createAnimals } from './animations.js';
+import { resize3DConductor } from './conductor3d.js';
 import { initCameraListeners, openCamera } from './camera.js';
 import { initCountingTrainerListeners } from './counting-trainer.js';
 import { crRenderNotationDisplay, crUpdateNotationBall } from './custom-rhythm.js';
@@ -161,9 +162,9 @@ export function windowResized() {
   state.canvasHeight = size.height;
   state.canvasScale = size.scale;
   resizeCanvas(state.canvasWidth, state.canvasHeight);
-  // if (conductor3dInstance && conductor3dInstance.initialized) { // disabled
-  //   conductor3dInstance.resize();
-  // }
+  // The 3D conductor sizes itself to the live canvas each frame, but nudge it
+  // immediately on resize so it doesn't lag a frame behind during drags.
+  resize3DConductor();
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -220,8 +221,8 @@ function draw() {
   } else if (state.animalType === 'score') {
     // Notation score display renders in its own SVG overlay; update the bouncing ball
     crUpdateNotationBall();
-  // } else if (animalType === 'conductor3d') { // disabled
-  //   // 3D conductor rendered by Three.js loop
+  } else if (state.animalType === 'conductor3d') {
+    // 3D conductor renders in its own Three.js overlay/loop; p5 canvas stays blank.
   } else if (state.animalType === 'conductor') {
     // Conductor mode: both hands move in a 2D beat pattern regardless of direction setting
     state.animal1.pigmove();

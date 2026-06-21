@@ -727,10 +727,13 @@ export function createAnimals() {
       state.animal1 = new PendulumMetronome();
       state.animal2 = null;
       break;
-    // case 'conductor3d': // disabled — re-enable by restoring conductor3d.js script tag
-    //   animal1 = new Circle(1);
-    //   animal2 = new Circle(-1);
-    //   break;
+    case 'conductor3d':
+      // The 3D conductor renders via its own Three.js loop; these p5 animals
+      // are never drawn but are created so any code reading state.animal1/2
+      // (e.g. resize paths) still finds valid objects.
+      state.animal1 = new Circle(1);
+      state.animal2 = new Circle(-1);
+      break;
     // case 'webgpu':      // disabled — re-enable by restoring webgpu-ball.js script tag
     //   animal1 = new Circle(1);
     //   animal2 = new Circle(-1);
