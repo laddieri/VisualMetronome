@@ -1,0 +1,19 @@
+{
+  "name": "Pig Metronome — Visual Metronome",
+  "short_name": "Pig Metronome",
+  "description": "Keep perfect time with visual cues: bouncing animations, a conductor, score practice, and a rhythm checker.",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1e293b",
+  "theme_color": "#667eea",
+  "categories": ["music", "education", "utilities"],
+  "icons": [
+    { "src": "assets/pig.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "assets/pig-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/pig-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/pig-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
