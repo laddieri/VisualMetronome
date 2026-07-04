@@ -16,6 +16,9 @@ import { state } from './state.js';
 //     "phrase" gesture every fourth measure;
 //   • an underdamped baton spring, body sway, a knee-dip pulse on each ictus,
 //     brow raises on the downbeat, breathing, blinking and idle micro-motion.
+//
+// The camera orbits the podium: drag the canvas (mouse or touch) to change
+// the viewing angle within clamped bounds; double-click resets the view.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Pattern amplitude scales with tempo: bigger, calmer strokes at slow tempos,
@@ -24,6 +27,20 @@ function tempoScale(bpm) {
   const s = 1.15 - (bpm - 60) * 0.0032;
   return Math.max(0.65, Math.min(1.15, s));
 }
+
+// ── Orbit camera constants ────────────────────────────────────────────────────
+// The camera rides a sphere around the maestro; the user can drag to orbit.
+// Angles are clamped so every reachable view stays a good shot: never behind
+// him, never under the floor, never bird's-eye.
+const CAM_TARGET = { x: 0, y: 1.0, z: 0 };
+const CAM_RADIUS = 4.2;
+const CAM_DEF_AZIMUTH = -0.15;  // default: slightly toward his baton side
+const CAM_DEF_ELEVATION = 0.17; // slightly above eye line
+const CAM_AZIMUTH_MAX = 1.2;    // ±69° around the front
+const CAM_ELEVATION_MIN = -0.05;
+const CAM_ELEVATION_MAX = 0.6;
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 class Conductor3D {
   constructor() {
@@ -65,6 +82,12 @@ class Conductor3D {
     this.batonLagY = 0;
     this.batonLagVelX = 0;
     this.batonLagVelY = 0;
+
+    // Orbit camera: drag targets + damped actual angles
+    this.camAzimuth = CAM_DEF_AZIMUTH;
+    this.camElevation = CAM_DEF_ELEVATION;
+    this.camAzimuthTarget = CAM_DEF_AZIMUTH;
+    this.camElevationTarget = CAM_DEF_ELEVATION;
   }
 
   // ── Initialization ──────────────────────────────────────────────────────
@@ -82,12 +105,11 @@ class Conductor3D {
     this.scene = new THREE.Scene();
     this.scene.background = null; // transparent — page/theme background shows through
 
-    // Musician's-eye view: front of the podium, offset a little to the side
-    // and above so the figure reads as 3D while the beat pattern stays clear
-    // (offset toward his baton side so the right-hand strokes face the camera).
+    // Musician's-eye view by default — slightly toward his baton side and
+    // above. The user can drag the canvas to orbit (see _initCameraControls);
+    // the position is derived from the orbit angles every frame.
     this.camera = new THREE.PerspectiveCamera(30, 4 / 3, 0.1, 100);
-    this.camera.position.set(-0.62, 1.72, 4.1);
-    this.camera.lookAt(-0.02, 0.98, 0);
+    this._applyCameraOrbit();
 
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     this.renderer.setClearColor(0x000000, 0);
@@ -105,8 +127,72 @@ class Conductor3D {
     this._setupLights();
     this._buildStage();
     this._buildBody();
+    this._initCameraControls();
 
     this.initialized = true;
+  }
+
+  // ── Orbit camera ──────────────────────────────────────────────────────────
+  // Drag the canvas to orbit around the maestro (mouse or touch); double-click
+  // (or double-tap) snaps back to the default angle. The overlay container
+  // keeps pointer-events:none, so only the canvas itself captures input.
+
+  _initCameraControls() {
+    const el = this.renderer.domElement;
+    el.style.pointerEvents = 'auto';
+    // One-finger vertical swipes still scroll the page on touch screens;
+    // horizontal drags (and mouse drags) orbit.
+    el.style.touchAction = 'pan-y';
+    el.style.cursor = 'grab';
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    el.addEventListener('pointerdown', (e) => {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      el.setPointerCapture(e.pointerId);
+      el.style.cursor = 'grabbing';
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      // OrbitControls convention: the scene follows the pointer — dragging
+      // right swings the camera left around him, dragging down raises it.
+      this.camAzimuthTarget = clamp(
+        this.camAzimuthTarget - dx * 0.006, -CAM_AZIMUTH_MAX, CAM_AZIMUTH_MAX);
+      this.camElevationTarget = clamp(
+        this.camElevationTarget + dy * 0.004, CAM_ELEVATION_MIN, CAM_ELEVATION_MAX);
+    });
+    const endDrag = () => { dragging = false; el.style.cursor = 'grab'; };
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+
+    el.addEventListener('dblclick', () => {
+      this.camAzimuthTarget = CAM_DEF_AZIMUTH;
+      this.camElevationTarget = CAM_DEF_ELEVATION;
+    });
+  }
+
+  _applyCameraOrbit(dt) {
+    // Damped follow gives the drag (and the reset) a physical glide.
+    const k = dt === undefined ? 1 : 1 - Math.exp(-dt / 0.12);
+    this.camAzimuth += (this.camAzimuthTarget - this.camAzimuth) * k;
+    this.camElevation += (this.camElevationTarget - this.camElevation) * k;
+
+    const az = this.camAzimuth;
+    const el = this.camElevation;
+    this.camera.position.set(
+      CAM_TARGET.x + CAM_RADIUS * Math.sin(az) * Math.cos(el),
+      CAM_TARGET.y + CAM_RADIUS * Math.sin(el),
+      CAM_TARGET.z + CAM_RADIUS * Math.cos(az) * Math.cos(el)
+    );
+    this.camera.lookAt(CAM_TARGET.x, CAM_TARGET.y, CAM_TARGET.z);
   }
 
   // Material colors are authored as sRGB hex; convert to linear so the sRGB
@@ -868,6 +954,7 @@ class Conductor3D {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this._ensureParent();
     this._updateSize();
+    this._applyCameraOrbit(dt);
     this._applyPose(this._getConductingState(), dt);
     this.renderer.render(this.scene, this.camera);
   }
