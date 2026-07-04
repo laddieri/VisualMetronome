@@ -248,6 +248,13 @@ class Conductor3D {
     this.bodyGroup = bodyGroup;
     this.scene.add(bodyGroup);
 
+    // Everything from the waist up lives in its own group so breathing and
+    // the beat "give" can move the torso WITHOUT moving the feet — bouncing
+    // the whole model made the shoes slide through the podium on every beat.
+    const upperBody = new THREE.Group();
+    this.upperBody = upperBody;
+    bodyGroup.add(upperBody);
+
     const coatMat = this._mat(COAT, { roughness: 0.88 });
     const whiteMat = this._mat(WHITE, { roughness: 0.55 });
     const skinMat = this._mat(SKIN, { roughness: 0.65 });
@@ -282,14 +289,14 @@ class Conductor3D {
     const torsoGeo = new THREE.LatheGeometry(profile, 28);
     torsoGeo.scale(1.22, 1, 0.9);
     const torso = new THREE.Mesh(torsoGeo, coatMat);
-    bodyGroup.add(torso);
+    upperBody.add(torso);
 
     // Rounded shoulders
     for (const s of [-1, 1]) {
       const pad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 18, 14), coatMat);
       pad.position.set(s * 0.195, 1.325, 0.01);
       pad.scale.set(1.0, 0.8, 0.95);
-      bodyGroup.add(pad);
+      upperBody.add(pad);
     }
 
     // Shirt bib — a shallow white ellipsoid proud of the coat front so it can
@@ -298,7 +305,7 @@ class Conductor3D {
     bibGeo.scale(0.6, 0.85, 0.42);
     const bib = new THREE.Mesh(bibGeo, whiteMat);
     bib.position.set(0, 1.17, 0.1);
-    bodyGroup.add(bib);
+    upperBody.add(bib);
 
     // Lapels — thin satin wedges hugging the chest over the bib's edges.
     const lapelMat = this._mat(0x1d1e25, { roughness: 0.35, metalness: 0.25 });
@@ -314,14 +321,14 @@ class Conductor3D {
       lapel.position.set(s * 0.015, 1.40, 0.135);
       lapel.rotation.x = -0.22;           // lean back with the chest
       lapel.rotation.y = s * 0.38;        // wrap around the ribcage
-      bodyGroup.add(lapel);
+      upperBody.add(lapel);
     }
 
     // White bow tie (white tie goes with tails) — two cones + a knot.
     const tieGroup = new THREE.Group();
     tieGroup.position.set(0, 1.39, 0.14);
     tieGroup.rotation.x = -0.2;
-    bodyGroup.add(tieGroup);
+    upperBody.add(tieGroup);
     for (const s of [-1, 1]) {
       const wingGeo = new THREE.ConeGeometry(0.026, 0.055, 10);
       wingGeo.rotateZ(s * Math.PI / 2);
@@ -337,7 +344,7 @@ class Conductor3D {
     // Coat tails hanging at the back, on a pivot so they can swing.
     const tailsGroup = new THREE.Group();
     tailsGroup.position.set(0, 0.72, -0.1);
-    bodyGroup.add(tailsGroup);
+    upperBody.add(tailsGroup);
     this.meshes.tails = tailsGroup;
     for (const s of [-1, 1]) {
       const shape = new THREE.Shape();
@@ -355,11 +362,11 @@ class Conductor3D {
     // ── Neck + head ──
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.068, 0.1, 14), skinMat);
     neck.position.set(0, 1.46, 0.01);
-    bodyGroup.add(neck);
+    upperBody.add(neck);
 
     const headGroup = new THREE.Group();
     headGroup.position.set(0, 1.6, 0.02);
-    bodyGroup.add(headGroup);
+    upperBody.add(headGroup);
     this.meshes.headGroup = headGroup;
 
     const headGeo = new THREE.SphereGeometry(0.165, 32, 26);
@@ -442,8 +449,8 @@ class Conductor3D {
     this.meshes.baton = batonGroup;
 
     // ── Arms (side −1 = his right hand, at screen-left — carries the baton) ──
-    this._buildArm(bodyGroup, 1);
-    this._buildArm(bodyGroup, -1);
+    this._buildArm(upperBody, 1);
+    this._buildArm(upperBody, -1);
   }
 
   _buildArm(parent, side) {
@@ -653,9 +660,11 @@ class Conductor3D {
     const lowerLen = 0.28;  // must match wrist group offset in _buildArm
     const shoulder = new THREE.Vector3(side * 0.235, 1.335, 0.03);
 
-    // World → body-local (bodyGroup's matrixWorld is refreshed in _applyPose
-    // right after body rotation is set, before the arms are posed).
-    const toTarget = this.bodyGroup.worldToLocal(targetWorld.clone()).sub(shoulder);
+    // World → upperBody-local (its matrixWorld is refreshed in _applyPose
+    // right after the body transform is set, before the arms are posed).
+    // The arms are children of upperBody, so breathing/beat-give of the torso
+    // is compensated automatically and the hands stay pinned to the pattern.
+    const toTarget = this.upperBody.worldToLocal(targetWorld.clone()).sub(shoulder);
 
     // Keep the target inside 94% of full extension: a near-straight arm has
     // no bend left, and the elbow visually collapses against the torso. The
@@ -801,9 +810,13 @@ class Conductor3D {
     const idlePitch = Math.sin(t * 0.47) * 0.015;
     const dip = -this.ictusPulse * this.ictusPulse * 0.018; // knee-dip on the beat
 
-    this.bodyGroup.rotation.z = this.currentSway;
-    this.bodyGroup.rotation.y = this.currentYaw + (cs.playing ? 0 : idleYaw * 0.6);
-    this.bodyGroup.position.y = breath + dip;
+    // All body language lives on upperBody: sway/yaw lean the torso from the
+    // hips and breath/beat-give raise it, while the legs and shoes stay
+    // perfectly planted. (Animating the whole model bounced the shoes through
+    // the podium on every click.)
+    this.upperBody.rotation.z = this.currentSway;
+    this.upperBody.rotation.y = this.currentYaw + (cs.playing ? 0 : idleYaw * 0.6);
+    this.upperBody.position.y = breath + dip;
 
     // Head: leads the baton slightly, nods on the beat, wanders when idle.
     const nodTarget = cs.playing ? this.ictusPulse * 0.09 + this.downbeatPulse * 0.05 : 0;
@@ -840,9 +853,9 @@ class Conductor3D {
     if (this.spot) this.spot.intensity = 1.0 + this.ictusPulse * 0.22;
 
     // ── Arms ──
-    // Body transform is final at this point — refresh its world matrix so the
+    // Body transform is final at this point — refresh the world matrix so the
     // arm solver's world→local conversion sees the pose being rendered.
-    this.bodyGroup.updateWorldMatrix(true, false);
+    this.upperBody.updateWorldMatrix(true, false);
     this._poseArm('R', this.smoothR, cs.playing ? cs.t : 0); // his right = baton
     this._poseArm('L', this.smoothL, 0);
     this._updateBatonDrag(this.smoothR, dt, cs.playing);
