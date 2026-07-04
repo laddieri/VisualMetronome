@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v1';
+const CACHE_VERSION = 'vm-v2';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 

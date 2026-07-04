@@ -13,7 +13,7 @@ import {
   applyBPM, loadTempoPresets, populateTempoMarkingDropdown, renderTempoPresetsList, saveTempoPresets, syncTempoMarkingDropdown,
 } from './tempo.js';
 import { _syncAnimSize } from './transport.js';
-import { _syncNotationDisplay, _syncPracticeRow, updateColorPickerVisibility } from './view-sync.js';
+import { _sync3DConductor, _syncNotationDisplay, _syncPracticeRow, updateColorPickerVisibility } from './view-sync.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ function setup() {
     updateColorPickerVisibility();
 
     createAnimals(); // Recreate animals when selection changes
-    // _sync3DConductor(); // disabled
+    _sync3DConductor();
     // _syncWebGPUCanvas(); // disabled
     _syncNotationDisplay();
     _syncAnimSize();
