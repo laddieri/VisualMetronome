@@ -686,9 +686,9 @@ class Conductor3D {
 
   // Baton inertia: the tip lags the hand through fast strokes and wobbles
   // briefly when the hand stops at an ictus. The baton is aimed in WORLD
-  // space (tip forward and up, wherever the arm is) — a real conductor's
+  // space (near-horizontal, wherever the arm is) — a real conductor's
   // wrist keeps the stick pointed at the orchestra even as the arm sweeps.
-  _updateBatonDrag(pos, dt) {
+  _updateBatonDrag(pos, dt, playing) {
     if (!this.meshes.baton) return;
     if (!this.prevHandPos) this.prevHandPos = pos.clone();
 
@@ -704,15 +704,20 @@ class Conductor3D {
     this.batonLagX = Math.max(-0.7, Math.min(0.7, this.batonLagX + this.batonLagVelX));
     this.batonLagY = Math.max(-0.7, Math.min(0.7, this.batonLagY + this.batonLagVelY));
 
+    // Base attitude: while conducting the stick rides just above horizontal,
+    // an extension of the forearm; at rest it relaxes tip-down. Yawed outward
+    // so it doesn't point dead at the camera and foreshorten to a dot.
+    const basePitch = playing ? -0.32 : 0.5;
+    this.batonPitch = this.batonPitch === undefined ? basePitch : this.batonPitch;
+    this.batonPitch += (basePitch - this.batonPitch) * Math.min(1, dt * 4);
+
     const wrist = this.bones.wristR;
     if (!wrist) return;
     wrist.updateWorldMatrix(true, false);
     const wq = new THREE.Quaternion();
     wrist.getWorldQuaternion(wq);
-    // Tip up and angled out so the stick reads clearly from the front —
-    // pointing it straight at the audience would foreshorten it to a dot.
     const desired = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(-1.0 + this.batonLagX, 0.35 + this.batonLagY, 0)
+      new THREE.Euler(this.batonPitch + this.batonLagX, 0.55 + this.batonLagY, 0)
     );
     this.meshes.baton.quaternion.copy(wq.invert().multiply(desired));
   }
@@ -822,7 +827,7 @@ class Conductor3D {
     // ── Arms ──
     this._poseArm(1, this.smoothR, cs.playing ? cs.t : 0);
     this._poseArm(-1, this.smoothL, 0);
-    this._updateBatonDrag(this.smoothR, dt);
+    this._updateBatonDrag(this.smoothR, dt, cs.playing);
   }
 
   // ── Frame loop ────────────────────────────────────────────────────────────
