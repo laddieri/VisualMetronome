@@ -14,7 +14,9 @@ export function updateColorPickerVisibility() {
   const isCircle = (state.animalType === 'circle');
   const conductorSelfieBtn = document.getElementById('conductor-selfie-btn');
   if (conductorSelfieBtn) {
-    conductorSelfieBtn.style.display = isConductor ? '' : 'none';
+    // Both conductors (2D and 3D) can wear the user's face
+    conductorSelfieBtn.style.display =
+      (isConductor || state.animalType === 'conductor3d') ? '' : 'none';
   }
   const circleSelfieBtn = document.getElementById('circle-selfie-btn');
   if (circleSelfieBtn) {

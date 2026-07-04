@@ -20,7 +20,8 @@ export const state = {
 // Selfie capture variables
   selfieImage: null,
   selfieImageDataURL: null, // Raw data URL of current selfie for saving
-  conductorSelfieImage: null, // Selfie for the conductor's face (optional)
+  conductorSelfieImage: null, // Selfie for the conductor's face (optional, p5 image)
+  conductorSelfieImageDataURL: null, // Same selfie as data URL (3D conductor texture)
   cameraTarget: 'selfie', // 'selfie' or 'conductor' — controls where capturePhoto() stores the result
   mirrorSelfies: true, // When true, selfie images face each other
   DEFAULT_TEMPO_PRESETS: [
