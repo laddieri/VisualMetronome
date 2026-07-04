@@ -37,9 +37,10 @@ class Conductor3D {
     this.initialized = false;
     this.animationFrameId = null;
 
-    // Smoothed motion state
-    this.smoothR = new THREE.Vector3(0.14, 0.95, 0.2);  // right-hand target
-    this.smoothL = new THREE.Vector3(-0.15, 0.96, 0.18); // left-hand target
+    // Smoothed motion state. He faces the audience, so his right (baton)
+    // hand is at world/screen -x and his left at +x.
+    this.smoothR = new THREE.Vector3(-0.14, 0.95, 0.2); // right-hand (baton) target
+    this.smoothL = new THREE.Vector3(0.15, 0.96, 0.18); // left-hand target
     this.currentSway = 0;
     this.currentYaw = 0;
     this.currentNod = 0;
@@ -78,11 +79,12 @@ class Conductor3D {
     this.scene = new THREE.Scene();
     this.scene.background = null; // transparent — page/theme background shows through
 
-    // Musician's-eye view: front of the podium, offset a little to the right
-    // and above so the figure reads as 3D while the beat pattern stays clear.
+    // Musician's-eye view: front of the podium, offset a little to the side
+    // and above so the figure reads as 3D while the beat pattern stays clear
+    // (offset toward his baton side so the right-hand strokes face the camera).
     this.camera = new THREE.PerspectiveCamera(30, 4 / 3, 0.1, 100);
-    this.camera.position.set(0.62, 1.72, 4.1);
-    this.camera.lookAt(0.02, 0.98, 0);
+    this.camera.position.set(-0.62, 1.72, 4.1);
+    this.camera.lookAt(-0.02, 0.98, 0);
 
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     this.renderer.setClearColor(0x000000, 0);
@@ -125,7 +127,7 @@ class Conductor3D {
 
     // Spotlight from high front — the "stage" light; pulses gently on beats.
     const spot = new THREE.SpotLight(0xffe2b8, 1.0);
-    spot.position.set(0.8, 4.5, 2.6);
+    spot.position.set(-0.8, 4.5, 2.6);
     spot.angle = 0.4;
     spot.penumbra = 0.7;
     spot.decay = 0;
@@ -135,16 +137,16 @@ class Conductor3D {
     this.spot = spot;
 
     const key = new THREE.DirectionalLight(0xfff2df, 0.7);
-    key.position.set(-2.2, 3.5, 3.5);
+    key.position.set(2.2, 3.5, 3.5);
     this.scene.add(key);
 
     const fill = new THREE.DirectionalLight(0xa9c2ff, 0.3);
-    fill.position.set(2.8, 1.6, 2.2);
+    fill.position.set(-2.8, 1.6, 2.2);
     this.scene.add(fill);
 
-    // Rim from behind-left so the white hair and shoulders catch an edge.
+    // Rim from behind-right so the white hair and shoulders catch an edge.
     const rim = new THREE.DirectionalLight(0xfff6e6, 0.55);
-    rim.position.set(-1.6, 2.6, -2.6);
+    rim.position.set(1.6, 2.6, -2.6);
     this.scene.add(rim);
   }
 
@@ -205,7 +207,7 @@ class Conductor3D {
 
     // Music stand between maestro and audience: pole + tilted desk + score.
     const standGroup = new THREE.Group();
-    standGroup.position.set(-0.2, 0, 0.72);
+    standGroup.position.set(0.2, 0, 0.72);
     standGroup.rotation.y = Math.PI; // score faces the maestro, back to audience
     this.scene.add(standGroup);
     const standMat = this._mat(0x33363c, { roughness: 0.5, metalness: 0.55 });
@@ -436,7 +438,7 @@ class Conductor3D {
     batonGroup.add(bulb);
     this.meshes.baton = batonGroup;
 
-    // ── Arms (right = side 1 carries the baton) ──
+    // ── Arms (side −1 = his right hand, at screen-left — carries the baton) ──
     this._buildArm(bodyGroup, 1);
     this._buildArm(bodyGroup, -1);
   }
@@ -485,12 +487,13 @@ class Conductor3D {
     thumb.position.set(side * -0.032, -0.02, 0.02);
     wristGroup.add(thumb);
 
-    if (side === 1 && this.meshes.baton) {
+    if (side === -1 && this.meshes.baton) {
       wristGroup.add(this.meshes.baton);
       this.meshes.baton.position.set(0, -0.045, 0.03);
     }
 
-    const k = side === 1 ? 'R' : 'L';
+    // Keys are anatomical: he faces the audience, so his Right arm is side −1.
+    const k = side === -1 ? 'R' : 'L';
     this.bones['shoulder' + k] = shoulderGroup;
     this.bones['upperArm' + k] = upperArmGroup;
     this.bones['elbow' + k] = elbowGroup;
@@ -498,16 +501,18 @@ class Conductor3D {
   }
 
   // ── Conducting patterns ───────────────────────────────────────────────────
-  // Right-hand beat figures in world space (x = screen left/right, y = up,
-  // z = toward the audience). Each beat: ictus (where the beat lands) and
+  // Right-hand beat figures. Each beat: ictus (where the beat lands) and
   // rebound (the control point the hand floats through after the beat).
-  // Orientation matches the 2D conductor: beat 2 of 4/4 goes screen-left.
+  // The tables are authored in the conductor's OWN frame (+x = his left,
+  // labels "left"/"right" are his); P() mirrors x into world space, where
+  // his right (baton) hand lives at −x. So beat 2 of 4/4 crosses toward his
+  // left, which the audience sees as screen-right — true right-handed form.
 
   get3DPattern() {
     const n = state.beatsPerMeasure;
     // z − 0.06: the conducting plane sits close to the chest so the arm's
     // reach budget goes into stroke width/height instead of forward extension.
-    const P = (ix, iy, iz, rx, ry, rz) => ({ ictus: [ix, iy, iz - 0.06], rebound: [rx, ry, rz - 0.06] });
+    const P = (ix, iy, iz, rx, ry, rz) => ({ ictus: [-ix, iy, iz - 0.06], rebound: [-rx, ry, rz - 0.06] });
     const patterns = {
       1: [P(0.12, 0.90, 0.42,   0.12, 1.50, 0.32)],
       2: [
@@ -596,8 +601,8 @@ class Conductor3D {
     // so strokes shrink at fast tempos and open up at slow ones, then shifted
     // toward the right shoulder so strokes stay beside the body, not across it.
     const scale = tempoScale(state.cachedBPM || 96);
-    const pivot = [0.12, 1.06, 0.34];
-    const OFFSET = [0.08, 0.06, 0];
+    const pivot = [-0.12, 1.06, 0.34];
+    const OFFSET = [-0.08, 0.06, 0];
     // Horizontal strokes get an extra boost so left/right beats read clearly.
     const AXIS = [1.3, 1.05, 1.0];
     const sp = (v, i) => pivot[i] + (v - pivot[i]) * scale * AXIS[i] + OFFSET[i];
@@ -645,8 +650,10 @@ class Conductor3D {
     const h = h2 > 0 ? Math.sqrt(h2) : 0;
     const u = toTarget.clone().normalize();
 
-    // Elbow points outward, down and slightly back — a natural conducting arm.
-    const pole = new THREE.Vector3(side, -0.55, -0.65).normalize();
+    // Elbow flares OUT to the side (slightly down and back) — conductors keep
+    // their elbows away from the ribs, "holding a beach ball". A mostly-down
+    // pole tucks the elbows under the shoulders, which reads as pinned arms.
+    const pole = new THREE.Vector3(side * 1.3, -0.55, -0.45).normalize();
     const v = pole.clone().sub(u.clone().multiplyScalar(pole.dot(u)));
     if (v.lengthSq() < 1e-6) v.set(side, 0, 0).sub(u.clone().multiplyScalar(u.x * side));
     v.normalize();
@@ -675,8 +682,8 @@ class Conductor3D {
     elbow.quaternion.setFromUnitVectors(DOWN, forearmDirLocal);
 
     if (wrist) {
-      if (side === 1) {
-        // Wrist flick that peaks mid-rebound and settles into the next ictus.
+      if (side === -1) {
+        // Baton wrist: flick that peaks mid-rebound, settles into the next ictus.
         wrist.rotation.set(-0.15 + Math.sin(beatT * Math.PI) * 0.18, 0, 0);
       } else {
         wrist.rotation.set(-0.35, side * -0.2, 0); // palm angled in, held calm
@@ -705,8 +712,9 @@ class Conductor3D {
     this.batonLagY = Math.max(-0.7, Math.min(0.7, this.batonLagY + this.batonLagVelY));
 
     // Base attitude: while conducting the stick rides just above horizontal,
-    // an extension of the forearm; at rest it relaxes tip-down. Yawed outward
-    // so it doesn't point dead at the camera and foreshorten to a dot.
+    // an extension of the forearm; at rest it relaxes tip-down. Yawed INWARD
+    // (tip toward the left hand, +x) like a real grip — which also keeps it
+    // off the camera axis so it doesn't foreshorten to a dot.
     const basePitch = playing ? -0.32 : 0.5;
     this.batonPitch = this.batonPitch === undefined ? basePitch : this.batonPitch;
     this.batonPitch += (basePitch - this.batonPitch) * Math.min(1, dt * 4);
@@ -739,14 +747,15 @@ class Conductor3D {
     this.ictusPulse = Math.max(0, this.ictusPulse - dt * 5);
     this.downbeatPulse = Math.max(0, this.downbeatPulse - dt * 3);
 
-    // ── Right-hand target ──
-    const restR = new THREE.Vector3(0.17, 0.92, 0.24);
+    // ── Right-hand (baton, at −x) target ──
+    const restR = new THREE.Vector3(-0.17, 0.92, 0.24);
     const targetR = cs.playing
       ? new THREE.Vector3(cs.pos[0], cs.pos[1], cs.pos[2])
       : restR;
 
-    // ── Left-hand target: independent, expressive ──
-    const targetL = new THREE.Vector3(-0.21, 1.1, 0.3);
+    // ── Left-hand (at +x) target: independent, expressive ──
+    // Held a bit wide so the gloves don't brush when the baton crosses center.
+    const targetL = new THREE.Vector3(0.25, 1.1, 0.3);
     if (cs.playing) {
       // Quiet ride: echo a fraction of the baton's height.
       targetL.y += (targetR.y - 1.06) * 0.18;
@@ -755,16 +764,16 @@ class Conductor3D {
       if (cs.fromIdx === cs.n - 1) lift = cs.progress;       // rising into 1
       else if (cs.fromIdx === 0) lift = 1 - cs.progress;     // settling after 1
       targetL.y += lift * 0.13;
-      targetL.x -= lift * 0.05;
+      targetL.x += lift * 0.05;
       // Sustained phrase gesture every 4th measure: a slow outward arc.
       if (this.measureCount > 0 && this.measureCount % 4 === 0) {
         const ph = Math.sin(Math.PI * cs.measureProgress);
-        targetL.x -= ph * 0.17;
+        targetL.x += ph * 0.17;
         targetL.y += ph * 0.2;
         targetL.z += ph * 0.02;
       }
     } else {
-      targetL.set(-0.16, 0.9, 0.2); // resting at the side
+      targetL.set(0.16, 0.9, 0.2); // resting at the side
     }
 
     // Smooth targets (~40 ms time constant): removes pops on start/stop and
@@ -773,10 +782,10 @@ class Conductor3D {
     this.smoothR.lerp(targetR, k);
     this.smoothL.lerp(targetL, k);
 
-    // ── Body language ──
+    // ── Body language ── (baton hand's neutral x is −0.2)
     const handX = this.smoothR.x;
-    const swayTarget = cs.playing ? -(handX - 0.2) * 0.10 : 0;
-    const yawTarget = cs.playing ? -(handX - 0.2) * 0.14 : 0;
+    const swayTarget = cs.playing ? -(handX + 0.2) * 0.10 : 0;
+    const yawTarget = cs.playing ? -(handX + 0.2) * 0.14 : 0;
     this.currentSway += (swayTarget - this.currentSway) * Math.min(1, dt * 4);
     this.currentYaw += (yawTarget - this.currentYaw) * Math.min(1, dt * 4);
 
@@ -795,7 +804,7 @@ class Conductor3D {
     this.currentNod += (nodTarget - this.currentNod) * Math.min(1, dt * 10);
     const head = this.meshes.headGroup;
     head.rotation.x = this.currentNod + (cs.playing ? -0.04 : idlePitch);
-    head.rotation.y = (cs.playing ? (handX - 0.2) * 0.3 : idleYaw);
+    head.rotation.y = (cs.playing ? (handX + 0.2) * 0.3 : idleYaw);
     head.rotation.z = -this.currentSway * 0.5;
 
     // Brows: pop on the downbeat.
@@ -825,8 +834,8 @@ class Conductor3D {
     if (this.spot) this.spot.intensity = 1.0 + this.ictusPulse * 0.22;
 
     // ── Arms ──
-    this._poseArm(1, this.smoothR, cs.playing ? cs.t : 0);
-    this._poseArm(-1, this.smoothL, 0);
+    this._poseArm(-1, this.smoothR, cs.playing ? cs.t : 0); // his right = baton
+    this._poseArm(1, this.smoothL, 0);
     this._updateBatonDrag(this.smoothR, dt, cs.playing);
   }
 
