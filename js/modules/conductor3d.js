@@ -650,8 +650,10 @@ class Conductor3D {
     const h = h2 > 0 ? Math.sqrt(h2) : 0;
     const u = toTarget.clone().normalize();
 
-    // Elbow points outward, down and slightly back — a natural conducting arm.
-    const pole = new THREE.Vector3(side, -0.55, -0.65).normalize();
+    // Elbow flares OUT to the side (slightly down and back) — conductors keep
+    // their elbows away from the ribs, "holding a beach ball". A mostly-down
+    // pole tucks the elbows under the shoulders, which reads as pinned arms.
+    const pole = new THREE.Vector3(side * 1.3, -0.55, -0.45).normalize();
     const v = pole.clone().sub(u.clone().multiplyScalar(pole.dot(u)));
     if (v.lengthSq() < 1e-6) v.set(side, 0, 0).sub(u.clone().multiplyScalar(u.x * side));
     v.normalize();
@@ -752,7 +754,8 @@ class Conductor3D {
       : restR;
 
     // ── Left-hand (at +x) target: independent, expressive ──
-    const targetL = new THREE.Vector3(0.21, 1.1, 0.3);
+    // Held a bit wide so the gloves don't brush when the baton crosses center.
+    const targetL = new THREE.Vector3(0.25, 1.1, 0.3);
     if (cs.playing) {
       // Quiet ride: echo a fraction of the baton's height.
       targetL.y += (targetR.y - 1.06) * 0.18;
