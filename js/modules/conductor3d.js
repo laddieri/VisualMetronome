@@ -19,6 +19,10 @@ import { state } from './state.js';
 //
 // The camera orbits the podium: drag the canvas (mouse or touch) to change
 // the viewing angle within clamped bounds; double-click resets the view.
+//
+// Selfie mode: the 📷 button (camera module, cameraTarget 'conductor') maps
+// the user's photo onto a curved face plate hugging the head; the cartoon
+// features hide underneath and return when the selfie is cleared.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Pattern amplitude scales with tempo: bigger, calmer strokes at slow tempos,
@@ -467,10 +471,15 @@ class Conductor3D {
       headGroup.add(ear);
     }
 
+    // Cartoon features are collected so selfie mode can swap them for the
+    // user's photo (and back) without rebuilding the head.
+    this.meshes.faceFeatures = [];
+
     // Nose — friendly round bulb.
     const nose = new THREE.Mesh(new THREE.SphereGeometry(0.03, 14, 12), this._mat(0xeba97e, { roughness: 0.6 }));
     nose.position.set(0, -0.02, 0.152);
     headGroup.add(nose);
+    this.meshes.faceFeatures.push(nose);
 
     // Dot eyes (scaled to blink) + expressive silver brows.
     const eyeMat = this._mat(EYE, { roughness: 0.35 });
@@ -481,6 +490,7 @@ class Conductor3D {
       eye.position.set(s * 0.058, 0.028, 0.138);
       headGroup.add(eye);
       this.meshes.eyes.push(eye);
+      this.meshes.faceFeatures.push(eye);
 
       const browGeo = new THREE.SphereGeometry(0.026, 10, 8);
       browGeo.scale(1, 0.32, 0.45); // stretched sphere → rounded bushy brow
@@ -489,6 +499,7 @@ class Conductor3D {
       brow.position.set(s * 0.06, 0.082, 0.142);
       headGroup.add(brow);
       this.meshes.brows.push({ mesh: brow, baseY: 0.082, baseTilt: s * 0.18, side: s });
+      this.meshes.faceFeatures.push(brow);
     }
 
     // Gentle smile — thin torus arc.
@@ -498,6 +509,26 @@ class Conductor3D {
     smile.rotation.z = Math.PI + Math.PI * 0.125; // arc opens upward
     smile.rotation.x = -0.25;
     headGroup.add(smile);
+    this.meshes.faceFeatures.push(smile);
+
+    // Selfie face plate — a curved cap hugging the front of the head, hidden
+    // until the user captures a selfie (📷 button). The photo is applied with
+    // a feathered circular mask so it blends into the skin, and the hair
+    // still frames it. Slightly larger radius than the head so it sits proud.
+    const plateGeo = new THREE.SphereGeometry(
+      0.169, 48, 48,
+      Math.PI / 2 - 0.85, 1.7,   // phi: ±49° around the front (+z)
+      Math.PI / 2 - 0.85, 1.7    // theta: ±49° around the equator
+    );
+    plateGeo.scale(0.92, 1.06, 0.94); // match the head's egg shape
+    const plateMat = new THREE.MeshStandardMaterial({
+      roughness: 0.85,
+      transparent: true
+    });
+    const facePlate = new THREE.Mesh(plateGeo, plateMat);
+    facePlate.visible = false;
+    headGroup.add(facePlate);
+    this.meshes.facePlate = facePlate;
 
     // Wild white mane: balding on top, big puffs at the sides and back —
     // instantly reads "maestro" with zero uncanny valley.
@@ -947,6 +978,56 @@ class Conductor3D {
     this._updateBatonDrag(this.smoothR, dt, cs.playing);
   }
 
+  // ── Selfie face ───────────────────────────────────────────────────────────
+  // Watches state.conductorSelfieImageDataURL (set by the camera module when
+  // the 📷 button captures with cameraTarget 'conductor'). When it changes,
+  // the photo is masked to a feathered circle and applied to the face plate;
+  // the cartoon features hide underneath. Clearing the URL restores them.
+
+  _syncSelfie() {
+    const src = state.conductorSelfieImageDataURL || null;
+    if (src === this._selfieSrc) return;
+    this._selfieSrc = src;
+
+    const plate = this.meshes.facePlate;
+    if (!plate) return;
+
+    if (!src) {
+      plate.visible = false;
+      for (const f of this.meshes.faceFeatures) f.visible = true;
+      if (plate.material.map) { plate.material.map.dispose(); plate.material.map = null; }
+      plate.material.needsUpdate = true;
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      if (this._selfieSrc !== src) return; // a newer selfie replaced this one
+      // Feathered circular mask: opaque face, soft edge fading into the skin.
+      const size = 512;
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, size, size); // capture is already square
+      ctx.globalCompositeOperation = 'destination-in';
+      const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(0.8, 'rgba(0,0,0,1)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+
+      const tex = new THREE.CanvasTexture(c);
+      if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+      if (plate.material.map) plate.material.map.dispose();
+      plate.material.map = tex;
+      plate.material.needsUpdate = true;
+      plate.visible = true;
+      for (const f of this.meshes.faceFeatures) f.visible = false;
+    };
+    img.src = src;
+  }
+
   // ── Frame loop ────────────────────────────────────────────────────────────
 
   update() {
@@ -954,6 +1035,7 @@ class Conductor3D {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     this._ensureParent();
     this._updateSize();
+    this._syncSelfie();
     this._applyCameraOrbit(dt);
     this._applyPose(this._getConductingState(), dt);
     this.renderer.render(this.scene, this.camera);

@@ -97,7 +97,8 @@ function capturePhoto() {
   // Convert to p5.js image and route to the right target
   const dataURL = captureCanvas.toDataURL('image/png');
   if (state.cameraTarget === 'conductor') {
-    state.conductorSelfieImage = loadImage(dataURL);
+    state.conductorSelfieImage = loadImage(dataURL);   // 2D conductor head
+    state.conductorSelfieImageDataURL = dataURL;       // 3D conductor face texture
   } else {
     state.selfieImageDataURL = dataURL;
     state.selfieImage = loadImage(dataURL, () => {
