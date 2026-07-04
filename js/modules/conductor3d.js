@@ -31,7 +31,10 @@ class Conductor3D {
     this.camera = null;
     this.renderer = null;
     this.container = null;
-    this.bones = {};
+    // Arm rigs keyed anatomically ('R' = his right, the baton arm, at world
+    // −x since he faces the audience). Each rig carries its own `side` so the
+    // side→bone mapping exists in exactly one place.
+    this.arms = {};
     this.meshes = {};
     this.clock = new THREE.Clock();
     this.initialized = false;
@@ -493,11 +496,17 @@ class Conductor3D {
     }
 
     // Keys are anatomical: he faces the audience, so his Right arm is side −1.
-    const k = side === -1 ? 'R' : 'L';
-    this.bones['shoulder' + k] = shoulderGroup;
-    this.bones['upperArm' + k] = upperArmGroup;
-    this.bones['elbow' + k] = elbowGroup;
-    this.bones['wrist' + k] = wristGroup;
+    // The rig records its own side — every consumer reads it from here instead
+    // of re-deriving it (a duplicated side→key ternary once cross-wired the
+    // arms so the left hand performed the baton motion).
+    const key = side === -1 ? 'R' : 'L';
+    this.arms[key] = {
+      side,
+      shoulder: shoulderGroup,
+      upperArm: upperArmGroup,
+      elbow: elbowGroup,
+      wrist: wristGroup
+    };
   }
 
   // ── Conducting patterns ───────────────────────────────────────────────────
@@ -512,7 +521,9 @@ class Conductor3D {
     const n = state.beatsPerMeasure;
     // z − 0.06: the conducting plane sits close to the chest so the arm's
     // reach budget goes into stroke width/height instead of forward extension.
-    const P = (ix, iy, iz, rx, ry, rz) => ({ ictus: [-ix, iy, iz - 0.06], rebound: [-rx, ry, rz - 0.06] });
+    // z − 0.12 pulls the conducting plane close to the chest: targets near
+    // full arm extension leave the elbow no bend and it collapses inward.
+    const P = (ix, iy, iz, rx, ry, rz) => ({ ictus: [-ix, iy, iz - 0.12], rebound: [-rx, ry, rz - 0.12] });
     const patterns = {
       1: [P(0.12, 0.90, 0.42,   0.12, 1.50, 0.32)],
       2: [
@@ -601,10 +612,11 @@ class Conductor3D {
     // so strokes shrink at fast tempos and open up at slow ones, then shifted
     // toward the right shoulder so strokes stay beside the body, not across it.
     const scale = tempoScale(state.cachedBPM || 96);
-    const pivot = [-0.12, 1.06, 0.34];
+    const pivot = [-0.12, 1.08, 0.28];
     const OFFSET = [-0.08, 0.06, 0];
-    // Horizontal strokes get an extra boost so left/right beats read clearly.
-    const AXIS = [1.3, 1.05, 1.0];
+    // Horizontal strokes get an extra boost so left/right beats read clearly;
+    // vertical amplitude is trimmed so the lowest ictus keeps elbow bend.
+    const AXIS = [1.15, 0.95, 1.0];
     const sp = (v, i) => pivot[i] + (v - pivot[i]) * scale * AXIS[i] + OFFSET[i];
     const p0 = pattern[fromIdx].ictus;
     const p1 = pattern[fromIdx].rebound;
@@ -625,69 +637,64 @@ class Conductor3D {
     };
   }
 
-  // ── 2-bone IK (geometric, with a pole vector for the elbow) ──────────────
+  // ── 2-bone arm IK ─────────────────────────────────────────────────────────
+  // Solved entirely in bodyGroup-LOCAL space, where the shoulder pivot is a
+  // fixed point. (Solving in world space while the body sways/breathes made
+  // every solve slightly wrong in a pose-dependent way — the source of a long
+  // series of elbow oddities.) Hand targets are given in world space, so the
+  // hands stay pinned to the beat pattern while the body moves underneath.
 
-  _solveArmIK(side, targetX, targetY, targetZ) {
-    const upperLen = 0.30;
-    const lowerLen = 0.28;
-    const shoulderPos = new THREE.Vector3(side * 0.235, 1.335, 0.03);
-    const targetPos = new THREE.Vector3(targetX, targetY, targetZ);
+  _poseArm(key, targetWorld, beatT) {
+    const rig = this.arms[key];
+    if (!rig) return;
+    const side = rig.side;
 
-    const toTarget = new THREE.Vector3().subVectors(targetPos, shoulderPos);
+    const upperLen = 0.30;  // must match elbow group offset in _buildArm
+    const lowerLen = 0.28;  // must match wrist group offset in _buildArm
+    const shoulder = new THREE.Vector3(side * 0.235, 1.335, 0.03);
+
+    // World → body-local (bodyGroup's matrixWorld is refreshed in _applyPose
+    // right after body rotation is set, before the arms are posed).
+    const toTarget = this.bodyGroup.worldToLocal(targetWorld.clone()).sub(shoulder);
+
+    // Keep the target inside 94% of full extension: a near-straight arm has
+    // no bend left, and the elbow visually collapses against the torso. The
+    // pattern is tuned to stay inside this, so the clamp is a safety net.
     let dist = toTarget.length();
-    const maxReach = upperLen + lowerLen - 0.01;
-    const minReach = 0.09;
-    if (dist > maxReach) {
-      toTarget.multiplyScalar(maxReach / dist); dist = maxReach;
-      targetPos.copy(shoulderPos).add(toTarget);
-    } else if (dist < minReach) {
-      toTarget.multiplyScalar(minReach / Math.max(dist, 1e-6)); dist = minReach;
-      targetPos.copy(shoulderPos).add(toTarget);
-    }
+    const maxReach = (upperLen + lowerLen) * 0.94;
+    dist = Math.max(0.15, Math.min(maxReach, dist));
+    const u = toTarget.normalize();
 
     const proj = (upperLen * upperLen - lowerLen * lowerLen + dist * dist) / (2 * dist);
-    const h2 = upperLen * upperLen - proj * proj;
-    const h = h2 > 0 ? Math.sqrt(h2) : 0;
-    const u = toTarget.clone().normalize();
+    const h = Math.sqrt(Math.max(0, upperLen * upperLen - proj * proj));
 
-    // Elbow flares OUT to the side (slightly down and back) — conductors keep
-    // their elbows away from the ribs, "holding a beach ball". A mostly-down
-    // pole tucks the elbows under the shoulders, which reads as pinned arms.
-    const pole = new THREE.Vector3(side * 1.3, -0.55, -0.45).normalize();
-    const v = pole.clone().sub(u.clone().multiplyScalar(pole.dot(u)));
-    if (v.lengthSq() < 1e-6) v.set(side, 0, 0).sub(u.clone().multiplyScalar(u.x * side));
+    // Elbow hint: out to the side, below and slightly behind the shoulder —
+    // the "holding a beach ball" carriage. Constant in body-local space, so
+    // it means the same thing in every pose.
+    const pole = new THREE.Vector3(side * 0.55, -0.33, -0.22).normalize();
+    const v = pole.sub(u.clone().multiplyScalar(pole.dot(u)));
+    if (v.lengthSq() < 1e-6) v.set(side, 0, 0);
     v.normalize();
 
-    const elbowPos = shoulderPos.clone()
-      .add(u.multiplyScalar(proj))
-      .add(v.multiplyScalar(h));
-    return { shoulderPos, elbowPos, targetPos };
-  }
+    // Elbow and wrist positions relative to the shoulder, in body-local space.
+    const elbowRel = u.clone().multiplyScalar(proj).add(v.multiplyScalar(h));
+    const wristRel = u.clone().multiplyScalar(dist);
 
-  _poseArm(side, target, beatT) {
-    const k = side === 1 ? 'R' : 'L';
-    const upperArm = this.bones['upperArm' + k];
-    const elbow = this.bones['elbow' + k];
-    const wrist = this.bones['wrist' + k];
-    if (!upperArm || !elbow) return;
-
-    const { shoulderPos, elbowPos, targetPos } = this._solveArmIK(side, target.x, target.y, target.z);
+    // Bones hang along local −Y; shoulder/elbow groups live in unrotated
+    // parents within bodyGroup, so these local-space quaternions are exact.
     const DOWN = new THREE.Vector3(0, -1, 0);
+    const upperDir = elbowRel.clone().normalize();
+    rig.upperArm.quaternion.setFromUnitVectors(DOWN, upperDir);
 
-    const upperDir = new THREE.Vector3().subVectors(elbowPos, shoulderPos).normalize();
-    upperArm.quaternion.setFromUnitVectors(DOWN, upperDir);
+    const foreDir = wristRel.sub(elbowRel).normalize();
+    const foreDirLocal = foreDir.applyQuaternion(rig.upperArm.quaternion.clone().invert());
+    rig.elbow.quaternion.setFromUnitVectors(DOWN, foreDirLocal);
 
-    const forearmDirWorld = new THREE.Vector3().subVectors(targetPos, elbowPos).normalize();
-    const forearmDirLocal = forearmDirWorld.applyQuaternion(upperArm.quaternion.clone().invert());
-    elbow.quaternion.setFromUnitVectors(DOWN, forearmDirLocal);
-
-    if (wrist) {
-      if (side === -1) {
-        // Baton wrist: flick that peaks mid-rebound, settles into the next ictus.
-        wrist.rotation.set(-0.15 + Math.sin(beatT * Math.PI) * 0.18, 0, 0);
-      } else {
-        wrist.rotation.set(-0.35, side * -0.2, 0); // palm angled in, held calm
-      }
+    if (key === 'R') {
+      // Baton wrist: flick that peaks mid-rebound, settles into the next ictus.
+      rig.wrist.rotation.set(-0.15 + Math.sin(beatT * Math.PI) * 0.18, 0, 0);
+    } else {
+      rig.wrist.rotation.set(-0.35, side * -0.2, 0); // palm angled in, held calm
     }
   }
 
@@ -719,7 +726,7 @@ class Conductor3D {
     this.batonPitch = this.batonPitch === undefined ? basePitch : this.batonPitch;
     this.batonPitch += (basePitch - this.batonPitch) * Math.min(1, dt * 4);
 
-    const wrist = this.bones.wristR;
+    const wrist = this.arms.R && this.arms.R.wrist;
     if (!wrist) return;
     wrist.updateWorldMatrix(true, false);
     const wq = new THREE.Quaternion();
@@ -753,24 +760,23 @@ class Conductor3D {
       ? new THREE.Vector3(cs.pos[0], cs.pos[1], cs.pos[2])
       : restR;
 
-    // ── Left-hand (at +x) target: independent, expressive ──
-    // Held a bit wide so the gloves don't brush when the baton crosses center.
-    const targetL = new THREE.Vector3(0.25, 1.1, 0.3);
+    // ── Left-hand (at +x) target: independent and CALM ──
+    // A real conductor's left hand does not beat time (no per-beat echo of
+    // the baton — that read as a second baton hand). It floats with the
+    // breath, gives a small nod of support into each downbeat, and opens
+    // into a sustained phrase gesture every fourth measure.
+    const targetL = new THREE.Vector3(0.24, 1.08, 0.26);
     if (cs.playing) {
-      // Quiet ride: echo a fraction of the baton's height.
-      targetL.y += (targetR.y - 1.06) * 0.18;
-      // Downbeat support: rise through the prep beat, release after beat 1.
+      targetL.y += Math.sin(this.breathPhase * 2) * 0.008;
       let lift = 0;
       if (cs.fromIdx === cs.n - 1) lift = cs.progress;       // rising into 1
       else if (cs.fromIdx === 0) lift = 1 - cs.progress;     // settling after 1
-      targetL.y += lift * 0.13;
-      targetL.x += lift * 0.05;
-      // Sustained phrase gesture every 4th measure: a slow outward arc.
+      targetL.y += lift * 0.06;
+      targetL.x += lift * 0.02;
       if (this.measureCount > 0 && this.measureCount % 4 === 0) {
         const ph = Math.sin(Math.PI * cs.measureProgress);
-        targetL.x += ph * 0.17;
-        targetL.y += ph * 0.2;
-        targetL.z += ph * 0.02;
+        targetL.x += ph * 0.12;
+        targetL.y += ph * 0.14;
       }
     } else {
       targetL.set(0.16, 0.9, 0.2); // resting at the side
@@ -834,8 +840,11 @@ class Conductor3D {
     if (this.spot) this.spot.intensity = 1.0 + this.ictusPulse * 0.22;
 
     // ── Arms ──
-    this._poseArm(-1, this.smoothR, cs.playing ? cs.t : 0); // his right = baton
-    this._poseArm(1, this.smoothL, 0);
+    // Body transform is final at this point — refresh its world matrix so the
+    // arm solver's world→local conversion sees the pose being rendered.
+    this.bodyGroup.updateWorldMatrix(true, false);
+    this._poseArm('R', this.smoothR, cs.playing ? cs.t : 0); // his right = baton
+    this._poseArm('L', this.smoothL, 0);
     this._updateBatonDrag(this.smoothR, dt, cs.playing);
   }
 
@@ -911,6 +920,8 @@ export function start3DConductor() {
   }
   if (!instance) instance = new Conductor3D();
   instance.start();
+  // Handle for dev tooling / automated pose verification.
+  if (typeof window !== 'undefined') window.__vmConductor3D = instance;
 }
 
 export function stop3DConductor() {
