@@ -14,8 +14,9 @@ import { state } from './state.js';
 //   • the left hand is independent, like a real conductor's: it rides quietly
 //     at chest height, rises to support each downbeat, and sweeps a sustained
 //     "phrase" gesture every fourth measure;
-//   • an underdamped baton spring, body sway, a knee-dip pulse on each ictus,
-//     brow raises on the downbeat, breathing, blinking and idle micro-motion.
+//   • an underdamped baton spring, slow body sway, brow raises on the
+//     downbeat, breathing, blinking and idle micro-motion. Body motion is
+//     deliberately not beat-synced — the beat lives in the baton alone.
 //
 // The camera orbits the podium: drag the canvas (mouse or touch) to change
 // the viewing angle within clamped bounds; double-click resets the view.
@@ -67,13 +68,12 @@ class Conductor3D {
     this.smoothL = new THREE.Vector3(0.15, 0.96, 0.18); // left-hand target
     this.currentSway = 0;
     this.currentYaw = 0;
-    this.currentNod = 0;
     this.breathPhase = Math.random() * Math.PI * 2;
 
     // Beat bookkeeping
     this.prevBeatIndex = -1;
     this.measureCount = 0;
-    this.ictusPulse = 0;       // 1 at each beat, decays — drives dip/nod/spot flash
+    this.ictusPulse = 0;       // 1 at each beat, decays — drives the spotlight breathe only
     this.downbeatPulse = 0;    // same but only on beat 1 — drives brows/left hand
 
     // Blinking
@@ -925,21 +925,19 @@ class Conductor3D {
     const breath = Math.sin(this.breathPhase) * 0.006;
     const idleYaw = Math.sin(t * 0.31) * 0.03 + Math.sin(t * 0.83 + 1.3) * 0.01;
     const idlePitch = Math.sin(t * 0.47) * 0.015;
-    const dip = -this.ictusPulse * this.ictusPulse * 0.018; // knee-dip on the beat
 
     // All body language lives on upperBody: sway/yaw lean the torso from the
-    // hips and breath/beat-give raise it, while the legs and shoes stay
-    // perfectly planted. (Animating the whole model bounced the shoes through
-    // the podium on every click.)
+    // hips and breathing raises it, while the legs and shoes stay perfectly
+    // planted. Body motion is deliberately NOT beat-synced — a per-beat dip
+    // and head-nod pulse read as a distracting bounce; the beat lives in the
+    // baton, and the body just carries slow weight and breath.
     this.upperBody.rotation.z = this.currentSway;
     this.upperBody.rotation.y = this.currentYaw + (cs.playing ? 0 : idleYaw * 0.6);
-    this.upperBody.position.y = breath + dip;
+    this.upperBody.position.y = breath;
 
-    // Head: leads the baton slightly, nods on the beat, wanders when idle.
-    const nodTarget = cs.playing ? this.ictusPulse * 0.09 + this.downbeatPulse * 0.05 : 0;
-    this.currentNod += (nodTarget - this.currentNod) * Math.min(1, dt * 10);
+    // Head: leads the baton slightly, wanders when idle.
     const head = this.meshes.headGroup;
-    head.rotation.x = this.currentNod + (cs.playing ? -0.04 : idlePitch);
+    head.rotation.x = cs.playing ? -0.04 : idlePitch;
     head.rotation.y = (cs.playing ? (handX + 0.2) * 0.3 : idleYaw);
     head.rotation.z = -this.currentSway * 0.5;
 
@@ -963,7 +961,7 @@ class Conductor3D {
     // Coat tails swing gently against the sway and the dip.
     if (this.meshes.tails) {
       this.meshes.tails.rotation.z = -this.currentSway * 0.8;
-      this.meshes.tails.rotation.x = 0.05 + this.ictusPulse * 0.06;
+      this.meshes.tails.rotation.x = 0.05;
     }
 
     // Spotlight breathes with the beat.
