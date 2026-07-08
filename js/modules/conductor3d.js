@@ -11,9 +11,9 @@ import { state } from './state.js';
 //     figures per meter) as quadratic Béziers through ictus → rebound points,
 //     with fast-slow-fast timing so the baton snaps off each beat, floats at
 //     the rebound, and accelerates into the next ictus;
-//   • the left hand is independent, like a real conductor's: it rides quietly
-//     at chest height, rises to support each downbeat, and sweeps a sustained
-//     "phrase" gesture every fourth measure;
+//   • the left hand rests low against the stomach, below the conducting
+//     plane so it never obscures the baton, with only a breathing float and
+//     a slight downbeat acknowledgment;
 //   • an underdamped baton spring, slow body sway, brow raises on the
 //     downbeat, breathing, blinking and idle micro-motion. Body motion is
 //     deliberately not beat-synced — the beat lives in the baton alone.
@@ -886,24 +886,17 @@ class Conductor3D {
       ? new THREE.Vector3(cs.pos[0], cs.pos[1], cs.pos[2])
       : restR;
 
-    // ── Left-hand (at +x) target: independent and CALM ──
-    // A real conductor's left hand does not beat time (no per-beat echo of
-    // the baton — that read as a second baton hand). It floats with the
-    // breath, gives a small nod of support into each downbeat, and opens
-    // into a sustained phrase gesture every fourth measure.
-    const targetL = new THREE.Vector3(0.24, 1.08, 0.26);
+    // ── Left-hand (at +x) target: parked low against the stomach ──
+    // It stays well below the conducting plane so it never blocks the baton
+    // (chest-height gestures kept drifting into the beat pattern's lane).
+    // Only a breathing float and a barely-there downbeat acknowledgment.
+    const targetL = new THREE.Vector3(0.13, 0.95, 0.24);
     if (cs.playing) {
       targetL.y += Math.sin(this.breathPhase * 2) * 0.008;
       let lift = 0;
       if (cs.fromIdx === cs.n - 1) lift = cs.progress;       // rising into 1
       else if (cs.fromIdx === 0) lift = 1 - cs.progress;     // settling after 1
-      targetL.y += lift * 0.06;
-      targetL.x += lift * 0.02;
-      if (this.measureCount > 0 && this.measureCount % 4 === 0) {
-        const ph = Math.sin(Math.PI * cs.measureProgress);
-        targetL.x += ph * 0.12;
-        targetL.y += ph * 0.14;
-      }
+      targetL.y += lift * 0.025;
     } else {
       targetL.set(0.16, 0.9, 0.2); // resting at the side
     }
