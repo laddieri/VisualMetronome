@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { resumeAudio } from './keep-awake.js';
 
 
 // Robust AudioContext resume handling
@@ -10,7 +11,7 @@ function resumeAudioContext() {
   if (audioContextResumed && Tone.context.state === 'running') return;
 
   if (Tone.context.state !== 'running') {
-    Tone.context.resume().then(function() {
+    resumeAudio().then(function() {
       audioContextResumed = true;
       Tone.Transport.bpm.value = state.cachedBPM || 96;
     }).catch(function(err) {
@@ -32,7 +33,7 @@ function resumeAudioContext() {
 setInterval(function() {
   if (Tone.Transport.state === 'started' && Tone.context.state !== 'running') {
     console.warn('AudioContext suspended while playing, attempting resume...');
-    Tone.context.resume();
+    resumeAudio().catch(function() {});
   }
 }, 1000);
 
@@ -53,7 +54,7 @@ document.addEventListener('visibilitychange', function() {
 
     // Re-resume AudioContext (browsers may suspend it while backgrounded)
     if (Tone.context.state !== 'running') {
-      Tone.context.resume();
+      resumeAudio().catch(function() {});
     }
 
     // If we were playing and were hidden for more than 500ms, resync the
