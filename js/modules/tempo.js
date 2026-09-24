@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { saveSettingsSoon } from './persist-settings.js';
 import { sendStateUpdate } from './remote.js';
 import { writeJSON } from './storage.js';
+import { addTap } from './tempo-math.js';
 import { tmpCalcM2BPM } from './two-measure.js';
 
 
@@ -225,29 +226,13 @@ document.addEventListener('keydown', function(e) {
 
 // ── Tap tempo ─────────────────────────────────────────────────────────────
 // Tap the button (or press T) along with the music; the tempo is the
-// average of the last few intervals. A pause of more than 2 s starts over,
-// and an interval far off the running average (a missed or double tap)
-// restarts the average from that tap.
-var TAP_RESET_MS = 2000;
-var TAP_MAX_INTERVALS = 4;
+// average of the last few intervals (see addTap in tempo-math.js).
 var tapTimes = [];
 
 export function tapTempo() {
-  var now = performance.now();
-  var last = tapTimes[tapTimes.length - 1];
-  if (last === undefined || now - last > TAP_RESET_MS) {
-    tapTimes = [now];
-    return;
-  }
-  if (tapTimes.length >= 2) {
-    var avg = (last - tapTimes[0]) / (tapTimes.length - 1);
-    var interval = now - last;
-    if (interval < avg * 0.6 || interval > avg * 1.4) tapTimes = [last];
-  }
-  tapTimes.push(now);
-  if (tapTimes.length > TAP_MAX_INTERVALS + 1) tapTimes.shift();
-  var ms = (tapTimes[tapTimes.length - 1] - tapTimes[0]) / (tapTimes.length - 1);
-  applyBPM(60000 / ms);
+  var tap = addTap(tapTimes, performance.now());
+  tapTimes = tap.times;
+  if (tap.bpm !== null) applyBPM(tap.bpm);
 }
 
 function flashTapButton(btn) {

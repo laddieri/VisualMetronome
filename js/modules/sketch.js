@@ -263,7 +263,6 @@ function draw() {
   if (state.countingTrainerEnabled && Tone.Transport.state !== 'started') {
     // Semi-transparent banner at top of canvas
     var bannerY = 18;
-    var totalBeats = state.ctTargetMeasures * state.beatsPerMeasure + state.ctTargetExtraBeats;
     var label = 'Counting Trainer: ';
     if (state.ctTargetMeasures > 0 && state.ctTargetExtraBeats > 0) {
       label += state.ctTargetMeasures + (state.ctTargetMeasures === 1 ? ' measure' : ' measures') +
@@ -277,12 +276,11 @@ function draw() {
     noStroke();
     fill(102, 126, 234, 180);
     rectMode(CENTER);
-    var tw = textWidth(label);
     // Set font before measuring so width is accurate
     textFont('Inter, sans-serif');
     textSize(15);
     textStyle(BOLD);
-    tw = textWidth(label);
+    var tw = textWidth(label);
     rect(320, bannerY, tw + 32, 28, 14);
 
     fill(255);

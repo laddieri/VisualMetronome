@@ -185,10 +185,6 @@ export function initFullscreenListeners() {
   });
 }
 
-// Smoothed animation progress for fluid motion
-var smoothedProgress = 0;
-var lastFrameTime = 0;
-
 // Calculate animation position based on time since last beat fired
 // This stays in sync even when BPM changes mid-playback
 export function getAnimationProgress() {
@@ -252,7 +248,7 @@ export function getAnimalX(direction) {
 // Get Y position for vertical bounce mode
 export function getVerticalY() {
   const rawProgress = getAnimationProgress();
-  const lineY = 420; // Where the horizontal line is (lowered)
+  // The horizontal line is at y=420.
   const bounceBottom = 350; // Object center at lowest point (~20% below line)
   const maxHeight = 260; // How high the object bounces from bottom
 
@@ -262,36 +258,3 @@ export function getVerticalY() {
   return bounceBottom - displacement;
 }
 
-// Easing functions for smooth animations
-const Easing = {
-  // Exponential ease out - perfect for gravity/falling
-  easeOutExpo: function(t) {
-    return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-  },
-
-  // Bounce ease out - realistic bouncing effect
-  easeOutBounce: function(t) {
-    const n1 = 7.5625;
-    const d1 = 2.75;
-
-    if (t < 1 / d1) {
-      return n1 * t * t;
-    } else if (t < 2 / d1) {
-      return n1 * (t -= 1.5 / d1) * t + 0.75;
-    } else if (t < 2.5 / d1) {
-      return n1 * (t -= 2.25 / d1) * t + 0.9375;
-    } else {
-      return n1 * (t -= 2.625 / d1) * t + 0.984375;
-    }
-  },
-
-  // Quadratic ease in-out for smooth acceleration
-  easeInOutQuad: function(t) {
-    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  },
-
-  // Cubic ease in-out — stronger contrast: lingers at endpoints, fast in the middle
-  easeInOutCubic: function(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
-};

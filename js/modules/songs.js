@@ -153,7 +153,6 @@ function initSongSectionsListeners() {
   var songCloseBtn = document.getElementById('song-sections-close-btn');
   var songEnabledCheckbox = document.getElementById('song-mode-enabled');
   var songAddBtn = document.getElementById('song-add-section-btn');
-  var songListEl = document.getElementById('song-sections-list');
 
   var songTitleInput = document.getElementById('song-title-input');
   var songSaveBtn = document.getElementById('song-save-btn');

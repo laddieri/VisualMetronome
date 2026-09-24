@@ -91,14 +91,6 @@ export function crIsContinuation(pat) {
   return pat === '_' || pat === '_e' || pat === '_r' || pat === '_ss';
 }
 
-// True when `pat` itself starts a multi-beat group.
-function crIsMultiBeat(pat) {
-  return pat === 'h' || pat === 'dq' || pat === 'dh' ||
-         pat === 'eqe' || pat === 'rqe' || pat === 'eqr' || pat === 'rqr' ||
-         pat === 'ssqe' || pat === 'eqss' || pat === 'ssqss' || pat === 'rqss' || pat === 'ssqr' ||
-         pat === 'HW' || pat === 'EQ' || pat === 'DDH';
-}
-
 // Set beat at beatIdx to newPat, cascading continuation setup.
 // Returns false and does nothing if there is not enough room.
 function crSetBeatPattern(beatIdx, newPat) {
@@ -258,11 +250,6 @@ function crSyncTiesAndAccents() {
   customRhythmAccents.length = state.beatsPerMeasure;
 }
 
-// Get the number of playable (non-rest) sub-notes in a pattern
-function crGetNoteCount(pat) {
-  return crGetSubBeats(pat).length;
-}
-
 // Render the beat selector dropdowns with tie and accent controls
 function crRenderBeatSelectors() {
   var container = document.getElementById('custom-rhythm-beats');
@@ -401,28 +388,6 @@ function crRenderBeatSelectors() {
 
 // ── SVG Notation Rendering ──────────────────────────────────────────────────
 // Renders a simple staff-like SVG showing the rhythm pattern with standard notation.
-
-// Returns the x-positions of the first and last note heads for a given beat pattern.
-// Used for drawing ties between beats.
-function crGetNoteXPositions(pat, x, w) {
-  switch (pat) {
-    case 'q':    return { first: x + w / 2, last: x + w / 2 };
-    case 'r':    return null; // rest — no note positions
-    case 'ee':   return { first: x + w * 0.25, last: x + w * 0.75 };
-    case 'er':   return { first: x + w * 0.25, last: x + w * 0.25 };
-    case 're':   return { first: x + w * 0.7,  last: x + w * 0.7 };
-    case 'ssss': return { first: x + w * 0.12, last: x + w * 0.87 };
-    case 'sse':  return { first: x + w * 0.12, last: x + w * 0.75 };
-    case 'ess':  return { first: x + w * 0.15, last: x + w * 0.85 };
-    case 'h':    return { first: x + w / 2, last: x + w / 2 };
-    case 'dq':   return { first: x + w / 2, last: x + w / 2 };
-    case 'dh':   return { first: x + w / 2, last: x + w / 2 };
-    case '_':    return null;
-    case '_e':   return { first: x + w * 0.5, last: x + w * 0.5 };
-    case '_r':   return null;
-    default:     return { first: x + w / 2, last: x + w / 2 };
-  }
-}
 
 // Returns all note head x-positions in order for a beat pattern (for accent positioning)
 export function crGetAllNoteXPositions(pat, x, w) {
@@ -770,7 +735,7 @@ export function crRenderNotationDisplay() {
   var baseWidth     = beatCount * baseBeatWidth + baseXStart + 10;
 
   // Display canvas dimensions
-  var dispW = 640, dispH = 360;
+  var dispW = 640;
 
   // Score-paper rectangle inside the display
   var paperX = 30, paperY = 80, paperW = 580, paperH = 230;

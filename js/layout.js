@@ -66,7 +66,7 @@
   }
 
   function initTheme() {
-    var stored = null;
+    var stored;
     try { stored = localStorage.getItem(THEME_KEY); } catch (e) { stored = null; }
     applyTheme(stored);
 
@@ -157,8 +157,6 @@
       // Mirror visibility changes back onto the wrapper so script.js's
       // existing `beat-note-row.style.display = ...` calls continue to
       // hide/show this UI even though the markup has moved.
-      var origStyle = beatNoteRow.style;
-      var setter = Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'display');
       try {
         Object.defineProperty(beatNoteRow.style, 'display', {
           configurable: true,

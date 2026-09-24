@@ -1,16 +1,12 @@
 import { state } from './state.js';
 import { sendStateUpdate } from './remote.js';
+import { linkedM2BPM } from './tempo-math.js';
 
 
 // Calculate M2 BPM from M1 + link mode, clamped to 30–300.
 export function tmpCalcM2BPM() {
   var m1 = state.twoMeasurePattern[0];
-  var s1 = parseInt(m1.subdivision) || 0;
-  var s2 = parseInt(state.twoMeasurePattern[1].subdivision) || 0;
-  var b2 = (state.tmpLinkMode === 'subdivision' && s1 > 0 && s2 > 0)
-    ? m1.bpm * s1 / s2
-    : m1.bpm;
-  return Math.max(30, Math.min(300, Math.round(b2)));
+  return linkedM2BPM(m1.bpm, m1.subdivision, state.twoMeasurePattern[1].subdivision, state.tmpLinkMode);
 }
 
 // Sync M1 BPM from main tempo, recalculate M2, and refresh ♪ readouts.

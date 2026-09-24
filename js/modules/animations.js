@@ -564,9 +564,6 @@ class PendulumMetronome {
     const pivotY   = 428;
     const rodLen   = 345; // tip at y = 428-345 = 83
 
-    // exitDist: how far from pivot to the case top opening
-    const exitDist = pivotY - bodyTopY; // 233
-
     // Weight: slow BPM → high (far from pivot), fast BPM → lower (near case top)
     const bpm       = constrain(state.cachedBPM, 40, 240);
     // weightDst is the signed distance from pivot along the rod (positive = above pivot).
