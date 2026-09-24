@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { crCancelCustomRhythm } from './custom-rhythm.js';
 import { sendStateUpdate } from './remote.js';
+import { readJSON, writeJSON } from './storage.js';
 
 var songTitle = '';              // Current song title (used when saving)
 var _VM_SONGS_KEY = 'vm_saved_songs'; // localStorage key for persisted songs
@@ -64,8 +65,7 @@ var _songListenersInitialized = false;
 // ── Saved Songs (localStorage) ───────────────────────────────────────────────
 
 function getSavedSongs() {
-  try { return JSON.parse(localStorage.getItem(_VM_SONGS_KEY)) || []; }
-  catch(e) { return []; }
+  return readJSON(_VM_SONGS_KEY, []);
 }
 
 function saveSong() {
@@ -81,8 +81,7 @@ function saveSong() {
     sections: JSON.parse(JSON.stringify(state.songSections)),
     savedAt: new Date().toLocaleDateString()
   });
-  localStorage.setItem(_VM_SONGS_KEY, JSON.stringify(songs));
-  renderSavedSongsList();
+  if (writeJSON(_VM_SONGS_KEY, songs, 'song')) renderSavedSongsList();
 }
 
 function loadSavedSong(id) {
@@ -98,7 +97,7 @@ function loadSavedSong(id) {
 
 function deleteSavedSong(id) {
   var songs = getSavedSongs().filter(function(s) { return s.id !== id; });
-  localStorage.setItem(_VM_SONGS_KEY, JSON.stringify(songs));
+  writeJSON(_VM_SONGS_KEY, songs, null);
   renderSavedSongsList();
 }
 

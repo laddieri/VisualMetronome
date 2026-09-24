@@ -13,12 +13,14 @@ The app has no build step — it ships as native ES modules. `index.html` loads
 | `transport.js` | Tone.Transport beat scheduling, count-in, play/stop UI, spacebar |
 | `sounds.js` | Click/woodblock/drum synths and per-beat sound triggering |
 | `voice.js` | Recorded voice counting with SpeechSynthesis fallback |
-| `tempo.js` | BPM controls and editable tempo presets |
+| `tempo.js` | BPM controls, tap tempo, and editable tempo presets |
 | `sketch.js` | p5.js `setup()` / `draw()` / `windowResized()` entry points |
 | `animations.js` | Circle / conductor / pendulum / selfie animation classes |
 | `stage.js` | Canvas sizing, fullscreen mode, beat-animation easing |
 | `camera.js` | Selfie capture, sound recording, saved selfies |
 | `settings.js` | Advanced-settings modal and the reset button |
+| `persist-settings.js` | Saves the user's settings and restores them on load |
+| `storage.js` | Safe localStorage writes and IndexedDB storage for saved selfies |
 | `audio-context.js` | AudioContext resume/recovery and tab-visibility handling |
 | `view-sync.js` | Visibility syncing between animation modes and controls |
 | `counting-trainer.js` | Silent-counting exercise |

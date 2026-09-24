@@ -1,10 +1,12 @@
 import { state } from './state.js';
 import { createAnimals } from './animations.js';
 import { crRenderNotationDisplay } from './custom-rhythm.js';
+import { deleteSavedSelfie, getSavedSelfies, putSavedSelfie } from './storage.js';
 
 var cameraStream = null;
 var cameraFacingMode = 'user'; // 'user' (front) or 'environment' (rear)
 var recordedSoundURL = null; // URL for recorded selfie sound
+var recordedSoundBlob = null; // The recording itself, so it can be saved with the selfie
 var recordedSoundPlayer = null; // Tone.js Player for recorded sound
 var mediaRecorder = null;
 var audioChunks = [];
@@ -287,6 +289,7 @@ function actuallyStartRecording() {
           URL.revokeObjectURL(recordedSoundURL);
         }
 
+        recordedSoundBlob = trimmedBlob;
         recordedSoundURL = URL.createObjectURL(trimmedBlob);
 
         // Create Tone.js Player with recorded sound
@@ -336,46 +339,35 @@ function toggleRecording() {
   }
 }
 
-// ── Saved Selfies (localStorage) ──────────────────────────────────────────────
-var _VM_SELFIES_KEY = 'vm_saved_selfies';
+// ── Saved Selfies (IndexedDB, see storage.js) ────────────────────────────────
 
-function getSavedSelfies() {
-  try { return JSON.parse(localStorage.getItem(_VM_SELFIES_KEY)) || []; }
-  catch(e) { return []; }
-}
-
-function saveSelfieToStorage(name, imageDataURL, soundDataURL) {
-  var selfies = getSavedSelfies();
-  selfies.push({
-    id: Date.now(),
-    name: name,
-    image: imageDataURL,
-    sound: soundDataURL || null,
-    savedAt: new Date().toLocaleDateString()
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
-  localStorage.setItem(_VM_SELFIES_KEY, JSON.stringify(selfies));
-}
-
-function deleteSavedSelfie(id) {
-  var selfies = getSavedSelfies().filter(function(s) { return s.id !== id; });
-  localStorage.setItem(_VM_SELFIES_KEY, JSON.stringify(selfies));
 }
 
 function renderSavedSelfiesList() {
   var listEl = document.getElementById('saved-selfies-list');
-  if (!listEl) return;
-  var selfies = getSavedSelfies();
+  if (!listEl) return Promise.resolve();
+  return getSavedSelfies().then(function(selfies) {
+    renderSelfieItems(listEl, selfies);
+  });
+}
+
+function renderSelfieItems(listEl, selfies) {
   if (selfies.length === 0) {
     listEl.innerHTML = '<p class="no-saved-selfies">No saved selfies yet.</p>';
     return;
   }
   listEl.innerHTML = selfies.map(function(s) {
+    var name = escapeHTML(s.name);
     return '<div class="saved-selfie-item" data-id="' + s.id + '">' +
-      '<img src="' + s.image + '" class="saved-selfie-thumb" alt="' + s.name + '">' +
+      '<img src="' + escapeHTML(s.image) + '" class="saved-selfie-thumb" alt="' + name + '">' +
       '<div class="saved-selfie-info">' +
-        '<span class="saved-selfie-name">' + s.name + '</span>' +
-        '<span class="saved-selfie-date">' + s.savedAt + '</span>' +
-        (s.sound ? '<span class="saved-selfie-has-sound">&#127908; sound</span>' : '') +
+        '<span class="saved-selfie-name">' + name + '</span>' +
+        '<span class="saved-selfie-date">' + escapeHTML(s.savedAt) + '</span>' +
+        (s.sound instanceof Blob ? '<span class="saved-selfie-has-sound">&#127908; sound</span>' : '') +
       '</div>' +
       '<div class="saved-selfie-actions">' +
         '<button class="load-selfie-btn camera-btn" data-id="' + s.id + '">Load</button>' +
@@ -388,23 +380,19 @@ function renderSavedSelfiesList() {
   listEl.querySelectorAll('.load-selfie-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var id = parseInt(btn.getAttribute('data-id'), 10);
-      loadSavedSelfie(id);
+      var entry = selfies.find(function(s) { return s.id === id; });
+      if (entry) loadSavedSelfie(entry);
     });
   });
   listEl.querySelectorAll('.delete-selfie-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var id = parseInt(btn.getAttribute('data-id'), 10);
-      deleteSavedSelfie(id);
-      renderSavedSelfiesList();
+      deleteSavedSelfie(id).then(renderSavedSelfiesList);
     });
   });
 }
 
-function loadSavedSelfie(id) {
-  var selfies = getSavedSelfies();
-  var entry = selfies.find(function(s) { return s.id === id; });
-  if (!entry) return;
-
+function loadSavedSelfie(entry) {
   // Load image into p5
   state.selfieImageDataURL = entry.image;
   state.selfieImage = loadImage(entry.image, function() {
@@ -412,13 +400,18 @@ function loadSavedSelfie(id) {
   });
 
   // Load sound if present
-  if (entry.sound) {
-    recordedSoundURL = entry.sound;
+  // Older saves stored a blob: URL, which is dead after a reload — skip those.
+  var hasSound = entry.sound instanceof Blob ||
+    (typeof entry.sound === 'string' && entry.sound.indexOf('blob:') !== 0);
+  if (hasSound) {
+    if (recordedSoundURL) URL.revokeObjectURL(recordedSoundURL);
+    recordedSoundBlob = entry.sound instanceof Blob ? entry.sound : null;
+    recordedSoundURL = recordedSoundBlob ? URL.createObjectURL(recordedSoundBlob) : entry.sound;
     if (recordedSoundPlayer) {
       recordedSoundPlayer.dispose();
       recordedSoundPlayer = null;
     }
-    recordedSoundPlayer = new Tone.Player(entry.sound).toMaster();
+    recordedSoundPlayer = new Tone.Player(recordedSoundURL).toMaster();
     recordedSoundPlayer.volume.value = 6;
   }
 
@@ -477,9 +470,17 @@ export function initCameraListeners() {
       var nameInput = document.getElementById('selfie-name-input');
       var name = nameInput ? nameInput.value.trim() : '';
       if (!name) name = 'Selfie ' + new Date().toLocaleDateString();
-      saveSelfieToStorage(name, state.selfieImageDataURL, recordedSoundURL || null);
-      if (nameInput) nameInput.value = '';
-      renderSavedSelfiesList();
+      putSavedSelfie({
+        id: Date.now(),
+        name: name,
+        image: state.selfieImageDataURL,
+        sound: recordedSoundBlob,
+        savedAt: new Date().toLocaleDateString()
+      }).then(function(ok) {
+        if (!ok) return;
+        if (nameInput) nameInput.value = '';
+        renderSavedSelfiesList();
+      });
     });
   }
 }

@@ -4,6 +4,7 @@ import { resize3DConductor } from './conductor3d.js';
 import { initCameraListeners, openCamera } from './camera.js';
 import { initCountingTrainerListeners } from './counting-trainer.js';
 import { crRenderNotationDisplay, crUpdateNotationBall } from './custom-rhythm.js';
+import { restoreSettings } from './persist-settings.js';
 import { initRemoteControl, sendStateUpdate } from './remote.js';
 import { initSettingsListeners } from './settings.js';
 import {
@@ -153,6 +154,9 @@ function setup() {
 
   // Start WebSocket remote control (only active when running from local server)
   initRemoteControl();
+
+  // Bring back the user's last-used settings now that every listener is wired
+  restoreSettings();
 }
 
 // Handle window resize for responsive canvas

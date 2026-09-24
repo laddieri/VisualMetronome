@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { crCancelCustomRhythm, crRenderNotationDisplay } from './custom-rhythm.js';
+import { saveSettingsSoon } from './persist-settings.js';
 import { sendStateUpdate } from './remote.js';
 import { applyBPM } from './tempo.js';
 import { toggleTransport } from './transport.js';
@@ -277,6 +278,7 @@ document.getElementById('reset-settings-btn').addEventListener('click', function
   if (spacebarSel) spacebarSel.value = 'play';
 
   sendStateUpdate();
+  saveSettingsSoon();
 });
 // ──────────────────────────────────────────────────────────────────────────
 
