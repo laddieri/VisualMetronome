@@ -748,10 +748,55 @@ main {
   transform: scale(0.92);
 }
 
+/* Tap-tempo button: same look as the −/+ buttons, as a pill */
+.tap-tempo-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  border: 2px solid var(--vm-border);
+  background: var(--vm-bg-page);
+  color: var(--vm-fg-1);
+  font-family: var(--vm-font-sans);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.tap-tempo-btn:hover {
+  border-color: var(--vm-indigo);
+  color: var(--vm-indigo);
+}
+
+.tap-tempo-btn:focus-visible {
+  outline: none;
+  border-color: var(--vm-indigo);
+  box-shadow: 0 0 0 3px var(--vm-indigo-focus);
+}
+
+.tap-tempo-btn.is-pressed {
+  background: var(--vm-indigo);
+  border-color: var(--vm-indigo);
+  color: white;
+  transform: scale(0.94);
+}
+
 @media (pointer: coarse) {
   .bpm-step-btn {
     width: 40px;
     height: 40px;
+  }
+  .tap-tempo-btn {
+    height: 40px;
+    border-radius: 20px;
   }
 }
 

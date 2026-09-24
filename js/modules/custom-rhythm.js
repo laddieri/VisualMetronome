@@ -4,6 +4,7 @@ import { crmSyncToggleRow } from './check-rhythm.js';
 import { sendStateUpdate } from './remote.js';
 import { triggerClickSoundVel } from './sounds.js';
 import { getAnimationProgress } from './stage.js';
+import { readJSON, writeJSON } from './storage.js';
 import {
   _sync3DConductor, _syncBeatNoteRow, _syncNotationDisplay, _syncPracticeRow, _syncWebGPUCanvas, crUpdateScoreOptionVisibility,
   updateColorPickerVisibility,
@@ -1700,8 +1701,7 @@ export function triggerCustomRhythmBeat(time, beatIndex) {
 var _VM_RHYTHMS_KEY = 'vm_saved_rhythms';
 
 function crGetSavedRhythms() {
-  try { return JSON.parse(localStorage.getItem(_VM_RHYTHMS_KEY)) || []; }
-  catch(e) { return []; }
+  return readJSON(_VM_RHYTHMS_KEY, []);
 }
 
 function crSaveRhythm() {
@@ -1717,7 +1717,7 @@ function crSaveRhythm() {
     beats: state.beatsPerMeasure,
     savedAt: new Date().toLocaleDateString()
   });
-  localStorage.setItem(_VM_RHYTHMS_KEY, JSON.stringify(rhythms));
+  if (!writeJSON(_VM_RHYTHMS_KEY, rhythms, 'rhythm')) return;
   if (nameInput) nameInput.value = '';
   crRenderSavedRhythmsList();
 }
@@ -1749,7 +1749,7 @@ function crLoadRhythm(id) {
 
 function crDeleteRhythm(id) {
   var rhythms = crGetSavedRhythms().filter(function(r) { return r.id !== id; });
-  localStorage.setItem(_VM_RHYTHMS_KEY, JSON.stringify(rhythms));
+  writeJSON(_VM_RHYTHMS_KEY, rhythms, null);
   crRenderSavedRhythmsList();
 }
 

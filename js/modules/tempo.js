@@ -1,5 +1,7 @@
 import { state } from './state.js';
+import { saveSettingsSoon } from './persist-settings.js';
 import { sendStateUpdate } from './remote.js';
+import { writeJSON } from './storage.js';
 import { tmpCalcM2BPM } from './two-measure.js';
 
 
@@ -20,7 +22,7 @@ export function loadTempoPresets() {
 }
 
 export function saveTempoPresets() {
-  try { localStorage.setItem(TEMPO_PRESETS_KEY, JSON.stringify(state.tempoPresets)); } catch (e) {}
+  writeJSON(TEMPO_PRESETS_KEY, state.tempoPresets, 'tempo presets');
 }
 
 export function populateTempoMarkingDropdown(preserveValue) {
@@ -122,6 +124,7 @@ export function applyBPM(bpm) {
 
   sendStateUpdate();
   syncTempoMarkingDropdown();
+  saveSettingsSoon();
 }
 
 // Update BPM from range slider
@@ -219,6 +222,75 @@ document.addEventListener('keydown', function(e) {
   var step = e.shiftKey ? 5 : 1;
   nudgeBPM(up ? step : -step);
 });
+
+// ── Tap tempo ─────────────────────────────────────────────────────────────
+// Tap the button (or press T) along with the music; the tempo is the
+// average of the last few intervals. A pause of more than 2 s starts over,
+// and an interval far off the running average (a missed or double tap)
+// restarts the average from that tap.
+var TAP_RESET_MS = 2000;
+var TAP_MAX_INTERVALS = 4;
+var tapTimes = [];
+
+export function tapTempo() {
+  var now = performance.now();
+  var last = tapTimes[tapTimes.length - 1];
+  if (last === undefined || now - last > TAP_RESET_MS) {
+    tapTimes = [now];
+    return;
+  }
+  if (tapTimes.length >= 2) {
+    var avg = (last - tapTimes[0]) / (tapTimes.length - 1);
+    var interval = now - last;
+    if (interval < avg * 0.6 || interval > avg * 1.4) tapTimes = [last];
+  }
+  tapTimes.push(now);
+  if (tapTimes.length > TAP_MAX_INTERVALS + 1) tapTimes.shift();
+  var ms = (tapTimes[tapTimes.length - 1] - tapTimes[0]) / (tapTimes.length - 1);
+  applyBPM(60000 / ms);
+}
+
+function flashTapButton(btn) {
+  if (!btn) return;
+  btn.classList.add('is-pressed');
+  clearTimeout(btn._tapFlash);
+  btn._tapFlash = setTimeout(function() { btn.classList.remove('is-pressed'); }, 100);
+}
+
+(function() {
+  var btn = document.getElementById('tap-tempo-btn');
+  if (!btn) return;
+  var pointerTapped = false;
+  // pointerdown rather than click: click fires on release, which lags the
+  // beat and makes the measured tempo drift.
+  btn.addEventListener('pointerdown', function(e) {
+    if (e.button !== 0) return;
+    e.preventDefault(); // keep focus where it was (so Space still plays/stops)
+    pointerTapped = true;
+    flashTapButton(btn);
+    tapTempo();
+  });
+  btn.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  // Keyboard activation (Enter/Space on the focused button).
+  btn.addEventListener('click', function() {
+    if (pointerTapped) { pointerTapped = false; return; }
+    flashTapButton(btn);
+    tapTempo();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 't' && e.key !== 'T') return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    var el = document.activeElement;
+    var tag = el && el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (el && el.isContentEditable) return;
+    if (document.querySelector('.settings-modal:not(.hidden)')) return;
+    e.preventDefault();
+    flashTapButton(btn);
+    tapTempo();
+  });
+})();
 
 // Scroll wheel over the tempo controls nudges by 1 per notch. Trackpads send
 // many small deltas, so accumulate until a notch's worth has built up.

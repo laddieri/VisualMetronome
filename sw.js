@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v4';
+const CACHE_VERSION = 'vm-v5';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
@@ -46,6 +46,8 @@ const SHELL = [
   './js/modules/check-rhythm.js',
   './js/modules/two-measure.js',
   './js/modules/keep-awake.js',
+  './js/modules/storage.js',
+  './js/modules/persist-settings.js',
   './manifest.webmanifest',
   './assets/logo.svg',
   './assets/pig.svg',
