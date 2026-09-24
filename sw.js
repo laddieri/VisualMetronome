@@ -3,16 +3,23 @@
  * Strategy:
  *  - Precache the same-origin app shell at install so the app boots offline.
  *  - Navigations: network-first, falling back to the cached index.html.
- *  - Same-origin GETs: stale-while-revalidate (instant load, refresh in bg).
+ *  - Same-origin code (JS, CSS, JSON, manifest): network-first, falling back
+ *    to the cache when offline or when the network is slower than
+ *    NETWORK_TIMEOUT_MS. Serving these stale-while-revalidate could run a
+ *    fresh index.html against cached modules from an older deploy.
+ *  - Other same-origin GETs (images, sounds, video): stale-while-revalidate.
  *  - Cross-origin (CDN libs, fonts): cache-first, populated on first fetch.
  *
  * Bump CACHE_VERSION to force clients onto a fresh precache.
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v6';
+const CACHE_VERSION = 'vm-v7';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
+
+// On a slow connection, fall back to the cached copy after this long.
+const NETWORK_TIMEOUT_MS = 3000;
 
 // Same-origin shell. Module graph is listed explicitly so a cold offline
 // launch has every import on hand rather than discovering them lazily.
@@ -64,8 +71,11 @@ const SHELL = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(PRECACHE)
-      // Individual adds so one missing optional file can't fail the whole install.
-      .then((cache) => Promise.allSettled(SHELL.map((url) => cache.add(url))))
+      // Individual adds so one missing optional file can't fail the whole
+      // install. `cache: 'reload'` skips the HTTP cache so the precache is
+      // one consistent version of the app.
+      .then((cache) => Promise.allSettled(SHELL.map((url) =>
+        cache.add(new Request(url, { cache: 'reload' })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -101,7 +111,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Same-origin assets: stale-while-revalidate.
+  // Same-origin code: network-first, so every file comes from one deploy.
+  if (url.origin === self.location.origin && isCode(url)) {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
+  // Other same-origin assets: stale-while-revalidate.
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(req).then((cached) => {
@@ -130,3 +146,29 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => cached))
   );
 });
+
+function isCode(url) {
+  return /\.(m?js|css|json|webmanifest)$/.test(url.pathname);
+}
+
+// Fetch from the network and refresh the cache; fall back to the cached copy
+// if the network fails or takes longer than NETWORK_TIMEOUT_MS. Fresh copies
+// go into PRECACHE (where the shell lives) so there's one copy per URL.
+function networkFirst(req) {
+  const network = fetch(req).then((res) => {
+    if (res && res.status === 200) {
+      const copy = res.clone();
+      caches.open(PRECACHE).then((c) => c.put(req, copy));
+    }
+    return res;
+  });
+  const timeout = new Promise((resolve) => setTimeout(resolve, NETWORK_TIMEOUT_MS));
+  const cachedAfterTimeout = timeout.then(() => caches.match(req, { ignoreSearch: true }));
+
+  return Promise.race([
+    network,
+    // Only settles the race with a cached response; otherwise keep waiting
+    // for the network.
+    cachedAfterTimeout.then((cached) => cached || network),
+  ]).catch(() => caches.match(req, { ignoreSearch: true }).then((cached) => cached || Response.error()));
+}

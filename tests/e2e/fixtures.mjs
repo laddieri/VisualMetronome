@@ -17,19 +17,25 @@ export const test = base.extend({
     page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
 
-    await page.route(/^https?:\/\/(?!localhost)/, (route) => {
-      const url = route.request().url();
-      if (/cdnjs\.cloudflare\.com\/.*\/p5\.js$/.test(url)) return route.fulfill({ path: P5_PATH });
-      if (/cdnjs\.cloudflare\.com\/.*three\.min\.js$/.test(url)) return route.fulfill({ path: THREE_PATH });
-      if (/cdnjs\.cloudflare\.com\//.test(url)) return route.fulfill({ body: '', contentType: 'text/javascript' });
-      if (/fonts\.(googleapis|gstatic)\.com/.test(url)) return route.fulfill({ body: '', contentType: 'text/css' });
-      return route.abort();
-    });
+    await routeExternal(page);
     await use(page);
   },
 });
 
 export { expect };
+
+// Answers every non-localhost request. `target` is a page, or a browser
+// context when a service worker is running (its fetches skip page routes).
+export function routeExternal(target) {
+  return target.route(/^https?:\/\/(?!localhost)/, (route) => {
+    const url = route.request().url();
+    if (/cdnjs\.cloudflare\.com\/.*\/p5\.js$/.test(url)) return route.fulfill({ path: P5_PATH });
+    if (/cdnjs\.cloudflare\.com\/.*three\.min\.js$/.test(url)) return route.fulfill({ path: THREE_PATH });
+    if (/cdnjs\.cloudflare\.com\//.test(url)) return route.fulfill({ body: '', contentType: 'text/javascript' });
+    if (/fonts\.(googleapis|gstatic)\.com/.test(url)) return route.fulfill({ body: '', contentType: 'text/css' });
+    return route.abort();
+  });
+}
 
 // Loads the app and waits for p5's setup() — the point at which every
 // control listener is wired and saved settings have been restored.

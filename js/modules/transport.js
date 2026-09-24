@@ -322,7 +322,7 @@ function scheduleMainBeat() {
       }, time);
     }
     // ──────────────────────────────────────────────────────────────────────
-  }, "4n");
+  }, "4n"); // One beat. The beat note only changes notation; see tests/e2e/beat-note.spec.mjs
 }
 
 // Schedule subdivisions for a single beat.

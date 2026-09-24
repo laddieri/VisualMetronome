@@ -3,6 +3,10 @@ import { defineConfig, devices } from '@playwright/test';
 // Smoke tests drive the real app in Chromium against `npm start`.
 // CDN libraries are served from node_modules (see tests/e2e/fixtures.mjs),
 // so the suite runs offline and doesn't depend on the CDN being up.
+// Let context.route() see requests made by the service worker, so
+// service-worker.spec.mjs can stub the CDN and simulate deploys through it.
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
+
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
