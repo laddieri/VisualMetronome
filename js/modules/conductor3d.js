@@ -4,7 +4,13 @@ import { state } from './state.js';
 // A stylized, friendly cartoon conductor rendered with Three.js on a podium
 // under a warm spotlight. Simple dot eyes and brows (no realistic features —
 // the earlier realistic attempt was uncanny), a balding crown with a wild
-// white side-mane, black tails with a white shirt bib and white bow tie.
+// white side-mane, black tails with a white shirt front and white bow tie.
+//
+// The body is built from smooth lathed profiles rather than primitives: a
+// sculpted coat with the shirt front and satin lapels painted onto its own
+// surface, capsule limbs that share a round joint at every bend, hips the
+// legs grow out of, and curved coat tails — no flat caps, gaps or floating
+// panels, whatever angle the camera orbits to.
 //
 // The realism budget goes into motion, not the face:
 //   • the right hand traces true conducting beat patterns (down/left/right/up
@@ -46,6 +52,9 @@ const CAM_ELEVATION_MIN = -0.05;
 const CAM_ELEVATION_MAX = 0.6;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+// Height range the coat texture is painted across (torso hem → collar).
+const TORSO_UV_Y = [0.73, 1.46];
 
 class Conductor3D {
   constructor() {
@@ -212,6 +221,197 @@ class Conductor3D {
     return m;
   }
 
+  // ── Geometry helpers ─────────────────────────────────────────────────────
+  // Everything organic is built from lathed profiles, so parts meet in round
+  // joints instead of the flat cylinder caps and gaps of the old model.
+
+  // Smooth lathe: the control points (radius, height; bottom → top) are run
+  // through a spline first so the silhouette has no facet kinks. The seam
+  // sits at the back (phiStart = π), which puts u = 0.5 at the front. With
+  // `uvY` = [yBottom, yTop], v is remapped to true height so a texture can
+  // be painted in body coordinates.
+  _latheSmooth(ctrl, segments, uvY) {
+    const curve = new THREE.SplineCurve(ctrl.map(([r, y]) => new THREE.Vector2(r, y)));
+    const pts = curve.getPoints(ctrl.length * 6).map(p => new THREE.Vector2(Math.max(0, p.x), p.y));
+    const geo = new THREE.LatheGeometry(pts, segments, Math.PI, Math.PI * 2);
+    if (uvY) {
+      const pos = geo.attributes.position;
+      const uv = geo.attributes.uv;
+      for (let i = 0; i < pos.count; i++) {
+        uv.setY(i, (pos.getY(i) - uvY[0]) / (uvY[1] - uvY[0]));
+      }
+    }
+    geo.userData.latheRings = pts.length;
+    geo.userData.latheSegments = segments;
+    return geo;
+  }
+
+  // After reshaping a lathe's vertices, recompute normals and weld the seam
+  // (its first and last columns are duplicates) so no crease line shows.
+  _relightLathe(geo) {
+    geo.computeVertexNormals();
+    const n = geo.attributes.normal;
+    const rings = geo.userData.latheRings;
+    const last = geo.userData.latheSegments * rings;
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    for (let j = 0; j < rings; j++) {
+      a.fromBufferAttribute(n, j);
+      b.fromBufferAttribute(n, last + j);
+      a.add(b).normalize();
+      n.setXYZ(j, a.x, a.y, a.z);
+      n.setXYZ(last + j, a.x, a.y, a.z);
+    }
+    n.needsUpdate = true;
+  }
+
+  // Tapered capsule hanging from its pivot: a sphere of rTop centered on the
+  // origin, narrowing to a sphere of rBot centered at y = −len. Limbs built
+  // from these share a sphere at every joint, so bends never open a gap.
+  _capsuleGeo(rTop, rBot, len, segments = 20) {
+    const pts = [];
+    const K = 8;
+    for (let k = 0; k <= K; k++) {
+      const a = -Math.PI / 2 + (k / K) * (Math.PI / 2);
+      pts.push(new THREE.Vector2(rBot * Math.cos(a), -len + rBot * Math.sin(a)));
+    }
+    for (let k = 1; k <= K; k++) {
+      const a = (k / K) * (Math.PI / 2);
+      pts.push(new THREE.Vector2(rTop * Math.cos(a), rTop * Math.sin(a)));
+    }
+    return new THREE.LatheGeometry(pts, segments);
+  }
+
+  // Sculpt the round torso lathe into a tailored figure: broad squared
+  // shoulders reaching the arm sockets, a round belly, and a chest that is
+  // shallower front-to-back than it is wide.
+  _shapeTorso(geo) {
+    const pos = geo.attributes.position;
+    const smooth = (a, b, v) => {
+      const t = clamp((v - a) / (b - a), 0, 1);
+      return t * t * (3 - 2 * t);
+    };
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);
+      const up = smooth(1.02, 1.34, y);
+      const fx = 1.18 + up * 0.32;
+      const fz = 0.96 - up * 0.14;
+      let z = pos.getZ(i) * fz;
+      // Belly pushes forward a little, the back stays straight.
+      if (z > 0) z *= 1 + 0.08 * Math.exp(-(((y - 0.95) / 0.14) ** 2));
+      pos.setX(i, pos.getX(i) * fx);
+      pos.setZ(i, z);
+    }
+    pos.needsUpdate = true;
+    this._relightLathe(geo);
+  }
+
+  // Coat surface texture, painted in torso coordinates (u = angle around the
+  // body with the front at 0.5, v = height across TORSO_UV_Y): white shirt
+  // front with studs, satin peak lapels, and the coat's front buttons.
+  _coatTexture() {
+    const W = 1024, H = 1024;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    // θ = angle from the front (+ = his left), y = height in body units.
+    const X = th => W * (0.5 + th / (Math.PI * 2));
+    const Y = y => H * (1 - (y - TORSO_UV_Y[0]) / (TORSO_UV_Y[1] - TORSO_UV_Y[0]));
+    const poly = (pts, fill) => {
+      ctx.beginPath();
+      pts.forEach(([th, y], i) => (i ? ctx.lineTo(X(th), Y(y)) : ctx.moveTo(X(th), Y(y))));
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    };
+
+    ctx.fillStyle = '#1b1c22';
+    ctx.fillRect(0, 0, W, H);
+
+    // Shirt front: a V from the collar down to the waist.
+    const shirt = [[-1.6, 1.5], [-0.62, 1.40], [-0.34, 1.27], [0, 1.0],
+      [0.34, 1.27], [0.62, 1.40], [1.6, 1.5]];
+    poly(shirt, '#f4f2ec');
+    // Soft shading down the shirt's middle so it isn't a flat white decal.
+    const g = ctx.createLinearGradient(0, Y(1.46), 0, Y(1.0));
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(120,110,95,0.18)');
+    poly(shirt, g);
+
+    // Satin peak lapels following the shirt edge.
+    const satin = '#2c2e37';
+    for (const s of [-1, 1]) {
+      poly([
+        [s * 1.6, 1.5], [s * 0.62, 1.40], [s * 0.34, 1.27], [s * 0.02, 1.0],
+        [s * 0.16, 0.99], [s * 0.46, 1.17], [s * 0.86, 1.30],  // peak
+        [s * 0.70, 1.335], [s * 0.98, 1.40], [s * 2.2, 1.5]    // notch, collar
+      ], satin);
+    }
+
+    // Shirt studs.
+    ctx.fillStyle = '#2a2a30';
+    for (const y of [1.30, 1.20, 1.10]) {
+      ctx.beginPath();
+      ctx.arc(X(0), Y(y), 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Coat buttons below the lapels.
+    for (const s of [-1, 1]) {
+      for (const y of [0.96, 0.88]) {
+        ctx.beginPath();
+        ctx.arc(X(s * 0.3), Y(y), 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#0c0c10';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(X(s * 0.3) - 2, Y(y) - 2, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#4a4b55';
+        ctx.fill();
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(c);
+    if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+    if (this.renderer) tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    return tex;
+  }
+
+  // One coat tail (side ±1): a curved panel wrapping the back of the legs,
+  // from the waist seam down to the backs of the knees. It tapers toward the
+  // center vent as it falls and swings slightly out at the bottom.
+  // `yOff` shifts it into the tails pivot group's local space.
+  _tailGeo(side, yOff) {
+    const NU = 10, NV = 16;
+    const pos = [];
+    const idx = [];
+    for (let j = 0; j <= NV; j++) {
+      const v = j / NV;
+      const y = 0.95 - v * 0.55;
+      const r = 0.206 + v * 0.02;
+      const aIn = 0.05;
+      const aOut = 1.3 - 0.8 * Math.pow(v, 0.8);
+      for (let i = 0; i <= NU; i++) {
+        const a = aIn + (aOut - aIn) * (i / NU);
+        // Round off the bottom outer corner.
+        const lift = v > 0.8 ? Math.pow((v - 0.8) / 0.2, 2) * (i / NU) * 0.05 : 0;
+        pos.push(
+          side * Math.sin(a) * r * 1.18,
+          y + lift + yOff,
+          -Math.cos(a) * r * 0.95 - v * v * 0.015
+        );
+      }
+    }
+    for (let j = 0; j < NV; j++) {
+      for (let i = 0; i < NU; i++) {
+        const a = j * (NU + 1) + i, b = a + NU + 1;
+        idx.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
   // ── Lighting: warm stage spotlight + soft studio wrap ────────────────────
 
   _setupLights() {
@@ -353,105 +553,97 @@ class Conductor3D {
     this._whiteMat = whiteMat;
     this._coatMat = coatMat;
 
-    // ── Legs + shoes (mostly behind the podium rim / music stand) ──
+    // ── Legs, hips + shoes ──
+    // Trousers are one continuous piece: a rounded hip block the legs grow
+    // out of, so there is no gap or hard edge where the coat hem ends. These
+    // stay in bodyGroup (planted); the coat hem overlaps the hips so the
+    // torso's slow sway never opens a seam.
+    const trouserMat = this._mat(0x1f2027, { roughness: 0.8 });
+    const hipsGeo = this._latheSmooth([
+      [0.0, 0.67], [0.08, 0.675], [0.125, 0.70], [0.145, 0.745],
+      [0.152, 0.8], [0.15, 0.86], [0.0, 0.88]
+    ], 28);
+    hipsGeo.scale(1.12, 1, 0.82);
+    bodyGroup.add(new THREE.Mesh(hipsGeo, trouserMat));
+    const shoeMat = this._mat(0x0e0e12, { roughness: 0.3 });
     for (const s of [-1, 1]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.055, 0.62, 12), coatMat);
-      leg.position.set(s * 0.09, 0.36, 0);
+      const leg = new THREE.Mesh(this._capsuleGeo(0.072, 0.056, 0.66), trouserMat);
+      leg.position.set(s * 0.086, 0.75, 0);
       bodyGroup.add(leg);
-      const shoeGeo = new THREE.SphereGeometry(0.062, 14, 10);
-      shoeGeo.scale(1.0, 0.62, 1.7);
-      const shoe = new THREE.Mesh(shoeGeo, this._mat(0x0e0e12, { roughness: 0.35 }));
-      shoe.position.set(s * 0.09, 0.038, 0.05);
+      const shoeGeo = new THREE.SphereGeometry(0.064, 18, 12);
+      shoeGeo.scale(1.0, 0.62, 1.75);
+      const shoe = new THREE.Mesh(shoeGeo, shoeMat);
+      shoe.position.set(s * 0.09, 0.04, 0.045);
       bodyGroup.add(shoe);
     }
 
-    // ── Torso — lathe profile for a tailored (slightly portly) coat ──
-    const profile = [
-      [0.150, 0.62], // coat hem
-      [0.175, 0.78],
-      [0.195, 0.95], // belly
-      [0.195, 1.10],
-      [0.185, 1.22], // chest
-      [0.160, 1.32],
-      [0.105, 1.40], // shoulder slope
-      [0.060, 1.45]  // collar
-    ].map(([r, y]) => new THREE.Vector2(r, y));
-    const torsoGeo = new THREE.LatheGeometry(profile, 28);
-    torsoGeo.scale(1.22, 1, 0.9);
-    const torso = new THREE.Mesh(torsoGeo, coatMat);
+    // ── Torso — one smooth sculpted coat from hem to collar ──
+    // The shirt front, satin lapels and studs are painted onto the coat's own
+    // surface (see _coatTexture), so they follow every curve of the chest
+    // instead of floating as separate flat pieces. Each ring is then
+    // reshaped: square-ish shoulders that reach the arm sockets, a deep
+    // rounded belly, and a chest flattened front-to-back.
+    const torsoGeo = this._latheSmooth([
+      [0.0, 0.742], [0.12, 0.744], [0.17, 0.75], [0.182, 0.775],
+      [0.194, 0.9], [0.197, 1.02], [0.188, 1.17], [0.176, 1.29],
+      [0.148, 1.375], [0.094, 1.435], [0.062, 1.46]
+    ], 40, TORSO_UV_Y);
+    this._shapeTorso(torsoGeo);
+    const torso = new THREE.Mesh(torsoGeo, this._mat(0xffffff, {
+      roughness: 0.8,
+      map: this._coatTexture()
+    }));
     upperBody.add(torso);
 
-    // Rounded shoulders
+    // Shoulder caps: round the coat over each arm socket so the sleeve grows
+    // out of the body (the arm's own top is a sphere on the same pivot).
     for (const s of [-1, 1]) {
-      const pad = new THREE.Mesh(new THREE.SphereGeometry(0.075, 18, 14), coatMat);
-      pad.position.set(s * 0.195, 1.325, 0.01);
-      pad.scale.set(1.0, 0.8, 0.95);
-      upperBody.add(pad);
+      const capGeo = new THREE.SphereGeometry(0.07, 20, 16);
+      capGeo.scale(1.0, 0.78, 1.0);
+      const cap = new THREE.Mesh(capGeo, coatMat);
+      cap.position.set(s * 0.218, 1.328, 0.022);
+      upperBody.add(cap);
     }
 
-    // Shirt bib — a shallow white ellipsoid proud of the coat front so it can
-    // never be swallowed by the torso geometry (the old version buried it).
-    const bibGeo = new THREE.SphereGeometry(0.19, 24, 18);
-    bibGeo.scale(0.6, 0.85, 0.42);
-    const bib = new THREE.Mesh(bibGeo, whiteMat);
-    bib.position.set(0, 1.17, 0.1);
-    upperBody.add(bib);
+    // White wing collar around the neck.
+    const collarGeo = new THREE.CylinderGeometry(0.066, 0.072, 0.05, 20, 1, true);
+    const collar = new THREE.Mesh(collarGeo, this._mat(0xf7f6f1, { roughness: 0.55, side: THREE.DoubleSide }));
+    collar.position.set(0, 1.465, 0.012);
+    upperBody.add(collar);
 
-    // Lapels — thin satin wedges hugging the chest over the bib's edges.
-    const lapelMat = this._mat(0x1d1e25, { roughness: 0.35, metalness: 0.25 });
-    for (const s of [-1, 1]) {
-      const shape = new THREE.Shape();
-      shape.moveTo(0, 0);
-      shape.lineTo(s * 0.085, -0.035);
-      shape.lineTo(s * 0.08, -0.20);
-      shape.lineTo(s * 0.024, -0.26);
-      shape.closePath();
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false });
-      const lapel = new THREE.Mesh(geo, lapelMat);
-      lapel.position.set(s * 0.015, 1.40, 0.135);
-      lapel.rotation.x = -0.22;           // lean back with the chest
-      lapel.rotation.y = s * 0.38;        // wrap around the ribcage
-      upperBody.add(lapel);
-    }
-
-    // White bow tie (white tie goes with tails) — two cones + a knot.
+    // White bow tie (white tie goes with tails) — two rounded wings + a knot.
     const tieGroup = new THREE.Group();
-    tieGroup.position.set(0, 1.39, 0.14);
-    tieGroup.rotation.x = -0.2;
+    tieGroup.position.set(0, 1.435, 0.085);
+    tieGroup.rotation.x = -0.25;
     upperBody.add(tieGroup);
     for (const s of [-1, 1]) {
-      const wingGeo = new THREE.ConeGeometry(0.026, 0.055, 10);
-      wingGeo.rotateZ(s * Math.PI / 2);
+      const wingGeo = new THREE.SphereGeometry(0.029, 14, 10);
+      wingGeo.scale(1.25, 0.85, 0.5);
       const wing = new THREE.Mesh(wingGeo, whiteMat);
-      wing.position.x = s * 0.032;
-      wing.scale.z = 0.55;
+      wing.position.x = s * 0.034;
+      wing.rotation.z = s * 0.25;
       tieGroup.add(wing);
     }
-    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 8), whiteMat);
-    knot.scale.set(1, 0.85, 0.6);
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(0.014, 12, 10), whiteMat);
+    knot.scale.set(1, 1, 0.75);
+    knot.position.z = 0.004;
     tieGroup.add(knot);
 
-    // Coat tails hanging at the back, on a pivot so they can swing.
+    // Coat tails: two curved panels wrapping the back of the legs, hung from
+    // the waist on a pivot so they can swing. They taper toward the vent and
+    // follow the coat's curvature instead of being flat cutouts.
     const tailsGroup = new THREE.Group();
-    tailsGroup.position.set(0, 0.72, -0.1);
+    tailsGroup.position.set(0, 0.92, 0);
     upperBody.add(tailsGroup);
     this.meshes.tails = tailsGroup;
+    const tailMat = this._mat(COAT, { roughness: 0.85, side: THREE.DoubleSide });
     for (const s of [-1, 1]) {
-      const shape = new THREE.Shape();
-      shape.moveTo(s * 0.02, 0);
-      shape.lineTo(s * 0.15, 0);
-      shape.lineTo(s * 0.11, -0.34);
-      shape.lineTo(s * 0.045, -0.36);
-      shape.closePath();
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.014, bevelEnabled: false });
-      const tail = new THREE.Mesh(geo, coatMat);
-      tail.rotation.x = 0.14; // drape slightly outward from the body
-      tailsGroup.add(tail);
+      tailsGroup.add(new THREE.Mesh(this._tailGeo(s, -0.92), tailMat));
     }
 
     // ── Neck + head ──
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.068, 0.1, 14), skinMat);
-    neck.position.set(0, 1.46, 0.01);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.064, 0.12, 16), skinMat);
+    neck.position.set(0, 1.49, 0.012);
     upperBody.add(neck);
 
     const headGroup = new THREE.Group();
@@ -578,40 +770,49 @@ class Conductor3D {
     const upperArmGroup = new THREE.Group();
     shoulderGroup.add(upperArmGroup);
 
-    const ua = new THREE.Mesh(new THREE.CylinderGeometry(0.056, 0.048, 0.30, 14), this._coatMat);
-    ua.position.y = -0.15;
-    upperArmGroup.add(ua);
+    // Upper arm and forearm are capsules sharing a 0.05 sphere at the elbow,
+    // and the upper arm's top sphere sits on the shoulder pivot inside the
+    // shoulder cap — so the sleeve stays one continuous tube at any bend.
+    upperArmGroup.add(new THREE.Mesh(this._capsuleGeo(0.057, 0.05, 0.30), this._coatMat));
 
     const elbowGroup = new THREE.Group();
     elbowGroup.position.set(0, -0.30, 0);
     upperArmGroup.add(elbowGroup);
 
-    // Ball at the joint so the sleeve never shows a gap when bent.
-    const elbowBall = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), this._coatMat);
-    elbowGroup.add(elbowBall);
+    // Forearm: rounded at the elbow, tapering to an open-looking sleeve end
+    // with the white shirt cuff showing below it.
+    const sleevePts = [[0.0, -0.236], [0.036, -0.238], [0.045, -0.232], [0.046, -0.215]];
+    for (let k = 0; k <= 8; k++) {
+      const a = (k / 8) * (Math.PI / 2);
+      sleevePts.push([0.05 * Math.cos(a), 0.05 * Math.sin(a)]);
+    }
+    const sleeveGeo = new THREE.LatheGeometry(sleevePts.map(([r, y]) => new THREE.Vector2(r, y)), 20);
+    elbowGroup.add(new THREE.Mesh(sleeveGeo, this._coatMat));
 
-    const fa = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.038, 0.26, 14), this._coatMat);
-    fa.position.y = -0.13;
-    elbowGroup.add(fa);
-
-    // White shirt cuff peeking from the sleeve
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.043, 0.03, 14), this._whiteMat);
-    cuff.position.y = -0.255;
+    const cuff = new THREE.Mesh(this._capsuleGeo(0.037, 0.035, 0.03, 18), this._whiteMat);
+    cuff.position.y = -0.232;
+    cuff.scale.y = 0.9;
     elbowGroup.add(cuff);
 
     const wristGroup = new THREE.Group();
     wristGroup.position.set(0, -0.28, 0);
     elbowGroup.add(wristGroup);
 
-    // White-gloved mitt + thumb — pops against the black coat so the motion
-    // reads from across a room.
-    const mittGeo = new THREE.SphereGeometry(0.042, 14, 12);
-    mittGeo.scale(0.85, 1.15, 0.7);
-    const mitt = new THREE.Mesh(mittGeo, this._whiteMat);
-    mitt.position.y = -0.03;
-    wristGroup.add(mitt);
-    const thumb = new THREE.Mesh(new THREE.SphereGeometry(0.019, 10, 8), this._whiteMat);
-    thumb.position.set(side * -0.032, -0.02, 0.02);
+    // White glove — pops against the black coat so the motion reads from
+    // across a room. A rounded palm with a hint of knuckles plus a thumb.
+    const palmGeo = new THREE.SphereGeometry(0.04, 18, 14);
+    palmGeo.scale(0.95, 1.15, 0.72);
+    const palm = new THREE.Mesh(palmGeo, this._whiteMat);
+    palm.position.y = -0.028;
+    wristGroup.add(palm);
+    const knucklesGeo = new THREE.SphereGeometry(0.033, 16, 12);
+    knucklesGeo.scale(1.05, 0.8, 0.85);
+    const knuckles = new THREE.Mesh(knucklesGeo, this._whiteMat);
+    knuckles.position.set(0, -0.058, 0.008);
+    wristGroup.add(knuckles);
+    const thumb = new THREE.Mesh(this._capsuleGeo(0.015, 0.013, 0.03, 12), this._whiteMat);
+    thumb.position.set(side * -0.03, -0.012, 0.014);
+    thumb.rotation.set(-0.5, 0, side * 0.6);
     wristGroup.add(thumb);
 
     if (side === -1 && this.meshes.baton) {
