@@ -696,6 +696,65 @@ main {
   box-shadow: 0 0 0 3px var(--vm-indigo-focus);
 }
 
+/* −/+ fine-adjust buttons around the BPM readout */
+.bpm-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bpm-step-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--vm-border);
+  background: var(--vm-bg-page);
+  color: var(--vm-fg-1);
+  font-family: var(--vm-font-sans);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+
+.bpm-step-btn:hover {
+  border-color: var(--vm-indigo);
+  color: var(--vm-indigo);
+}
+
+.bpm-step-btn:focus-visible {
+  outline: none;
+  border-color: var(--vm-indigo);
+  box-shadow: 0 0 0 3px var(--vm-indigo-focus);
+}
+
+.bpm-step-btn.is-pressed,
+.bpm-step-btn:active {
+  background: var(--vm-indigo);
+  border-color: var(--vm-indigo);
+  color: white;
+  transform: scale(0.92);
+}
+
+@media (pointer: coarse) {
+  .bpm-step-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 .bpm-label {
   font-size: 0.55rem;
   font-weight: 600;
@@ -1963,6 +2022,8 @@ footer p {
 }
 
 .fullscreen-bpm-value {
+  min-width: 3ch;
+  text-align: center;
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--vm-fg-1);

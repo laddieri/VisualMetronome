@@ -752,12 +752,17 @@
         }, 400);
       }
       function stop() { clearTimeout(delay); clearInterval(interval); delay = interval = null; }
-      el.addEventListener('mousedown',   start);
-      el.addEventListener('touchstart',  start, { passive: true });
-      el.addEventListener('mouseup',     stop);
-      el.addEventListener('mouseleave',  stop);
-      el.addEventListener('touchend',    stop);
-      el.addEventListener('touchcancel', stop);
+      // Pointer events cover mouse and touch without the emulated
+      // mousedown that follows a tap (which used to step twice).
+      el.addEventListener('pointerdown', function (e) {
+        e.preventDefault();
+        stop();
+        start();
+      });
+      el.addEventListener('pointerup',     stop);
+      el.addEventListener('pointerleave',  stop);
+      el.addEventListener('pointercancel', stop);
+      el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
       el.addEventListener('click', function (e) { e.preventDefault(); });
     }
 

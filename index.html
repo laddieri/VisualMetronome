@@ -187,9 +187,13 @@
               </div>
               <div class="tempo-slider-row">
                 <input type="range" id="tempo-slider" class="tempo-range" min="30" max="300" value="96" step="1">
-                <div class="bpm-display">
-                  <input type="number" id="bpm-input" class="bpm-input" min="30" max="300" value="96">
-                  <span class="bpm-label">BPM</span>
+                <div class="bpm-stepper">
+                  <button type="button" class="bpm-step-btn" data-step="-1" aria-label="Decrease tempo by 1 BPM" title="−1 BPM (hold to repeat, Shift+click for −5)">&minus;</button>
+                  <div class="bpm-display">
+                    <input type="number" id="bpm-input" class="bpm-input" min="30" max="300" value="96" aria-label="Tempo in BPM" title="Type a tempo, or scroll / use ↑↓ to fine-tune">
+                    <span class="bpm-label">BPM</span>
+                  </div>
+                  <button type="button" class="bpm-step-btn" data-step="1" aria-label="Increase tempo by 1 BPM" title="+1 BPM (hold to repeat, Shift+click for +5)">+</button>
                 </div>
               </div>
             </div>
@@ -427,9 +431,13 @@
           <label class="fullscreen-label">Tempo</label>
           <div class="fullscreen-tempo-row">
             <input type="range" id="fullscreen-tempo-slider" class="tempo-range" min="30" max="300" value="96" step="1">
-            <div class="bpm-display">
-              <span id="fullscreen-bpm-value" class="fullscreen-bpm-value">96</span>
-              <span class="bpm-label">BPM</span>
+            <div class="bpm-stepper">
+              <button type="button" class="bpm-step-btn" data-step="-1" aria-label="Decrease tempo by 1 BPM" title="−1 BPM (hold to repeat)">&minus;</button>
+              <div class="bpm-display">
+                <span id="fullscreen-bpm-value" class="fullscreen-bpm-value">96</span>
+                <span class="bpm-label">BPM</span>
+              </div>
+              <button type="button" class="bpm-step-btn" data-step="1" aria-label="Increase tempo by 1 BPM" title="+1 BPM (hold to repeat)">+</button>
             </div>
           </div>
         </div>
