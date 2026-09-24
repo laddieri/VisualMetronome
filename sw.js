@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v2';
+const CACHE_VERSION = 'vm-v3';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
@@ -45,6 +45,7 @@ const SHELL = [
   './js/modules/custom-rhythm.js',
   './js/modules/check-rhythm.js',
   './js/modules/two-measure.js',
+  './js/modules/keep-awake.js',
   './manifest.webmanifest',
   './assets/logo.svg',
   './assets/pig.svg',
@@ -53,6 +54,7 @@ const SHELL = [
   './assets/pig-maskable-512.png',
   './assets/pig-180.png',
   './assets/pig-favicon-32.png',
+  './assets/keep-awake.mp4',
 ];
 
 self.addEventListener('install', (event) => {

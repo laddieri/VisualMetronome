@@ -1,4 +1,5 @@
 import { state } from './state.js';
+import { keepAwakeStart, keepAwakeStop, resumeAudio } from './keep-awake.js';
 import { crmBeginMonitoring, crmClearFeedbackMarkers, crmEndMonitoring, crmShowFeedback } from './check-rhythm.js';
 import { hideCtDisplay, showCtDoneFeedback, updateCtDisplay, updateCtDisplayWith } from './counting-trainer.js';
 import { triggerCustomRhythmBeat } from './custom-rhythm.js';
@@ -457,7 +458,7 @@ function _setPlayTogglePlaying(val) {
 
 export function _ensureAudioContext(fn) {
   if (Tone.context.state !== 'running') {
-    Tone.context.resume().then(fn);
+    resumeAudio().then(fn, fn);
   } else {
     fn();
   }
@@ -535,6 +536,7 @@ export function toggleTransport(withCountIn) {
   if (Tone.Transport.state === 'started') {
     // Stopping: reset state for clean restart
     Tone.Transport.stop();
+    keepAwakeStop();
     state.currentBeat = 0;
     state.lastBeatTime = 0;
     state.animBeat = 0;
@@ -616,6 +618,7 @@ export function toggleTransport(withCountIn) {
       updateCtDisplay();
     }
     Tone.Transport.start();
+    keepAwakeStart();
     // Always sync the play-toggle visual — needed when called from remote
     // (clicking tone-play-toggle directly already updates it before firing 'change',
     // so setting .playing = true again is a safe no-op in that path).

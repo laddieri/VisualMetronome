@@ -3160,3 +3160,53 @@ footer p {
   }
 }
 /* ─────────────────────────────────────────────────────────────────────── */
+
+/* ── Keep-awake (js/modules/keep-awake.js) ─────────────────────────────── */
+/* Silent video that keeps iOS from auto-locking; must stay "visible" to play. */
+.keep-awake-video {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  bottom: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Shown when iOS interrupts audio (call, Siri, alarm) mid-playback. */
+.audio-resume-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border: none;
+  background: rgba(15, 23, 42, 0.55);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.audio-resume-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+  padding: 24px 28px;
+  border-radius: 16px;
+  background: var(--vm-bg-chrome, #ffffff);
+  color: var(--vm-fg-1, #0f172a);
+  box-shadow: var(--vm-elev-popover);
+  text-align: center;
+}
+
+.audio-resume-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.audio-resume-hint {
+  color: var(--vm-fg-3, #475569);
+}
