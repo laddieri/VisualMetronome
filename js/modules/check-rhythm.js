@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { crGetAllNoteXPositions, crGetSubBeats, crIsContinuation } from './custom-rhythm.js';
+import { matchHits, scoreResult } from './rhythm-scoring.js';
 import { _ensureAudioContext, toggleTransport } from './transport.js';
 
 var crmSourceNode       = null;     // MediaStreamSourceNode
@@ -171,45 +172,7 @@ function crmComputeExpectedHits() {
 }
 
 function crmAnalyze(expectedHits) {
-  var beatDur    = Tone.Time("4n").toSeconds();
-  var onWindow   = beatDur * 0.20;   // ±20% of a beat = "on time"
-  var maxWindow  = beatDur * 0.45;   // up to ±45% = matched but off
-  var usedD      = new Array(crmDetectedHits.length).fill(false);
-  var matchOfE   = new Array(expectedHits.length).fill(-1);
-
-  // Global nearest-pair assignment: consider every (expected, detected) pair
-  // within the match window, then commit them shortest-difference first. This
-  // avoids the in-order greedy mistake of letting an early expected note grab a
-  // detected hit that actually belongs to its neighbour.
-  var pairs = [];
-  for (var e = 0; e < expectedHits.length; e++) {
-    for (var d = 0; d < crmDetectedHits.length; d++) {
-      var diff = crmDetectedHits[d] - expectedHits[e];
-      if (Math.abs(diff) <= maxWindow) pairs.push({ e: e, d: d, abs: Math.abs(diff), diff: diff });
-    }
-  }
-  pairs.sort(function(a, b) { return a.abs - b.abs; });
-  for (var p = 0; p < pairs.length; p++) {
-    var pr = pairs[p];
-    if (matchOfE[pr.e] !== -1 || usedD[pr.d]) continue;
-    matchOfE[pr.e] = pr.d;
-    usedD[pr.d] = true;
-  }
-
-  var notes = [];
-  for (var e2 = 0; e2 < expectedHits.length; e2++) {
-    var di = matchOfE[e2];
-    if (di === -1) {
-      notes.push({ status: 'missed', diff: null });
-    } else {
-      var d2 = crmDetectedHits[di] - expectedHits[e2];
-      var status = Math.abs(d2) < onWindow ? 'on' : (d2 < 0 ? 'early' : 'late');
-      notes.push({ status: status, diff: d2 });
-    }
-  }
-  var extraHits = [];
-  for (var d3 = 0; d3 < usedD.length; d3++) { if (!usedD[d3]) extraHits.push(crmDetectedHits[d3]); }
-  return { notes: notes, extraHits: extraHits };
+  return matchHits(expectedHits, crmDetectedHits, Tone.Time("4n").toSeconds());
 }
 
 function crmGetExpectedNoteVisualXs() {
@@ -281,9 +244,6 @@ function crmRenderFeedbackOnStaff(result, visualXs) {
 
     if (n.status === 'missed') {
       // Red × at the expected position
-      var ms  = (4 * sc).toFixed(1);
-      var cx  = expectedDispX.toFixed(1);
-      var cy  = noteY.toFixed(1);
       var sw  = (2 * sc).toFixed(1);
       var x1  = (expectedDispX - 4 * sc).toFixed(1);
       var x2  = (expectedDispX + 4 * sc).toFixed(1);
@@ -332,25 +292,7 @@ function crmRenderFeedbackOnStaff(result, visualXs) {
 }
 
 function crmComputeScore(result) {
-  // 100% means every expected note was clapped within the green "on-time"
-  // window with no missed and no extra hits. Notes outside the on-time window
-  // but still matched earn partial credit that fades to 0 at the match limit;
-  // missed notes earn nothing, and spurious extra hits dilute the score like
-  // wrong notes would.
-  var beatDur   = Tone.Time("4n").toSeconds();
-  var onWindow  = beatDur * 0.20;   // must match crmAnalyze
-  var maxWindow = beatDur * 0.45;
-  var total     = result.notes.length;
-  if (total === 0) return 0;
-  var sum = 0;
-  result.notes.forEach(function(n) {
-    if (n.status === 'missed') return;                 // no credit
-    var ad = Math.abs(n.diff);
-    if (ad <= onWindow) { sum += 1; return; }          // full credit (green)
-    sum += Math.max(0, 1 - (ad - onWindow) / (maxWindow - onWindow));
-  });
-  var denom = total + result.extraHits.length;
-  return Math.round((sum / denom) * 100);
+  return scoreResult(result, Tone.Time("4n").toSeconds());
 }
 
 export function crmShowFeedback() {

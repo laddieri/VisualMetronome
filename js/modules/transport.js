@@ -7,14 +7,12 @@ import { sendStateUpdate } from './remote.js';
 import { windowResized } from './sketch.js';
 import { applySongSectionUI, hideSongProgressDisplay, updateSongProgressDisplay } from './songs.js';
 import { triggerRockBeat, triggerSound, triggerWaltzBeat } from './sounds.js';
+import { songTempoAt } from './tempo-math.js';
 import { tmpCalcM2BPM } from './two-measure.js';
 import { speakBeatNumber, speakWord } from './voice.js';
 
 var countInBeatsRemaining = 0; // Counts down during the count-in phase
 var countInMeasures = 0;       // How many count-in measures were requested (1 or 2)
-
-// Subdivision event IDs (to cancel when settings change)
-var subdivisionEvents = [];
 
 // Schedule main beat sound
 function scheduleMainBeat() {
@@ -157,63 +155,18 @@ function scheduleMainBeat() {
           return; // Don't play a beat after song ends
         }
       } else {
-        // Still within the current section — check for ritardando and/or
-        // a transition ramp toward the next section's BPM.
-        var totalBeatsInSection = curSec.measures * curSec.beatsPerMeasure;
-        var currentBeatIndex = state.songMeasureInSection * curSec.beatsPerMeasure + state.songBeatInMeasure;
-        var beatsRemaining = totalBeatsInSection - currentBeatIndex; // incl. this beat
-
-        // ── Ritardando: smooth slowdown at the end of this section ──────────
-        var ritardandoApplied = false;
-        if (curSec.ritardandoEnabled && (curSec.ritardandoBeats || 0) > 0) {
-          var ritUnit = curSec.ritardandoUnit || 'beats';
-          var totalRitBeats = (ritUnit === 'measures')
-            ? curSec.ritardandoBeats * curSec.beatsPerMeasure
-            : curSec.ritardandoBeats;
-          // Never let the ritardando be longer than the section itself
-          totalRitBeats = Math.min(totalRitBeats, totalBeatsInSection);
-          if (beatsRemaining <= totalRitBeats) {
-            var beatsIntoRit = totalRitBeats - beatsRemaining; // 0-indexed step
-            // Target BPM = section BPM reduced by ritardandoPercent
-            var ritTargetBPM = curSec.bpm * (1 - (curSec.ritardandoPercent || 30) / 100);
-            ritTargetBPM = Math.max(30, ritTargetBPM);
-            var ritBPM = curSec.bpm + (ritTargetBPM - curSec.bpm) * (beatsIntoRit + 1) / totalRitBeats;
-            ritBPM = Math.max(30, Math.min(300, ritBPM));
-            Tone.Transport.bpm.setValueAtTime(ritBPM, time);
-            // Do NOT update cachedBPM here — same reason as for transition ramp;
-            // Tone.Draw.schedule updates it atomically with lastBeatTime.
-            ritardandoApplied = true;
-          }
-        }
-
-        // ── Transition ramp: only when no ritardando is active ──────────────
-        if (!ritardandoApplied) {
-          var nextSec = state.songSections[state.songCurrentSection + 1];
-          if (nextSec) {
-            var transCount = nextSec.transitionBeats || 0;
-            if (transCount > 0 && nextSec.bpm !== curSec.bpm) {
-              var transUnit = nextSec.transitionUnit || 'beats';
-              var totalTransBeats = (transUnit === 'measures')
-                ? transCount * nextSec.beatsPerMeasure
-                : transCount;
-              // Never let the ramp be longer than the section itself
-              totalTransBeats = Math.min(totalTransBeats, totalBeatsInSection);
-              if (beatsRemaining <= totalTransBeats) {
-                // This beat falls inside the ramp window — interpolate BPM
-                var beatsIntoRamp = totalTransBeats - beatsRemaining; // 0-indexed step
-                var rampBPM = curSec.bpm +
-                  (nextSec.bpm - curSec.bpm) * (beatsIntoRamp + 1) / totalTransBeats;
-                rampBPM = Math.max(30, Math.min(300, rampBPM));
-                Tone.Transport.bpm.setValueAtTime(rampBPM, time);
-                // Do NOT update cachedBPM here: the scheduler fires look-ahead
-                // (~100ms early) so updating cachedBPM now changes beatDuration
-                // while lastBeatTime still belongs to the previous beat.  When
-                // slowing down this makes progress jump backward, causing a
-                // visible stutter.  Tone.Draw.schedule updates cachedBPM
-                // atomically with lastBeatTime at the correct moment.
-              }
-            }
-          }
+        // Still within the current section — apply any ritardando or
+        // transition ramp toward the next section's BPM.
+        var songTempo = songTempoAt(curSec, state.songSections[state.songCurrentSection + 1],
+          state.songMeasureInSection * curSec.beatsPerMeasure + state.songBeatInMeasure);
+        if (songTempo.bpm !== null) {
+          Tone.Transport.bpm.setValueAtTime(songTempo.bpm, time);
+          // Do NOT update cachedBPM here: the scheduler fires look-ahead
+          // (~100ms early) so updating cachedBPM now changes beatDuration
+          // while lastBeatTime still belongs to the previous beat.  When
+          // slowing down this makes progress jump backward, causing a
+          // visible stutter.  Tone.Draw.schedule updates cachedBPM
+          // atomically with lastBeatTime at the correct moment.
         }
       }
     }
@@ -316,41 +269,12 @@ function scheduleMainBeat() {
     var thisRampProgress = 0;
     var thisRitardandoProgress = 0;
     if (state.songModeEnabled && state.songCurrentSection >= 0) {
-      var _curSec  = state.songSections[state.songCurrentSection];
+      var _curSec = state.songSections[state.songCurrentSection];
       if (_curSec) {
-        var _totalBeats = _curSec.measures * _curSec.beatsPerMeasure;
-        var _beatIdx = state.songMeasureInSection * _curSec.beatsPerMeasure + state.songBeatInMeasure;
-        var _remaining = _totalBeats - _beatIdx;
-
-        // Ritardando progress (takes priority over transition ramp for tint)
-        if (_curSec.ritardandoEnabled && (_curSec.ritardandoBeats || 0) > 0) {
-          var _ritUnit = _curSec.ritardandoUnit || 'beats';
-          var _totalRit = (_ritUnit === 'measures')
-            ? _curSec.ritardandoBeats * _curSec.beatsPerMeasure
-            : _curSec.ritardandoBeats;
-          _totalRit = Math.min(_totalRit, _totalBeats);
-          if (_remaining <= _totalRit) {
-            thisRitardandoProgress = (_totalRit - _remaining + 1) / _totalRit;
-          }
-        }
-
-        // Transition ramp progress (only when not in ritardando)
-        if (thisRitardandoProgress === 0) {
-          var _nextSec = state.songSections[state.songCurrentSection + 1];
-          if (_nextSec) {
-            var _transCount = _nextSec.transitionBeats || 0;
-            if (_transCount > 0 && _nextSec.bpm !== _curSec.bpm) {
-              var _unit = _nextSec.transitionUnit || 'beats';
-              var _totalTrans = (_unit === 'measures')
-                ? _transCount * _nextSec.beatsPerMeasure
-                : _transCount;
-              _totalTrans = Math.min(_totalTrans, _totalBeats);
-              if (_remaining <= _totalTrans) {
-                thisRampProgress = (_totalTrans - _remaining + 1) / _totalTrans;
-              }
-            }
-          }
-        }
+        var _tempo = songTempoAt(_curSec, state.songSections[state.songCurrentSection + 1],
+          state.songMeasureInSection * _curSec.beatsPerMeasure + state.songBeatInMeasure);
+        thisRampProgress = _tempo.rampProgress;
+        thisRitardandoProgress = _tempo.ritardandoProgress;
       }
     }
 

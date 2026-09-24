@@ -4,9 +4,24 @@
   "description": "Visual Metronome with QR remote control",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "lint": "eslint .",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\"",
+    "test:e2e": "playwright test",
+    "test": "npm run lint && npm run test:unit && npm run test:e2e"
   },
   "dependencies": {
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.56.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "p5": "0.7.3",
+    "three": "0.128.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

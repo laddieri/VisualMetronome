@@ -249,11 +249,6 @@ export function triggerSound(time, isAccent = false){
   }
 }
 
-// Play subdivision sound
-function triggerSubdivision(time) {
-  state.subdivisionSynth.triggerAttackRelease("C5", "32n", time);
-}
-
 // Play rock beat pattern for the given beat index (0-3 in 4/4)
 // Pattern: kick on 1 & 3, snare on 2 & 4, hi-hat on every 8th note
 export function triggerRockBeat(time, beat) {
@@ -279,8 +274,6 @@ export function triggerRockBeat(time, beat) {
 // Play waltz pattern for the given beat index (0-2 in 3/4)
 // Pattern: kick on beat 1, hi-hat on beats 2 & 3 ("oom-pah-pah")
 export function triggerWaltzBeat(time, beat) {
-  const beatDuration = Tone.Time("4n").toSeconds();
-
   if (beat === 0) {
     // Beat 1: kick drum (the "oom")
     kickSynth.triggerAttackRelease("C1", "8n", time);
