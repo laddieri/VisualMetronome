@@ -14,13 +14,16 @@ import { state } from './state.js';
 //
 // The realism budget goes into motion, not the face:
 //   • the right hand traces true conducting beat patterns (down/left/right/up
-//     figures per meter) as quadratic Béziers through ictus → rebound points,
-//     with fast-slow-fast timing so the baton snaps off each beat, floats at
-//     the rebound, and accelerates into the next ictus;
+//     figures per meter). Each beat is a bounce: vertically a ballistic arc
+//     in time, so the hand snaps off the ictus, floats weightless at the top
+//     of the rebound and falls accelerating into the next beat; sideways it
+//     curves through the rebound point toward where the next beat lands.
+//     The elbow leads, lifting and winging out as the hand rises;
 //   • the left hand rests low against the stomach, below the conducting
 //     plane so it never obscures the baton, with only a breathing float and
 //     a slight downbeat acknowledgment;
-//   • an underdamped baton spring, slow body sway, brow raises on the
+//   • a real-time baton spring (tip lags the stroke, whips past at each
+//     ictus and settles), slow body sway, brow raises on the
 //     downbeat, breathing, blinking and idle micro-motion. Body motion is
 //     deliberately not beat-synced — the beat lives in the baton alone.
 //
@@ -37,6 +40,17 @@ import { state } from './state.js';
 function tempoScale(bpm) {
   const s = 1.15 - (bpm - 60) * 0.0032;
   return Math.max(0.65, Math.min(1.15, s));
+}
+
+// Height at time t ∈ [0, 1] of a parabola in time that starts at y0, peaks
+// at `apex` and ends at y1 — a ball tossed from one ictus to the next under
+// constant gravity. Requires apex ≥ max(y0, y1).
+function ballisticArc(y0, apex, y1, t) {
+  const A = apex - y0;
+  const d = y1 - y0;
+  // Solve for the bulge h in y0 + (d + 4h)t − 4h·t² so its maximum is apex.
+  const h = (2 * A - d + 2 * Math.sqrt(Math.max(0, A * (A - d)))) / 4;
+  return y0 + (d + 4 * h) * t - 4 * h * t * t;
 }
 
 // ── Orbit camera constants ────────────────────────────────────────────────────
@@ -75,6 +89,7 @@ class Conductor3D {
     // hand is at world/screen -x and his left at +x.
     this.smoothR = new THREE.Vector3(-0.14, 0.95, 0.2); // right-hand (baton) target
     this.smoothL = new THREE.Vector3(0.15, 0.96, 0.18); // left-hand target
+    this.playBlend = 0;         // 0 at rest → 1 conducting (eased in/out)
     this.currentSway = 0;
     this.currentYaw = 0;
     this.breathPhase = Math.random() * Math.PI * 2;
@@ -927,15 +942,18 @@ class Conductor3D {
     const fromIdx = lastFired % n;
     const toIdx = (fromIdx + 1) % n;
 
-    // Fast-slow-fast easing; extra contrast on the prep beat into the downbeat
-    // so the upswing hangs at the top and drops decisively onto beat 1.
-    const a = fromIdx === n - 1 ? 0.145 : 0.11;
-    let t = progress + a * Math.sin(2 * Math.PI * progress);
-    t = Math.max(0, Math.min(1, t));
+    // Each beat is a bounce. Vertically the hand follows a ballistic arc
+    // in time (a parabola): it leaves the ictus at full speed, decelerates
+    // to a weightless float at the top of the rebound, and falls
+    // accelerating into the next ictus, where the direction reverses
+    // instantly — the "click" that makes a beat readable. Sideways and in
+    // depth it travels along a quadratic Bézier through the rebound point,
+    // so the stroke curves toward where the next beat lands.
+    const t = progress;
 
-    // Quadratic Bézier: ictus → rebound → next ictus, scaled around a pivot
-    // so strokes shrink at fast tempos and open up at slow ones, then shifted
-    // toward the right shoulder so strokes stay beside the body, not across it.
+    // Pattern points are scaled around a pivot so strokes shrink at fast
+    // tempos and open up at slow ones, then shifted toward the right
+    // shoulder so strokes stay beside the body, not across it.
     const scale = tempoScale(state.cachedBPM || 96);
     const pivot = [-0.12, 1.08, 0.28];
     const OFFSET = [-0.08, 0.06, 0];
@@ -943,13 +961,22 @@ class Conductor3D {
     // vertical amplitude is trimmed so the lowest ictus keeps elbow bend.
     const AXIS = [1.15, 0.95, 1.0];
     const sp = (v, i) => pivot[i] + (v - pivot[i]) * scale * AXIS[i] + OFFSET[i];
-    const p0 = pattern[fromIdx].ictus;
-    const p1 = pattern[fromIdx].rebound;
-    const p2 = pattern[toIdx].ictus;
+    const p0 = pattern[fromIdx].ictus.map(sp);
+    const p1 = pattern[fromIdx].rebound.map(sp);
+    const p2 = pattern[toIdx].ictus.map(sp);
     const mt = 1 - t;
-    const pos = [0, 1, 2].map(i =>
-      mt * mt * sp(p0[i], i) + 2 * mt * t * sp(p1[i], i) + t * t * sp(p2[i], i)
-    );
+    const bez = i => mt * mt * p0[i] + 2 * mt * t * p1[i] + t * t * p2[i];
+
+    // Rebound apex: the height the pattern's rebound point implies, but
+    // always a clear bounce above the higher ictus — when the next beat
+    // lands higher than this one (3 → 4 in 4/4) a shallow apex made the hand
+    // drift up and stall into the beat with no click at all.
+    const minBounce = 0.05 * scale;
+    const apex = Math.max(0.25 * p0[1] + 0.5 * p1[1] + 0.25 * p2[1],
+      Math.max(p0[1], p2[1]) + minBounce);
+    const y = ballisticArc(p0[1], apex, p2[1], t);
+
+    const pos = [bez(0), y, bez(2)];
 
     return {
       playing: true,
@@ -987,6 +1014,11 @@ class Conductor3D {
     // Keep the target inside 94% of full extension: a near-straight arm has
     // no bend left, and the elbow visually collapses against the torso. The
     // pattern is tuned to stay inside this, so the clamp is a safety net.
+    // How high the hand is relative to its usual beat height, and how far it
+    // has crossed toward the body's midline — both lift the elbow (below).
+    const lift = clamp((toTarget.y + 0.4) / 0.5, 0, 1);
+    const cross = clamp((-toTarget.x * side - 0.1) / 0.25, 0, 1);
+
     let dist = toTarget.length();
     const maxReach = (upperLen + lowerLen) * 0.94;
     dist = Math.max(0.15, Math.min(maxReach, dist));
@@ -996,9 +1028,15 @@ class Conductor3D {
     const h = Math.sqrt(Math.max(0, upperLen * upperLen - proj * proj));
 
     // Elbow hint: out to the side, below and slightly behind the shoulder —
-    // the "holding a beach ball" carriage. Constant in body-local space, so
-    // it means the same thing in every pose.
-    const pole = new THREE.Vector3(side * 0.55, -0.33, -0.22).normalize();
+    // the "holding a beach ball" carriage. A fixed hint made the elbow a
+    // hinge pinned in place, with the forearm doing all the work; real
+    // conductors lead with the upper arm, so the elbow floats up and out as
+    // the hand rises and swings out further as it crosses the body.
+    const pole = new THREE.Vector3(
+      side * (0.55 + 0.12 * lift + 0.1 * cross),
+      -0.33 + 0.24 * lift + 0.08 * cross,
+      -0.22 + 0.06 * lift
+    ).normalize();
     const v = pole.sub(u.clone().multiplyScalar(pole.dot(u)));
     if (v.lengthSq() < 1e-6) v.set(side, 0, 0);
     v.normalize();
@@ -1025,25 +1063,43 @@ class Conductor3D {
     }
   }
 
-  // Baton inertia: the tip lags the hand through fast strokes and wobbles
-  // briefly when the hand stops at an ictus. The baton is aimed in WORLD
-  // space (near-horizontal, wherever the arm is) — a real conductor's
-  // wrist keeps the stick pointed at the orchestra even as the arm sweeps.
+  // Baton inertia: the tip lags the hand through fast strokes and whips
+  // past it when the hand reverses at an ictus, then settles with a small
+  // wobble. The baton is aimed in WORLD space (near-horizontal, wherever
+  // the arm is) — a real conductor's wrist keeps the stick pointed at the
+  // orchestra even as the arm sweeps.
+  //
+  // The lag is a damped spring integrated in real time (fixed substeps), so
+  // it behaves the same at any frame rate; the old per-frame spring was
+  // stiffer or looser with the frame rate and jittered on uneven frames.
   _updateBatonDrag(pos, dt, playing) {
     if (!this.meshes.baton) return;
-    if (!this.prevHandPos) this.prevHandPos = pos.clone();
-
-    const vel = new THREE.Vector3().subVectors(pos, this.prevHandPos);
+    if (!this.prevHandPos) {
+      this.prevHandPos = pos.clone();
+      this.handVel = new THREE.Vector3();
+    }
+    if (dt > 0) {
+      const vel = new THREE.Vector3().subVectors(pos, this.prevHandPos).divideScalar(dt);
+      this.handVel.lerp(vel, 1 - Math.exp(-dt / 0.025));
+    }
     this.prevHandPos.copy(pos);
 
-    const dragScale = 5.5;
-    const targetLagY = -vel.x * dragScale;  // horizontal stroke → tip yaws behind
-    const targetLagX = vel.y * dragScale;   // vertical stroke → tip pitches behind
-    const stiffness = 0.16, damping = 0.68;
-    this.batonLagVelX = (this.batonLagVelX + (targetLagX - this.batonLagX) * stiffness) * damping;
-    this.batonLagVelY = (this.batonLagVelY + (targetLagY - this.batonLagY) * stiffness) * damping;
-    this.batonLagX = Math.max(-0.7, Math.min(0.7, this.batonLagX + this.batonLagVelX));
-    this.batonLagY = Math.max(-0.7, Math.min(0.7, this.batonLagY + this.batonLagVelY));
+    // Radians of lag per m/s of hand speed: vertical strokes pitch the tip,
+    // horizontal strokes yaw it.
+    const GAIN = 0.06;
+    const targetX = clamp(this.handVel.y * GAIN, -0.45, 0.45);
+    const targetY = clamp(-this.handVel.x * GAIN, -0.45, 0.45);
+    const W0 = 15, ZETA = 0.45; // natural frequency (rad/s), damping ratio
+    const steps = Math.max(1, Math.ceil(dt / (1 / 240)));
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      this.batonLagVelX += (W0 * W0 * (targetX - this.batonLagX) - 2 * ZETA * W0 * this.batonLagVelX) * h;
+      this.batonLagVelY += (W0 * W0 * (targetY - this.batonLagY) - 2 * ZETA * W0 * this.batonLagVelY) * h;
+      this.batonLagX += this.batonLagVelX * h;
+      this.batonLagY += this.batonLagVelY * h;
+    }
+    this.batonLagX = clamp(this.batonLagX, -0.6, 0.6);
+    this.batonLagY = clamp(this.batonLagY, -0.6, 0.6);
 
     // Base attitude: while conducting the stick rides just above horizontal,
     // an extension of the forearm; at rest it relaxes tip-down. Yawed INWARD
@@ -1102,11 +1158,17 @@ class Conductor3D {
       targetL.set(0.16, 0.9, 0.2); // resting at the side
     }
 
-    // Smooth targets (~40 ms time constant): removes pops on start/stop and
-    // meter changes without smearing the ictus snap.
-    const k = 1 - Math.exp(-dt / 0.04);
-    this.smoothR.lerp(targetR, k);
-    this.smoothL.lerp(targetL, k);
+    // Start/stop: ease between the rest pose and the pattern over ~0.4 s
+    // instead of snapping. While conducting the hand follows the pattern
+    // almost exactly (a 12 ms filter only hides meter-change pops) — a
+    // heavier filter made every ictus land visibly after the click.
+    const blendTarget = cs.playing ? 1 : 0;
+    this.playBlend += Math.sign(blendTarget - this.playBlend) * Math.min(Math.abs(blendTarget - this.playBlend), dt / 0.4);
+    const b = this.playBlend * this.playBlend * (3 - 2 * this.playBlend);
+    const blendedR = restR.clone().lerp(targetR, cs.playing ? b : 0);
+    const k = 1 - Math.exp(-dt / (cs.playing ? 0.012 : 0.09));
+    this.smoothR.lerp(blendedR, k);
+    this.smoothL.lerp(targetL, 1 - Math.exp(-dt / 0.08));
 
     // ── Body language ── (baton hand's neutral x is −0.2)
     const handX = this.smoothR.x;
