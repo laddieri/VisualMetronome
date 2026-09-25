@@ -243,6 +243,11 @@
         // Remove the now-empty rail wrapper
         if (sizeRail.parentNode) sizeRail.parentNode.removeChild(sizeRail);
       }
+
+      // Flash on beat is a visual effect, so it belongs with Display
+      var flashCb = $('flash-enabled');
+      var flashGroup = flashCb && flashCb.closest('.setting-group');
+      if (flashGroup) displayBody.appendChild(flashGroup);
     }
 
     // ── Sound panel ──
@@ -260,9 +265,9 @@
       var waltzGroup = $('waltz-beat-setting-group');
       if (waltzGroup) soundBody.appendChild(waltzGroup);
 
-      // Move some checkbox toggles too (accent, voice count, flash) — we
+      // Move some checkbox toggles too (accent, voice count, sound on) — we
       // identify them by their checkbox ID and lift the parent .setting-group.
-      ['accent-enabled', 'voice-count-enabled', 'flash-enabled', 'animal-sound-enabled'].forEach(function (id) {
+      ['accent-enabled', 'voice-count-enabled', 'animal-sound-enabled'].forEach(function (id) {
         var cb = document.getElementById(id);
         if (!cb) return;
         var group = cb.closest('.setting-group');
@@ -270,20 +275,29 @@
       });
     }
 
-    // ── Rhythm panel ──
+    // ── Practice panel (data-panel="rhythm") ──
     var rhythmBody = $('panel-rhythm-body');
     if (rhythmBody) {
-      // Build pattern buttons. We *reuse* the existing util-button IDs by
+      var intro = document.createElement('p');
+      intro.className = 'setting-hint practice-intro';
+      intro.textContent = 'Choose how the metronome plays. One mode at a time — ' +
+        'it stays on until you switch back to Steady beat.';
+      rhythmBody.appendChild(intro);
+
+      // Build mode choices. We *reuse* the existing util-button IDs by
       // moving them into the panel and wrapping with rich content.
+      // modes.js turns a mode on when its button is clicked.
       var defs = [
+        { id: 'steady-beat-btn',     emoji: '⏱️', title: 'Steady beat',
+          sub: 'Plain metronome, no practice mode', noEditor: true },
         { id: 'two-measure-btn',     emoji: '⚡', title: 'Two-Measure Pattern',
-          sub: 'Define two alternating measures' },
+          sub: 'Define two alternating measures', editor: 'two-measure-modal' },
         { id: 'custom-rhythm-btn',   emoji: '🥁', title: 'Custom Rhythm',
-          sub: 'Build a one-measure rhythm' },
+          sub: 'Write a one-measure rhythm on the score', editor: 'custom-rhythm-modal' },
         { id: 'song-sections-btn',   emoji: '🎶', title: 'Song Sections',
-          sub: 'Tempo + meter changes through a song' },
+          sub: 'Tempo + meter changes through a song', editor: 'song-sections-modal' },
         { id: 'counting-trainer-btn', emoji: '🎯', title: 'Counting Trainer',
-          sub: 'Count silent measures aloud' }
+          sub: 'Keep count in your head through silent bars', editor: 'counting-trainer-modal' }
       ];
       defs.forEach(function (def) {
         var btn = $(def.id);
@@ -299,8 +313,17 @@
             '<span class="pattern-sub">' + def.sub + '</span>' +
           '</span>' +
           '<span class="pattern-dot" aria-hidden="true"></span>' +
-          '<span class="pattern-chev" aria-hidden="true">▸</span>';
+          (def.noEditor ? '' : '<span class="pattern-chev" aria-hidden="true">▸</span>');
         rhythmBody.appendChild(btn);
+
+        // The mode's settings (once a popup) open inline right under its
+        // card. Its module still shows/hides it with the 'hidden' class.
+        var editor = def.editor && $(def.editor);
+        if (editor) {
+          editor.classList.remove('settings-modal');
+          editor.classList.add('mode-editor');
+          rhythmBody.appendChild(editor);
+        }
       });
     }
 
@@ -326,27 +349,19 @@
     var remoteSlot = $('header-remote-slot');
     if (remoteBtn && remoteSlot) {
       remoteBtn.classList.remove('utility-btn', 'hidden');
-      remoteBtn.classList.add('header-btn');
-      remoteBtn.textContent = '📱';
+      remoteBtn.classList.add('header-btn', 'header-btn--labeled');
+      remoteBtn.innerHTML =
+        '<span class="header-btn-icon" aria-hidden="true">📱</span>' +
+        '<span class="header-btn-label">Remote</span>';
       remoteBtn.title = 'Phone Remote Control';
       remoteBtn.setAttribute('aria-label', 'Phone Remote Control');
       remoteSlot.appendChild(remoteBtn);
     }
-
-    // ── Reset button → header bar ──
-    var resetBtn = $('reset-settings-btn');
-    var resetSlot = $('header-reset-slot');
-    if (resetBtn && resetSlot) {
-      resetBtn.classList.remove('toggle', 'reset-settings-btn');
-      resetBtn.classList.add('header-btn', 'header-btn--danger');
-      resetBtn.title = 'Reset all settings';
-      resetBtn.setAttribute('aria-label', 'Reset all settings');
-      resetBtn.textContent = '↺';
-      resetSlot.appendChild(resetBtn);
-    }
   }
 
   // ───── Icon rail / panel ───────────────────────────────────────────────
+  var openDesktopPanel = null;   // set by initRailPanels; used by window.vmShowPanel
+
   function initRailPanels() {
     var rail = document.getElementById('icon-rail');
     var host = document.getElementById('panel-host');
@@ -374,7 +389,7 @@
       var meta = {
         display: { emoji: '🎨', label: 'Display' },
         sound:   { emoji: '🔊', label: 'Sound' },
-        rhythm:  { emoji: '🎵', label: 'Rhythm' }
+        rhythm:  { emoji: '🎵', label: 'Practice' }
       }[name] || { emoji: '', label: '' };
       var emEl = document.getElementById('panel-host-emoji');
       var nmEl = document.getElementById('panel-host-name');
@@ -392,6 +407,8 @@
         }
       });
     });
+
+    openDesktopPanel = openPanel;
 
     var closeBtn = host.querySelector('.panel-close');
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
@@ -508,6 +525,17 @@
     };
     if (mq.addEventListener) mq.addEventListener('change', listener);
     else mq.addListener(listener);
+
+    // Lets modules open a panel (e.g. the mode badge opening Practice):
+    // the bottom sheet's tab on phones, the side flyout on desktop.
+    window.vmShowPanel = function (name) {
+      if (mq.matches) {
+        expand();
+        showTab(name);
+      } else if (openDesktopPanel) {
+        openDesktopPanel(name);
+      }
+    };
   }
 
 // ───── Init ────────────────────────────────────────────────────────────

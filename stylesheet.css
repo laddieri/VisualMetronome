@@ -976,13 +976,20 @@ tone-play-toggle {
   gap: 24px;
 }
 
+/* Count-in buttons are secondary to Play: outlined, with a "bar(s)" caption
+   so "+1" / "+2" read as "play after a 1 / 2 bar count-in". */
 #count-in-1-play-btn,
 #count-in-play-btn {
-  font-size: 16px;
-  font-weight: 700;
-  background: var(--vm-indigo);
-  color: white;
-  border: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: inherit;
+  line-height: 1;
+  background: var(--vm-bg-page);
+  color: var(--vm-indigo);
+  border: 2px solid var(--vm-indigo);
   border-radius: 10px;
   padding: 0;
   width: 54px;
@@ -990,6 +997,19 @@ tone-play-toggle {
   cursor: pointer;
   transition: background 0.15s ease, filter 0.15s ease;
   flex-shrink: 0;
+}
+
+.count-in-btn .ci-num {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.count-in-btn .ci-unit {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
 }
 
 #count-in-1-play-btn:hover,
@@ -1000,6 +1020,8 @@ tone-play-toggle {
 #count-in-1-play-btn.active,
 #count-in-play-btn.active {
   background: var(--vm-success);
+  border-color: var(--vm-success);
+  color: white;
 }
 
 #count-in-1-play-btn.active:hover,
@@ -1033,17 +1055,27 @@ tone-play-toggle {
   transition: all 0.2s ease;
 }
 
+/* Reset lives at the bottom of the Settings modal, set apart from the
+   everyday preferences above it. */
+.setting-group--danger {
+  padding-top: 16px;
+  border-top: 1px solid var(--vm-border);
+}
+
 #reset-settings-btn {
+  font-family: inherit;
   font-size: 0.85rem;
-  opacity: 0.75;
-  border-color: var(--vm-danger);
+  font-weight: 600;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--vm-danger);
+  border-radius: 8px;
   color: var(--vm-danger);
+  cursor: pointer;
 }
 
 #reset-settings-btn:hover {
-  opacity: 1;
-  border-color: var(--vm-danger);
-  color: var(--vm-danger);
+  background: var(--vm-danger-soft-bg);
 }
 
 .toggle:hover {
@@ -1925,6 +1957,26 @@ footer p {
   accent-color: var(--vm-indigo);
 }
 
+/* Options that only apply to some meters/subdivisions stay visible but
+   greyed out, with a hint saying when they apply, so users can find them. */
+.is-unavailable {
+  opacity: 0.5;
+}
+.is-unavailable,
+.is-unavailable input,
+.is-unavailable label {
+  cursor: not-allowed;
+}
+.unavailable-hint {
+  display: none;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.is-unavailable .unavailable-hint {
+  display: inline;
+}
+
 .bluetooth-delay-range {
   width: 100%;
   margin-top: 10px;
@@ -1951,6 +2003,30 @@ footer p {
 
 .settings-btn-close:hover {
   background: var(--vm-indigo-deep);
+}
+
+/* "Turn off" in a practice mode's editor — returns to a steady beat */
+.mode-off-btn {
+  background: transparent;
+  color: var(--vm-fg-2);
+  border: 1px solid var(--vm-border-strong);
+  border-radius: 8px;
+  padding: 11px 20px;
+  margin-right: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode-off-btn:hover {
+  color: var(--vm-fg-1);
+  border-color: var(--vm-fg-3);
+}
+
+.mode-note {
+  margin-top: 16px;
+  text-align: center;
 }
 
 @media (max-width: 480px) {

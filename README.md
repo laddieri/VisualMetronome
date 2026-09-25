@@ -24,6 +24,7 @@ The app has no build step — it ships as native ES modules. `index.html` loads
 | `storage.js` | Safe localStorage writes and IndexedDB storage for saved selfies |
 | `audio-context.js` | AudioContext resume/recovery and tab-visibility handling |
 | `view-sync.js` | Visibility syncing between animation modes and controls |
+| `modes.js` | One-at-a-time practice modes, their in-panel editors, the stage mode badge, and tying the score view to custom rhythm |
 | `counting-trainer.js` | Silent-counting exercise |
 | `songs.js` | Multi-section songs with tempo ramps and ritardando |
 | `two-measure.js` | Alternating two-measure patterns |

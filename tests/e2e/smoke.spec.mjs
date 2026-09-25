@@ -97,6 +97,9 @@ test('settings survive a reload', async ({ page, errors }) => {
 test('Reset is remembered too', async ({ page, errors }) => {
   await openApp(page);
   await changeSettings(page);
+  // Reset lives in the Settings modal and asks for confirmation
+  page.once('dialog', (d) => d.accept());
+  await page.locator('.app-header #settings-btn').click();
   await page.locator('#reset-settings-btn').click();
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('vm.settings') || '{}').bpm === 96);
 
@@ -113,8 +116,9 @@ test('a full localStorage is reported instead of failing silently', async ({ pag
   const dialogs = [];
   page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
 
-  // The song button sits in a collapsible menu; open the modal directly.
-  await page.evaluate(() => document.getElementById('song-sections-btn').click());
+  // Song sections' editor opens under its card in the Practice panel
+  await page.locator('.rail-btn[data-panel="rhythm"]').click();
+  await page.locator('#song-sections-btn').click();
   await page.locator('#song-add-section-btn').click();
   await page.evaluate(() => {
     Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); };

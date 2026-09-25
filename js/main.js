@@ -19,6 +19,7 @@ import './modules/remote.js';
 import './modules/custom-rhythm.js';
 import './modules/check-rhythm.js';
 import './modules/two-measure.js';
+import './modules/modes.js';
 
 import { state } from './modules/state.js';
 
