@@ -1152,3 +1152,40 @@ input[type="text"] {
 .mode-badge button:hover {
   background: rgba(0, 0, 0, 0.06);
 }
+
+/* ---- Practice mode editors (inline under their card; see layout.js) ------- */
+/* The Practice panel is wider so the editors (once popups) have room. */
+.panel-host:has(.panel[data-panel="rhythm"].is-open) {
+  width: 480px;
+}
+
+.panel-body .mode-editor .settings-container {
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  margin-top: -4px;
+  padding: 16px 14px;
+  background: var(--vm-bg-panel) !important;
+  border: 1px solid var(--vm-accent);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+/* The card above already names the mode */
+.panel-body .mode-editor .settings-container > h2 {
+  display: none;
+}
+
+.panel-body .mode-editor .settings-buttons {
+  margin-top: 16px;
+}
+
+.panel-body .mode-editor .song-section-row,
+.panel-body .mode-editor .song-section-ramp-row {
+  flex-wrap: wrap;
+}
+
+.panel-body .mode-editor #song-sections-list {
+  max-height: none;
+  overflow: visible;
+}

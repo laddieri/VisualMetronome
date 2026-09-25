@@ -291,13 +291,13 @@
         { id: 'steady-beat-btn',     emoji: '⏱️', title: 'Steady beat',
           sub: 'Plain metronome, no practice mode', noEditor: true },
         { id: 'two-measure-btn',     emoji: '⚡', title: 'Two-Measure Pattern',
-          sub: 'Define two alternating measures' },
+          sub: 'Define two alternating measures', editor: 'two-measure-modal' },
         { id: 'custom-rhythm-btn',   emoji: '🥁', title: 'Custom Rhythm',
-          sub: 'Build a one-measure rhythm' },
+          sub: 'Write a one-measure rhythm on the score', editor: 'custom-rhythm-modal' },
         { id: 'song-sections-btn',   emoji: '🎶', title: 'Song Sections',
-          sub: 'Tempo + meter changes through a song' },
+          sub: 'Tempo + meter changes through a song', editor: 'song-sections-modal' },
         { id: 'counting-trainer-btn', emoji: '🎯', title: 'Counting Trainer',
-          sub: 'Keep count in your head through silent bars' }
+          sub: 'Keep count in your head through silent bars', editor: 'counting-trainer-modal' }
       ];
       defs.forEach(function (def) {
         var btn = $(def.id);
@@ -315,6 +315,15 @@
           '<span class="pattern-dot" aria-hidden="true"></span>' +
           (def.noEditor ? '' : '<span class="pattern-chev" aria-hidden="true">▸</span>');
         rhythmBody.appendChild(btn);
+
+        // The mode's settings (once a popup) open inline right under its
+        // card. Its module still shows/hides it with the 'hidden' class.
+        var editor = def.editor && $(def.editor);
+        if (editor) {
+          editor.classList.remove('settings-modal');
+          editor.classList.add('mode-editor');
+          rhythmBody.appendChild(editor);
+        }
       });
     }
 
@@ -351,6 +360,8 @@
   }
 
   // ───── Icon rail / panel ───────────────────────────────────────────────
+  var openDesktopPanel = null;   // set by initRailPanels; used by window.vmShowPanel
+
   function initRailPanels() {
     var rail = document.getElementById('icon-rail');
     var host = document.getElementById('panel-host');
@@ -396,6 +407,8 @@
         }
       });
     });
+
+    openDesktopPanel = openPanel;
 
     var closeBtn = host.querySelector('.panel-close');
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
@@ -512,6 +525,17 @@
     };
     if (mq.addEventListener) mq.addEventListener('change', listener);
     else mq.addListener(listener);
+
+    // Lets modules open a panel (e.g. the mode badge opening Practice):
+    // the bottom sheet's tab on phones, the side flyout on desktop.
+    window.vmShowPanel = function (name) {
+      if (mq.matches) {
+        expand();
+        showTab(name);
+      } else if (openDesktopPanel) {
+        openDesktopPanel(name);
+      }
+    };
   }
 
 // ───── Init ────────────────────────────────────────────────────────────

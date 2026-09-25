@@ -251,7 +251,9 @@
                   <option value="conductor3d">🎭 3D Conductor</option>
                   <option value="pendulum">🕰️ Pendulum</option>
                   <!-- <option value="webgpu">✨ WebGPU</option> -->
-                  <option id="notation-score-option" value="score">🎵 Score</option>
+                  <!-- The score is Custom rhythm's view (Practice panel), so it isn't
+                       offered here; modes.js selects it when custom rhythm is on. -->
+                  <option id="notation-score-option" value="score" hidden>🎵 Score</option>
                 </select>
                 <button id="conductor-selfie-btn" class="conductor-selfie-btn" style="display:none" title="Add your face to the conductor">📷</button>
                 <button id="circle-selfie-btn"    class="conductor-selfie-btn" style="display:none" title="Use a selfie as the circle shape">📷</button>

@@ -6,8 +6,15 @@ import { state } from './state.js';
 // why the metronome isn't playing a plain steady beat.
 //
 // Each mode's own module still owns its "enable" checkbox (now hidden in its
-// modal). Modes are switched by setting that checkbox and firing 'change', so
+// editor). Modes are switched by setting that checkbox and firing 'change', so
 // every existing side effect runs exactly as when the user ticked it.
+//
+// Each mode's editor (formerly a popup) sits in the Practice panel right
+// under its card (moved there by layout.js); only one is open at a time.
+//
+// The score is custom rhythm's view: choosing Custom rhythm shows it, and
+// the Animation menu no longer lists it. Leaving custom rhythm puts back the
+// animation that was showing before.
 
 var MODES = [
   { id: 'two-measure',      flag: 'twoMeasurePatternEnabled', checkbox: 'tmp-enabled',
@@ -31,6 +38,29 @@ function _setCheckbox(mode, on) {
   cb.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+// ── Score view ⇄ custom rhythm ──────────────────────────────────────────────
+var _lastAnimation = 'circle';   // Last non-score animation, restored on leaving the score
+
+function _setAnimation(value) {
+  var sel = document.getElementById('animal-selector');
+  if (!sel || sel.value === value) return;
+  sel.value = value;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function _syncScoreView() {
+  if (state.animalType === 'score' && !state.customRhythmEnabled) _setAnimation(_lastAnimation);
+}
+
+// ── Editors ─────────────────────────────────────────────────────────────────
+function _hideEditors(exceptId) {
+  MODES.forEach(function(m) {
+    if (m.id === exceptId) return;
+    var editor = document.getElementById(m.modal);
+    if (editor) editor.classList.add('hidden');
+  });
+}
+
 // The active mode's id, or null for a plain steady beat.
 export function activeMode() {
   var m = MODES.find(function(mode) { return state[mode.flag]; });
@@ -51,6 +81,9 @@ export function setMode(id) {
   var target = _mode(id);
   claimMode(id);
   if (target && !state[target.flag]) _setCheckbox(target, true);
+  // Picking Custom rhythm again brings back its score if the user had
+  // switched to another animation meanwhile
+  if (id === 'custom-rhythm') _setAnimation('score');
   syncModeUI();
 }
 
@@ -77,6 +110,7 @@ function _detail(mode) {
 
 // Refresh the stage badge and the Practice panel's selected card.
 export function syncModeUI() {
+  _syncScoreView();
   var id = activeMode();
   var mode = _mode(id);
 
@@ -118,13 +152,24 @@ function initModes() {
       });
     }
 
-    // Choosing a mode in the Practice panel turns it on (its own click
-    // handler opens the editor)
+    // Choosing a mode in the Practice panel turns it on; its own click
+    // handler opens its editor, so close the others and bring it into view
+    var modal = document.getElementById(m.modal);
     var btn = document.getElementById(m.btn);
-    if (btn) btn.addEventListener('click', function() { setMode(m.id); });
+    if (btn) {
+      btn.addEventListener('click', function() {
+        _hideEditors(m.id);
+        setMode(m.id);
+        // Scroll the card to the top so it and its settings are in view
+        requestAnimationFrame(function() {
+          if (modal && !modal.classList.contains('hidden')) {
+            btn.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }
+        });
+      });
+    }
 
     // "Turn off" in the mode's editor goes back to a steady beat
-    var modal = document.getElementById(m.modal);
     if (modal) {
       var offBtn = modal.querySelector('.mode-off-btn');
       if (offBtn) {
@@ -133,21 +178,42 @@ function initModes() {
           modal.classList.add('hidden');
         });
       }
-      // Editors change the badge's details (sections, bars, …); refresh
-      // it when they close.
-      new MutationObserver(syncModeUI).observe(modal, { attributes: true, attributeFilter: ['class'] });
+      // Editing changes the badge's details (sections, bars, …); refresh it
+      // after the editor's own handlers have run
+      var refresh = function() { Promise.resolve().then(syncModeUI); };
+      modal.addEventListener('click', refresh);
+      modal.addEventListener('change', refresh);
     }
   });
 
   var steadyBtn = document.getElementById('steady-beat-btn');
-  if (steadyBtn) steadyBtn.addEventListener('click', function() { setMode(null); });
+  if (steadyBtn) {
+    steadyBtn.addEventListener('click', function() {
+      _hideEditors(null);
+      setMode(null);
+    });
+  }
+
+  // Remember the animation to return to when leaving the score, and treat
+  // choosing the score (e.g. restoring saved settings) as choosing Custom rhythm
+  var animSel = document.getElementById('animal-selector');
+  if (animSel) {
+    if (animSel.value !== 'score') _lastAnimation = animSel.value;
+    animSel.addEventListener('change', function() {
+      if (animSel.value !== 'score') _lastAnimation = animSel.value;
+      else if (!state.customRhythmEnabled) setMode('custom-rhythm');
+    });
+  }
 
   var badge = document.getElementById('mode-badge');
   if (badge) {
+    // Open the Practice panel (layout.js) on the active mode's editor
     badge.querySelector('.mode-badge-edit').addEventListener('click', function() {
       var mode = _mode(activeMode());
       var btn = mode && document.getElementById(mode.btn);
-      if (btn) btn.click();
+      if (!btn) return;
+      if (window.vmShowPanel) window.vmShowPanel('rhythm');
+      btn.click();
     });
     badge.querySelector('.mode-badge-off').addEventListener('click', function() { setMode(null); });
   }

@@ -1,5 +1,4 @@
 import { state } from './state.js';
-import { createAnimals } from './animations.js';
 import { crmSyncToggleRow } from './check-rhythm.js';
 import { claimMode } from './modes.js';
 import { sendStateUpdate } from './remote.js';
@@ -7,8 +6,7 @@ import { triggerClickSoundVel } from './sounds.js';
 import { getAnimationProgress } from './stage.js';
 import { readJSON, writeJSON } from './storage.js';
 import {
-  _sync3DConductor, _syncBeatNoteRow, _syncNotationDisplay, _syncPracticeRow, _syncWebGPUCanvas, crUpdateScoreOptionVisibility,
-  updateColorPickerVisibility,
+  _syncBeatNoteRow, _syncNotationDisplay, _syncPracticeRow, crUpdateScoreOptionVisibility,
 } from './view-sync.js';
 
 
@@ -224,6 +222,24 @@ export function crCancelCustomRhythm() {
   _syncSubdivisionVisibility();
   _syncPracticeRow();
   _syncBeatNoteRow();
+}
+
+// Start the pattern over with default notes after the meter or beat note
+// changes. Custom rhythm stays on if it was on — it's the only way to get
+// the score view, so switching it off would kick the user out of the score.
+export function crResetCustomRhythm() {
+  var wasOn = state.customRhythmEnabled;
+  crCancelCustomRhythm();
+  if (!wasOn) return;
+  state.customRhythmEnabled = true;
+  state.customRhythmPattern = crBuildDefaultPattern();
+  crSyncTiesAndAccents();
+  var cb = document.getElementById('custom-rhythm-enabled');
+  if (cb) cb.checked = true;
+  var btn = document.getElementById('custom-rhythm-btn');
+  if (btn) btn.classList.add('ct-active');
+  _syncSubdivisionVisibility();
+  _syncPracticeRow();
 }
 
 // Build default pattern for current beatsPerMeasure based on beatNoteValue
@@ -1811,15 +1827,14 @@ function initCustomRhythmListeners() {
       }
       crUpdateScoreOptionVisibility();
       _syncSubdivisionVisibility();
-      if (state.customRhythmEnabled) {
-        // Auto-switch to Score animation when custom rhythm is turned on
-        state.animalType = 'score';
+      if (state.customRhythmEnabled && state.animalType !== 'score') {
+        // Custom rhythm is shown on the score; switch to it through the
+        // animation selector so its full change handler runs
         var sel = document.getElementById('animal-selector');
-        if (sel) sel.value = 'score';
-        createAnimals();
-        _sync3DConductor();
-        _syncWebGPUCanvas();
-        updateColorPickerVisibility();
+        if (sel) {
+          sel.value = 'score';
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
       }
       if (state.animalType === 'score') crRenderNotationDisplay();
       _syncNotationDisplay();
@@ -1855,7 +1870,7 @@ if (document.readyState === 'complete') {
   sel.value = state.beatNoteValue;
   sel.addEventListener('change', function() {
     state.beatNoteValue = sel.value;
-    crCancelCustomRhythm();
+    crResetCustomRhythm();
     if (state.animalType === 'score') {
       crRenderNotationDisplay();
       crRenderNotation();

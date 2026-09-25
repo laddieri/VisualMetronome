@@ -116,8 +116,9 @@ test('a full localStorage is reported instead of failing silently', async ({ pag
   const dialogs = [];
   page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
 
-  // The song button sits in a collapsible menu; open the modal directly.
-  await page.evaluate(() => document.getElementById('song-sections-btn').click());
+  // Song sections' editor opens under its card in the Practice panel
+  await page.locator('.rail-btn[data-panel="rhythm"]').click();
+  await page.locator('#song-sections-btn').click();
   await page.locator('#song-add-section-btn').click();
   await page.evaluate(() => {
     Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); };

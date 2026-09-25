@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { crCancelCustomRhythm, crRenderNotationDisplay } from './custom-rhythm.js';
+import { crCancelCustomRhythm, crRenderNotationDisplay, crResetCustomRhythm } from './custom-rhythm.js';
 import { saveSettingsSoon } from './persist-settings.js';
 import { sendStateUpdate } from './remote.js';
 import { applyBPM } from './tempo.js';
@@ -46,8 +46,8 @@ export function initSettingsListeners() {
       state.beatsPerMeasure = parseInt(e.target.value);
       state.currentBeat = 0; // Reset to beat 1
       updateRockBeatVisibility();
-      // Cancel custom rhythm when time signature changes
-      crCancelCustomRhythm();
+      // Start the custom rhythm over for the new number of beats
+      crResetCustomRhythm();
       if (state.animalType === 'score') crRenderNotationDisplay();
       sendStateUpdate();
     });
