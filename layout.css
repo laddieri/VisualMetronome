@@ -143,13 +143,26 @@ body > .container {
   border-color: transparent;
 }
 
-.header-btn--danger {
-  color: var(--vm-danger);
+/* Header buttons show a text label beside the icon where there's room;
+   phones fall back to icon-only (the title still gives a tooltip). */
+.header-btn--labeled {
+  width: auto;
+  padding: 0 10px;
+  gap: 6px;
+  font-family: inherit;
 }
-.header-btn--danger:hover {
-  background: var(--vm-danger-soft-bg) !important;
-  border-color: transparent !important;
-  color: var(--vm-danger) !important;
+.header-btn-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .header-btn--labeled {
+    width: 38px;
+    padding: 0;
+  }
+  .header-btn-label {
+    display: none;
+  }
 }
 
 
@@ -731,8 +744,10 @@ body > .container {
     overflow: hidden;
   }
 
+  /* Collapsed only hides the panel body, so size to the transport + tabs
+     rather than a fixed height that clipped the tabs off-screen. */
   .sheet.collapsed {
-    max-height: 270px;
+    max-height: none;
   }
 
   .sheet-grip {
@@ -943,9 +958,6 @@ body > .container {
 
 /* ---- Landscape phones with limited height -------------------------------- */
 @media (max-height: 480px) and (orientation: landscape) and (max-width: 900px) {
-  .sheet.collapsed {
-    max-height: 130px;
-  }
   .sheet-transport {
     flex-direction: row;
     align-items: center;

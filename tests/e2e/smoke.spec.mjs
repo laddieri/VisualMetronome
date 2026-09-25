@@ -97,6 +97,9 @@ test('settings survive a reload', async ({ page, errors }) => {
 test('Reset is remembered too', async ({ page, errors }) => {
   await openApp(page);
   await changeSettings(page);
+  // Reset lives in the Settings modal and asks for confirmation
+  page.once('dialog', (d) => d.accept());
+  await page.locator('.app-header #settings-btn').click();
   await page.locator('#reset-settings-btn').click();
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('vm.settings') || '{}').bpm === 96);
 

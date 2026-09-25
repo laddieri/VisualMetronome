@@ -107,3 +107,20 @@ export function _syncBeatNoteRow() {
   var sel = document.getElementById('beat-note-select');
   if (sel) sel.value = state.beatNoteValue;
 }
+
+// ── Meter-dependent sound options ────────────────────────────────────────────
+// Rock beat (4/4), waltz beat (3/4) and swing (subdivision 2) only apply in
+// some settings. Rather than hiding them — which leaves users unable to find
+// them — keep them visible but greyed out, with a hint saying when they apply.
+function _setAvailable(group, available) {
+  if (!group) return;
+  group.classList.toggle('is-unavailable', !available);
+  var cb = group.querySelector('input[type="checkbox"]');
+  if (cb) cb.disabled = !available;
+}
+
+export function syncMeterDependentOptions() {
+  _setAvailable(document.getElementById('rock-beat-setting-group'), state.beatsPerMeasure === 4);
+  _setAvailable(document.getElementById('waltz-beat-setting-group'), state.beatsPerMeasure === 3);
+  _setAvailable(document.getElementById('swing-group'), state.subdivision === '2');
+}

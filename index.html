@@ -54,9 +54,12 @@
           <span class="brand-title">Visual Metronome</span>
         </div>
         <div class="header-actions">
-          <span id="header-reset-slot"></span>
-          <button id="fullscreen-btn" class="header-btn" title="Fullscreen" aria-label="Fullscreen">⛶</button>
-          <button id="settings-btn" class="header-btn" title="Settings" aria-label="Settings">⚙</button>
+          <button id="fullscreen-btn" class="header-btn header-btn--labeled" title="Fullscreen" aria-label="Fullscreen">
+            <span class="header-btn-icon" aria-hidden="true">⛶</span><span class="header-btn-label">Fullscreen</span>
+          </button>
+          <button id="settings-btn" class="header-btn header-btn--labeled" title="Settings" aria-label="Settings">
+            <span class="header-btn-icon" aria-hidden="true">⚙</span><span class="header-btn-label">Settings</span>
+          </button>
           <span id="header-remote-slot"></span>
         </div>
       </header>
@@ -170,9 +173,8 @@
             <div class="play-button-group">
               <div id="play-buttons-container">
                 <tone-play-toggle class='toggle'></tone-play-toggle>
-                <button id="count-in-1-play-btn" class="toggle" title="Start with 1-measure count-in">+1</button>
-                <button id="count-in-play-btn" class="toggle" title="Start with 2-measure count-in">+2</button>
-                <button id="reset-settings-btn" class="toggle reset-settings-btn" title="Reset all metronome settings to default">↺ Reset</button>
+                <button id="count-in-1-play-btn" class="toggle count-in-btn" title="Play after a 1-bar count-in" aria-label="Play after a 1-bar count-in"><span class="ci-num">+1</span><span class="ci-unit">bar</span></button>
+                <button id="count-in-play-btn" class="toggle count-in-btn" title="Play after a 2-bar count-in" aria-label="Play after a 2-bar count-in"><span class="ci-num">+2</span><span class="ci-unit">bars</span></button>
               </div>
               <button id="stop-btn" class="toggle stop-btn hidden" title="Stop">&#9646;&#9646; Stop</button>
             </div>
@@ -257,9 +259,10 @@
                 <option value="6">6</option>
                 <option value="7">7</option>
               </select>
-              <label id="swing-group" class="swing-label" style="display:none">
+              <label id="swing-group" class="swing-label">
                 <input type="checkbox" id="swing-enabled">
                 Swing
+                <span class="unavailable-hint">(subdivision 2 only)</span>
               </label>
             </div>
 
@@ -316,7 +319,7 @@
     <!-- Advanced Settings Modal -->
     <div id="settings-modal" class="settings-modal hidden">
       <div class="settings-container">
-        <h2>Advanced Settings</h2>
+        <h2>Settings</h2>
 
         <div class="setting-group">
           <label class="setting-label" for="theme-select">Theme</label>
@@ -368,7 +371,7 @@
           </label>
         </div>
 
-        <div class="setting-group" id="rock-beat-setting-group" style="display:none">
+        <div class="setting-group" id="rock-beat-setting-group">
           <label class="setting-label">
             <input type="checkbox" id="rock-beat-enabled">
             Rock beat drum machine
@@ -376,7 +379,7 @@
           <p class="setting-hint">Replaces clicks with kick, snare &amp; hi-hat (4/4 only)</p>
         </div>
 
-        <div class="setting-group" id="waltz-beat-setting-group" style="display:none">
+        <div class="setting-group" id="waltz-beat-setting-group">
           <label class="setting-label">
             <input type="checkbox" id="waltz-beat-enabled">
             Waltz drum machine
@@ -400,6 +403,11 @@
           </label>
           <input type="range" id="bluetooth-delay-slider" min="0" max="500" step="10" value="0" class="bluetooth-delay-range">
           <p class="setting-hint">Delays the animation to match Bluetooth speaker latency (0–500 ms)</p>
+        </div>
+
+        <div class="setting-group setting-group--danger">
+          <button id="reset-settings-btn" class="reset-settings-btn" type="button">↺ Reset all settings</button>
+          <p class="setting-hint">Restores tempo, meter, sounds and practice modes to their defaults</p>
         </div>
 
         <div class="settings-buttons">

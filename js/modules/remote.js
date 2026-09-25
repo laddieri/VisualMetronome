@@ -5,7 +5,8 @@ import { enterFullscreen, exitFullscreen } from './stage.js';
 import { applyBPM } from './tempo.js';
 import { _ensureAudioContext, _syncAnimSize, toggleTransport } from './transport.js';
 import {
-  _sync3DConductor, _syncBeatNoteRow, _syncNotationDisplay, _syncPracticeRow, _syncWebGPUCanvas, updateColorPickerVisibility,
+  _sync3DConductor, _syncBeatNoteRow, _syncNotationDisplay, _syncPracticeRow, _syncWebGPUCanvas, syncMeterDependentOptions,
+  updateColorPickerVisibility,
 } from './view-sync.js';
 
 
@@ -363,16 +364,13 @@ function applyRemoteCommand(msg) {
         var rbCb = document.getElementById('rock-beat-enabled');
         if (rbCb) rbCb.checked = false;
       }
-      var rbGroup = document.getElementById('rock-beat-setting-group');
-      if (rbGroup) rbGroup.style.display = bpm === 4 ? '' : 'none';
       // Auto-disable waltz beat if not 3/4
       if (bpm !== 3 && state.waltzBeatEnabled) {
         state.waltzBeatEnabled = false;
         var wbCb = document.getElementById('waltz-beat-enabled');
         if (wbCb) wbCb.checked = false;
       }
-      var wbGroup = document.getElementById('waltz-beat-setting-group');
-      if (wbGroup) wbGroup.style.display = bpm === 3 ? '' : 'none';
+      syncMeterDependentOptions();
       if (state.animalType === 'score') crRenderNotationDisplay();
       sendStateUpdate();
       break;
@@ -384,9 +382,8 @@ function applyRemoteCommand(msg) {
       state.subdivision = sub;
       var subSel = document.getElementById('subdivision');
       if (subSel) subSel.value = sub;
-      // Update swing visibility and auto-disable if leaving ÷2
-      var swingGrp = document.getElementById('swing-group');
-      if (swingGrp) swingGrp.style.display = (sub === '2') ? '' : 'none';
+      // Grey out swing and auto-disable it if leaving ÷2
+      syncMeterDependentOptions();
       if (sub !== '2' && state.swingEnabled) {
         state.swingEnabled = false;
         var swCb = document.getElementById('swing-enabled');

@@ -243,6 +243,11 @@
         // Remove the now-empty rail wrapper
         if (sizeRail.parentNode) sizeRail.parentNode.removeChild(sizeRail);
       }
+
+      // Flash on beat is a visual effect, so it belongs with Display
+      var flashCb = $('flash-enabled');
+      var flashGroup = flashCb && flashCb.closest('.setting-group');
+      if (flashGroup) displayBody.appendChild(flashGroup);
     }
 
     // ── Sound panel ──
@@ -260,9 +265,9 @@
       var waltzGroup = $('waltz-beat-setting-group');
       if (waltzGroup) soundBody.appendChild(waltzGroup);
 
-      // Move some checkbox toggles too (accent, voice count, flash) — we
+      // Move some checkbox toggles too (accent, voice count, sound on) — we
       // identify them by their checkbox ID and lift the parent .setting-group.
-      ['accent-enabled', 'voice-count-enabled', 'flash-enabled', 'animal-sound-enabled'].forEach(function (id) {
+      ['accent-enabled', 'voice-count-enabled', 'animal-sound-enabled'].forEach(function (id) {
         var cb = document.getElementById(id);
         if (!cb) return;
         var group = cb.closest('.setting-group');
@@ -326,23 +331,13 @@
     var remoteSlot = $('header-remote-slot');
     if (remoteBtn && remoteSlot) {
       remoteBtn.classList.remove('utility-btn', 'hidden');
-      remoteBtn.classList.add('header-btn');
-      remoteBtn.textContent = '📱';
+      remoteBtn.classList.add('header-btn', 'header-btn--labeled');
+      remoteBtn.innerHTML =
+        '<span class="header-btn-icon" aria-hidden="true">📱</span>' +
+        '<span class="header-btn-label">Remote</span>';
       remoteBtn.title = 'Phone Remote Control';
       remoteBtn.setAttribute('aria-label', 'Phone Remote Control');
       remoteSlot.appendChild(remoteBtn);
-    }
-
-    // ── Reset button → header bar ──
-    var resetBtn = $('reset-settings-btn');
-    var resetSlot = $('header-reset-slot');
-    if (resetBtn && resetSlot) {
-      resetBtn.classList.remove('toggle', 'reset-settings-btn');
-      resetBtn.classList.add('header-btn', 'header-btn--danger');
-      resetBtn.title = 'Reset all settings';
-      resetBtn.setAttribute('aria-label', 'Reset all settings');
-      resetBtn.textContent = '↺';
-      resetSlot.appendChild(resetBtn);
     }
   }
 
