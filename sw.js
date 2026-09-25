@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v7';
+const CACHE_VERSION = 'vm-v8';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
@@ -52,6 +52,7 @@ const SHELL = [
   './js/modules/custom-rhythm.js',
   './js/modules/check-rhythm.js',
   './js/modules/two-measure.js',
+  './js/modules/modes.js',
   './js/modules/keep-awake.js',
   './js/modules/storage.js',
   './js/modules/persist-settings.js',

@@ -75,11 +75,21 @@
         </button>
         <button class="rail-btn" data-panel="rhythm" aria-pressed="false">
           <span class="rail-icon" aria-hidden="true">🎵</span>
-          <span class="rail-label">Rhythm</span>
+          <span class="rail-label">Practice</span>
         </button>
       </nav>
 
       <section class="stage">
+        <!-- Active practice mode (modes.js). Hidden for a plain steady beat. -->
+        <div id="mode-badge" class="mode-badge" hidden>
+          <button type="button" class="mode-badge-edit">
+            <span class="mode-badge-emoji" aria-hidden="true"></span>
+            <span class="mode-badge-name"></span>
+            <span class="mode-badge-detail"></span>
+          </button>
+          <button type="button" class="mode-badge-off" aria-label="Turn off practice mode" title="Back to a steady beat">✕</button>
+        </div>
+
         <div class="canvas-wrapper">
           <!-- p5.js canvas will be inserted here -->
         </div>
@@ -125,7 +135,7 @@
         <div class="sheet-tabs" role="tablist">
           <button class="sheet-tab" data-panel="display" role="tab" aria-pressed="false">🎨 Display</button>
           <button class="sheet-tab" data-panel="sound"   role="tab" aria-pressed="false">🔊 Sound</button>
-          <button class="sheet-tab" data-panel="rhythm"  role="tab" aria-pressed="false">🎵 Rhythm</button>
+          <button class="sheet-tab" data-panel="rhythm"  role="tab" aria-pressed="false">🎵 Practice</button>
         </div>
         <div class="panel-host-mobile" id="panel-host-mobile"></div>
       </div>
@@ -299,6 +309,7 @@
             </div>
 
             <div class="controls-utility">
+              <button id="steady-beat-btn" class="utility-btn" title="Steady Beat">⏱️</button>
               <button id="two-measure-btn" class="utility-btn" title="Two-Measure Pattern">⚡</button>
               <button id="custom-rhythm-btn" class="utility-btn" title="Custom Rhythm">🥁</button>
               <button id="song-sections-btn" class="utility-btn" title="Song Sections">🎶</button>
@@ -502,8 +513,8 @@
       <div class="settings-container counting-trainer-container">
         <h2>Counting Trainer</h2>
         <p class="setting-hint" style="text-align:center; margin-bottom:16px;">
-          Set a number of measures (and optional extra beats) to count.
-          The metronome will give a count-in, then follow your sound and visual settings.
+          Count a number of measures (and optional extra beats) in your head.
+          The sound and animation follow the options below, then a chime tells you when time is up.
         </p>
 
         <div class="setting-group">
@@ -541,17 +552,14 @@
           <p class="setting-hint">Animation always plays during the count-in</p>
         </div>
 
-        <div class="setting-group">
-          <label class="setting-label">
-            <input type="checkbox" id="ct-enabled" checked>
-            Enable counting trainer
-          </label>
-          <p class="setting-hint">When enabled, the next play with count-in will start a counting exercise</p>
-        </div>
+        <!-- On/off is driven by the Practice panel and mode badge (modes.js) -->
+        <input type="checkbox" id="ct-enabled" hidden>
+        <p class="setting-hint mode-note">Press Play to start counting straight away, or +1 / +2 bars to hear a count-in first.</p>
 
         <div id="ct-status" class="ct-status hidden"></div>
 
         <div class="settings-buttons">
+          <button type="button" class="mode-off-btn">Turn off</button>
           <button id="ct-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>
@@ -580,16 +588,13 @@
           <button id="song-add-section-btn" class="song-add-btn" title="Add section">+ Add Section</button>
         </div>
 
-        <div class="setting-group">
-          <label class="setting-label">
-            <input type="checkbox" id="song-mode-enabled">
-            Enable song mode
-          </label>
-          <p class="setting-hint">When enabled, play will run through all sections in order</p>
-        </div>
+        <!-- On/off is driven by the Practice panel and mode badge (modes.js) -->
+        <input type="checkbox" id="song-mode-enabled" hidden>
+        <p class="setting-hint mode-note">Play runs through all sections in order.</p>
 
         <div class="settings-buttons">
           <button id="song-save-btn" class="song-save-btn">Save Song</button>
+          <button type="button" class="mode-off-btn">Turn off</button>
           <button id="song-sections-close-btn" class="settings-btn-close">Done</button>
         </div>
 
@@ -728,15 +733,12 @@
           <div class="tmp-eighth-readout" id="tmp-m2-eighth-readout">♪ = 192/min</div>
         </div>
 
-        <div class="setting-group" style="margin-top:16px;">
-          <label class="setting-label">
-            <input type="checkbox" id="tmp-enabled">
-            Enable two-measure pattern
-          </label>
-          <p class="setting-hint">Overrides the main beats/measure and subdivision controls while active; tempo follows the main BPM slider</p>
-        </div>
+        <!-- On/off is driven by the Practice panel and mode badge (modes.js) -->
+        <input type="checkbox" id="tmp-enabled" hidden>
+        <p class="setting-hint mode-note">Overrides the main beats/measure and subdivision controls while active; tempo follows the main BPM slider.</p>
 
         <div class="settings-buttons">
+          <button type="button" class="mode-off-btn">Turn off</button>
           <button id="tmp-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>
@@ -758,13 +760,9 @@
           <!-- Beat selectors rendered dynamically -->
         </div>
 
-        <div class="setting-group">
-          <label class="setting-label">
-            <input type="checkbox" id="custom-rhythm-enabled">
-            Enable custom rhythm
-          </label>
-          <p class="setting-hint">Replaces the normal metronome click with your custom pattern</p>
-        </div>
+        <!-- On/off is driven by the Practice panel and mode badge (modes.js) -->
+        <input type="checkbox" id="custom-rhythm-enabled" hidden>
+        <p class="setting-hint mode-note">Replaces the normal metronome click with your custom pattern.</p>
 
         <div class="cr-save-section">
           <div class="cr-save-row">
@@ -776,6 +774,7 @@
         </div>
 
         <div class="settings-buttons">
+          <button type="button" class="mode-off-btn">Turn off</button>
           <button id="custom-rhythm-close-btn" class="settings-btn-close">Done</button>
         </div>
       </div>

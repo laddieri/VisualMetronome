@@ -2005,6 +2005,30 @@ footer p {
   background: var(--vm-indigo-deep);
 }
 
+/* "Turn off" in a practice mode's editor — returns to a steady beat */
+.mode-off-btn {
+  background: transparent;
+  color: var(--vm-fg-2);
+  border: 1px solid var(--vm-border-strong);
+  border-radius: 8px;
+  padding: 11px 20px;
+  margin-right: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode-off-btn:hover {
+  color: var(--vm-fg-1);
+  border-color: var(--vm-fg-3);
+}
+
+.mode-note {
+  margin-top: 16px;
+  text-align: center;
+}
+
 @media (max-width: 480px) {
   .settings-btn {
     padding: 6px 10px;

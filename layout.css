@@ -1077,15 +1077,78 @@ input[type="text"] {
   margin: 4px 0 2px;
 }
 
-/* Accent on the active-pattern indicator dot */
+/* Radio-style indicator: the Practice panel is a one-of-many choice */
 .pattern-btn .pattern-dot {
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
   border-radius: 50%;
-  background: var(--vm-fg-4);
+  border: 2px solid var(--vm-fg-4);
+  background: transparent;
   display: inline-block;
+  flex-shrink: 0;
 }
 .pattern-btn.ct-active .pattern-dot {
-  background: var(--vm-success);
-  box-shadow: 0 0 0 4px rgba(72, 187, 120, 0.2);
+  border-color: var(--vm-accent);
+  background: var(--vm-accent);
+  box-shadow: inset 0 0 0 2px var(--vm-bg-page);
+}
+
+/* ---- Practice mode badge (js/modules/modes.js) --------------------------- */
+.practice-intro {
+  margin: 0 0 4px;
+}
+
+.mode-badge {
+  display: flex;
+  align-items: stretch;
+  align-self: center;
+  max-width: calc(100% - 24px);
+  margin-top: 10px;
+  border: 1px solid var(--vm-accent);
+  border-radius: 999px;
+  background: var(--vm-accent-soft);
+  color: var(--vm-accent-deep);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mode-badge[hidden] {
+  display: none;
+}
+
+.mode-badge button {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.mode-badge-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mode-badge-detail {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mode-badge-off {
+  padding: 0 12px 0 8px;
+  font-size: 0.85rem;
+  border-left: 1px solid var(--vm-accent) !important;
+}
+
+.mode-badge button:hover {
+  background: rgba(0, 0, 0, 0.06);
 }

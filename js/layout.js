@@ -275,12 +275,21 @@
       });
     }
 
-    // ── Rhythm panel ──
+    // ── Practice panel (data-panel="rhythm") ──
     var rhythmBody = $('panel-rhythm-body');
     if (rhythmBody) {
-      // Build pattern buttons. We *reuse* the existing util-button IDs by
+      var intro = document.createElement('p');
+      intro.className = 'setting-hint practice-intro';
+      intro.textContent = 'Choose how the metronome plays. One mode at a time — ' +
+        'it stays on until you switch back to Steady beat.';
+      rhythmBody.appendChild(intro);
+
+      // Build mode choices. We *reuse* the existing util-button IDs by
       // moving them into the panel and wrapping with rich content.
+      // modes.js turns a mode on when its button is clicked.
       var defs = [
+        { id: 'steady-beat-btn',     emoji: '⏱️', title: 'Steady beat',
+          sub: 'Plain metronome, no practice mode', noEditor: true },
         { id: 'two-measure-btn',     emoji: '⚡', title: 'Two-Measure Pattern',
           sub: 'Define two alternating measures' },
         { id: 'custom-rhythm-btn',   emoji: '🥁', title: 'Custom Rhythm',
@@ -288,7 +297,7 @@
         { id: 'song-sections-btn',   emoji: '🎶', title: 'Song Sections',
           sub: 'Tempo + meter changes through a song' },
         { id: 'counting-trainer-btn', emoji: '🎯', title: 'Counting Trainer',
-          sub: 'Count silent measures aloud' }
+          sub: 'Keep count in your head through silent bars' }
       ];
       defs.forEach(function (def) {
         var btn = $(def.id);
@@ -304,7 +313,7 @@
             '<span class="pattern-sub">' + def.sub + '</span>' +
           '</span>' +
           '<span class="pattern-dot" aria-hidden="true"></span>' +
-          '<span class="pattern-chev" aria-hidden="true">▸</span>';
+          (def.noEditor ? '' : '<span class="pattern-chev" aria-hidden="true">▸</span>');
         rhythmBody.appendChild(btn);
       });
     }
@@ -369,7 +378,7 @@
       var meta = {
         display: { emoji: '🎨', label: 'Display' },
         sound:   { emoji: '🔊', label: 'Sound' },
-        rhythm:  { emoji: '🎵', label: 'Rhythm' }
+        rhythm:  { emoji: '🎵', label: 'Practice' }
       }[name] || { emoji: '', label: '' };
       var emEl = document.getElementById('panel-host-emoji');
       var nmEl = document.getElementById('panel-host-name');

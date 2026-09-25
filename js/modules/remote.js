@@ -486,11 +486,13 @@ function applyRemoteCommand(msg) {
     }
 
     case 'setCountingTrainerEnabled': {
-      state.countingTrainerEnabled = !!msg.value;
+      // Goes through the checkbox so switching it on also turns off any
+      // other practice mode (see modes.js)
       var ctCb = document.getElementById('ct-enabled');
-      if (ctCb) ctCb.checked = state.countingTrainerEnabled;
-      var ctBtnEl = document.getElementById('counting-trainer-btn');
-      if (ctBtnEl) ctBtnEl.classList.toggle('ct-active', state.countingTrainerEnabled);
+      if (ctCb && ctCb.checked !== !!msg.value) {
+        ctCb.checked = !!msg.value;
+        ctCb.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       sendStateUpdate();
       break;
     }

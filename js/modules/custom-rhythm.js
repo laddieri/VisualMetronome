@@ -1,6 +1,7 @@
 import { state } from './state.js';
 import { createAnimals } from './animations.js';
 import { crmSyncToggleRow } from './check-rhythm.js';
+import { claimMode } from './modes.js';
 import { sendStateUpdate } from './remote.js';
 import { triggerClickSoundVel } from './sounds.js';
 import { getAnimationProgress } from './stage.js';
@@ -936,6 +937,7 @@ function crApplyRhythmOption(beatIdx, pat) {
     if (cb)  cb.checked = true;
     if (btn) btn.classList.add('ct-active');
     _syncSubdivisionVisibility();
+    claimMode('custom-rhythm');
   }
   crSetBeatPattern(beatIdx, pat);
   crRenderNotationDisplay();
@@ -1101,6 +1103,7 @@ function crToggleNoteTie(beatIdx, noteIdx) {
     if (_btn) _btn.classList.add('ct-active');
     _syncSubdivisionVisibility();
     _syncPracticeRow();
+    claimMode('custom-rhythm');
   }
   if (!state.customRhythmNoteTies[beatIdx]) state.customRhythmNoteTies[beatIdx] = [];
   state.customRhythmNoteTies[beatIdx][noteIdx] = !state.customRhythmNoteTies[beatIdx][noteIdx];

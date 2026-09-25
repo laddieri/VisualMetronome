@@ -4,6 +4,7 @@ import { saveSettingsSoon } from './persist-settings.js';
 import { sendStateUpdate } from './remote.js';
 import { applyBPM } from './tempo.js';
 import { toggleTransport } from './transport.js';
+import { setMode } from './modes.js';
 import { syncMeterDependentOptions } from './view-sync.js';
 
 
@@ -196,6 +197,9 @@ export function initSettingsListeners() {
 document.getElementById('reset-settings-btn').addEventListener('click', function() {
   if (!window.confirm('Reset all settings to their defaults?')) return;
 
+  // Practice mode → back to a steady beat
+  setMode(null);
+
   // Stop transport first so changes don't jar mid-playback
   if (Tone.Transport.state === 'started') {
     toggleTransport(false);
@@ -237,27 +241,15 @@ document.getElementById('reset-settings-btn').addEventListener('click', function
   var voiceCb = document.getElementById('voice-count-enabled');
   if (voiceCb) voiceCb.checked = false;
 
-  // Two-measure pattern → disabled, restore defaults
-  state.twoMeasurePatternEnabled = false;
+  // Two-measure pattern → restore defaults (setMode above turned it off)
   state.twoMeasurePattern[0] = { beatsPerMeasure: 4, subdivision: 'none', bpm: 96 };
   state.twoMeasurePattern[1] = { beatsPerMeasure: 3, subdivision: '2',    bpm: 96 };
   state.tmpLinkMode = 'beat';
   state.twoMeasureCurrentMeasure = 0;
-  var tmpBtn    = document.getElementById('two-measure-btn');
-  var tmpEnabledCb = document.getElementById('tmp-enabled');
-  if (tmpBtn)    tmpBtn.classList.remove('ct-active');
-  if (tmpEnabledCb) tmpEnabledCb.checked = false;
 
-  // Custom rhythm → off; re-render score so it reverts to default quarter notes
+  // Custom rhythm → clear the pattern; re-render score so it reverts to default quarter notes
   crCancelCustomRhythm();
   if (state.animalType === 'score') crRenderNotationDisplay();
-
-  // Counting trainer → off
-  state.countingTrainerEnabled = false;
-  var ctCb  = document.getElementById('ct-enabled');
-  var ctBtn = document.getElementById('counting-trainer-btn');
-  if (ctCb)  ctCb.checked = false;
-  if (ctBtn) ctBtn.classList.remove('ct-active');
 
   // Spacebar action → default (play/stop)
   state.spacebarAction = 'play';
