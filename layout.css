@@ -130,6 +130,8 @@ body > .container {
               border-color var(--vm-duration-fast) var(--vm-ease);
 }
 
+a.header-btn { text-decoration: none; }
+
 .header-btn:hover {
   background: var(--vm-bg-panel);
   border-color: var(--vm-border);

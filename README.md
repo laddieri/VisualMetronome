@@ -33,6 +33,13 @@ The app has no build step — it ships as native ES modules. `index.html` loads
 | `rhythm-scoring.js` | Pure matching and scoring of clapped hits against expected notes |
 | `remote.js` | Phone remote control (WebSocket relay or WebRTC/PeerJS) |
 
+**Kids mode** (`kids.html`, `kids.css`, `js/kids.js`) is a separate,
+standalone page reached from the 👏 Kids button in the header: play/stop,
+slower/faster and "count to" 2/3/4, with two cartoon hands clapping on the
+beat. It uses the Web Audio API directly (no Tone.js or p5) and plays
+`sounds/clap.wav`. Once opened it stays on (the main page redirects to it)
+until a grown-up presses and holds the exit button.
+
 Single-module state lives as module-level variables in its owning module;
 anything shared across modules lives on the `state` object from `state.js`.
 `js/layout.js` (theme + responsive shell) and `js/tonejs-ui.js` stay classic

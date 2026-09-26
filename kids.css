@@ -1,0 +1,254 @@
+/* Kids mode — a bright, chunky cartoon theme for kids.html. */
+
+:root {
+  --k-ink: #2b2250;          /* outlines and text */
+  --k-sky-top: #5ec8f2;
+  --k-sky-bottom: #bdeeff;
+  --k-grass: #7ed957;
+  --k-sun: #ffd23f;
+  --k-pink: #ff6fb5;
+  --k-green: #3ddc84;
+  --k-red: #ff5a5f;
+  --k-white: #ffffff;
+  --k-shadow: 0 5px 0 var(--k-ink);
+  --k-shadow-pressed: 0 1px 0 var(--k-ink);
+  --k-font: 'Fredoka', 'Comic Sans MS', 'Chalkboard SE', 'Trebuchet MS', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--k-font);
+  color: var(--k-ink);
+  background: linear-gradient(var(--k-sky-top), var(--k-sky-bottom) 70%, var(--k-grass) 70%);
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+.kids-app {
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.kids-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kids-title {
+  margin: 0;
+  font-size: clamp(1.6rem, 6vw, 2.6rem);
+  font-weight: 700;
+  color: var(--k-sun);
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 2px var(--k-ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--k-ink);
+  transform: rotate(-2deg);
+}
+
+/* Hold-to-exit: the fill grows while a grown-up keeps pressing. */
+.kids-exit {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  font: 600 0.8rem var(--k-font);
+  color: var(--k-ink);
+  background: rgba(255, 255, 255, 0.7);
+  border: 2px solid var(--k-ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.kids-exit-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--k-sun);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+.kids-exit.is-holding .kids-exit-fill {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms, 1500ms) linear;
+}
+.kids-exit-label { position: relative; }
+
+/* ── Stage ──────────────────────────────────────────────────────────── */
+
+.kids-stage {
+  position: relative;
+  flex: 1;
+  min-height: 180px;
+  border: 4px solid var(--k-ink);
+  border-radius: 28px;
+  background: var(--k-white);
+  box-shadow: 0 6px 0 var(--k-ink);
+  overflow: hidden;
+}
+
+#kids-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.kids-beats {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.kids-beat {
+  width: clamp(34px, 9vw, 48px);
+  height: clamp(34px, 9vw, 48px);
+  display: grid;
+  place-items: center;
+  font-size: clamp(1.1rem, 4vw, 1.5rem);
+  font-weight: 700;
+  border: 3px solid var(--k-ink);
+  border-radius: 50%;
+  background: var(--k-white);
+  transition: transform 120ms ease-out, background 120ms ease-out;
+}
+.kids-beat.is-on {
+  background: var(--k-sun);
+  transform: scale(1.25);
+}
+.kids-beat.is-on:first-child { background: var(--k-pink); }
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+
+.kids-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px 20px;
+}
+
+.kids-btn {
+  font-family: var(--k-font);
+  font-weight: 700;
+  color: var(--k-ink);
+  border: 3px solid var(--k-ink);
+  box-shadow: var(--k-shadow);
+  cursor: pointer;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out;
+  touch-action: manipulation;
+}
+.kids-btn:active {
+  transform: translateY(4px);
+  box-shadow: var(--k-shadow-pressed);
+}
+.kids-btn:focus-visible,
+.kids-exit:focus-visible {
+  outline: 4px solid var(--k-pink);
+  outline-offset: 3px;
+}
+.kids-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.kids-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 170px;
+  justify-content: center;
+  font-size: 1.8rem;
+  padding: 10px 28px;
+  border-radius: 999px;
+  background: var(--k-green);
+}
+.kids-play[aria-pressed="true"] { background: var(--k-red); }
+.kids-play-icon { font-size: 1.4rem; }
+
+.kids-tempo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kids-round {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--k-sun);
+  font-size: 2rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.kids-speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 118px;
+  padding: 6px 12px;
+  background: var(--k-white);
+  border: 3px solid var(--k-ink);
+  border-radius: 18px;
+}
+.kids-speed-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.kids-speed-bpm {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.kids-speed-bpm output { font-weight: 700; }
+
+.kids-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kids-count-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.kids-chip {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--k-white);
+  font-size: 1.4rem;
+  padding: 0;
+}
+.kids-chip[aria-checked="true"] { background: var(--k-pink); color: var(--k-white); }
+
+@media (max-width: 480px) {
+  .kids-app { padding: 10px 16px 12px; gap: 8px; }
+  .kids-play { font-size: 1.5rem; min-width: 150px; padding: 8px 22px; }
+  .kids-round { width: 54px; height: 54px; font-size: 1.6rem; }
+  .kids-chip { width: 44px; height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kids-beat { transition: none; }
+}

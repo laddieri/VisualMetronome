@@ -45,6 +45,11 @@ export default [
     },
   },
   {
+    // Kids mode: a standalone module with no p5/Tone.
+    files: ['js/kids.js'],
+    languageOptions: { sourceType: 'module', globals: { ...globals.browser } },
+  },
+  {
     files: ['js/layout.js'],
     languageOptions: { sourceType: 'script', globals: { ...globals.browser } },
   },

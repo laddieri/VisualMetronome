@@ -22,6 +22,12 @@
     <link rel="stylesheet" href="stylesheet.css" type="text/css">
     <link rel="stylesheet" href="layout.css" type="text/css">
     <script>
+      // Kids mode is sticky until a grown-up leaves it (see kids.html).
+      try {
+        if (localStorage.getItem('vm.kidsMode') === '1') location.replace('kids.html');
+      } catch (e) { /* ignore */ }
+    </script>
+    <script>
       // Apply saved theme before paint to avoid flash, and seed the canvas
       // background color so script.js's first draw() frame uses the right
       // value. layout.js will later replace this with the live CSS value.
@@ -54,6 +60,9 @@
           <span class="brand-title">Visual Metronome</span>
         </div>
         <div class="header-actions">
+          <a id="kids-mode-btn" class="header-btn header-btn--labeled" href="kids.html" title="Kids mode: big buttons and clapping hands" aria-label="Kids mode">
+            <span class="header-btn-icon" aria-hidden="true">👏</span><span class="header-btn-label">Kids</span>
+          </a>
           <button id="fullscreen-btn" class="header-btn header-btn--labeled" title="Fullscreen" aria-label="Fullscreen">
             <span class="header-btn-icon" aria-hidden="true">⛶</span><span class="header-btn-label">Fullscreen</span>
           </button>
