@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Kids Metronome</title>
+    <link rel="icon" type="image/svg+xml" href="assets/pig.svg">
+    <link rel="apple-touch-icon" href="assets/pig-180.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#5ec8f2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="kids.css">
+    <script>
+      // Kids mode is sticky: the main page sends you back here until a
+      // grown-up holds the exit button.
+      try { localStorage.setItem('vm.kidsMode', '1'); } catch (e) { /* ignore */ }
+    </script>
+  </head>
+  <body>
+    <div class="kids-app">
+      <header class="kids-header">
+        <h1 class="kids-title">Clap Along!</h1>
+        <button id="kids-exit" class="kids-exit" type="button"
+                aria-label="Grown-ups: hold to leave Kids mode"
+                title="Grown-ups: press and hold to leave Kids mode">
+          <span class="kids-exit-fill" aria-hidden="true"></span>
+          <span class="kids-exit-label">Grown-ups: hold</span>
+        </button>
+      </header>
+
+      <main class="kids-stage">
+        <canvas id="kids-canvas" aria-label="Two hands clapping to the beat" role="img"></canvas>
+        <div id="kids-beats" class="kids-beats" aria-hidden="true"></div>
+      </main>
+
+      <section class="kids-controls" aria-label="Metronome controls">
+        <button id="kids-play" class="kids-btn kids-play" type="button" aria-pressed="false">
+          <span class="kids-play-icon" aria-hidden="true">▶</span>
+          <span class="kids-play-label">Play</span>
+        </button>
+
+        <div class="kids-tempo" role="group" aria-label="Speed">
+          <button id="kids-slower" class="kids-btn kids-round" type="button" aria-label="Slower">🐢</button>
+          <div class="kids-speed">
+            <span id="kids-speed-name" class="kids-speed-name">Walking</span>
+            <span class="kids-speed-bpm"><output id="kids-bpm" aria-live="polite">90</output> beats a minute</span>
+          </div>
+          <button id="kids-faster" class="kids-btn kids-round" type="button" aria-label="Faster">🐇</button>
+        </div>
+
+        <div class="kids-count" role="radiogroup" aria-label="Count to">
+          <span class="kids-count-label">Count to</span>
+          <button class="kids-btn kids-chip" type="button" role="radio" data-beats="2" aria-checked="false">2</button>
+          <button class="kids-btn kids-chip" type="button" role="radio" data-beats="3" aria-checked="false">3</button>
+          <button class="kids-btn kids-chip" type="button" role="radio" data-beats="4" aria-checked="true">4</button>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="js/kids.js"></script>
+    <script>
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('sw.js').catch(function (err) {
+            console.warn('Service worker registration failed:', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

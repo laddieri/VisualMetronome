@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v9';
+const CACHE_VERSION = 'vm-v10';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
@@ -58,6 +58,10 @@ const SHELL = [
   './js/modules/persist-settings.js',
   './js/modules/tempo-math.js',
   './js/modules/rhythm-scoring.js',
+  './kids.html',
+  './kids.css',
+  './js/kids.js',
+  './sounds/clap.wav',
   './manifest.webmanifest',
   './assets/logo.svg',
   './assets/pig.svg',
@@ -97,16 +101,22 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // App navigations: try network (fresh deploys), fall back to cached shell.
+  // App navigations: try network (fresh deploys), fall back to the cached
+  // copy of that page (kids.html or index.html), then to the main shell.
   if (req.mode === 'navigate') {
+    const page = url.origin === self.location.origin && /\/kids\.html$/.test(url.pathname)
+      ? './kids.html' : './index.html';
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(PRECACHE).then((c) => c.put('./index.html', copy));
+          if (res && res.status === 200 && url.origin === self.location.origin) {
+            const copy = res.clone();
+            caches.open(PRECACHE).then((c) => c.put(page, copy));
+          }
           return res;
         })
-        .catch(() => caches.match('./index.html', { ignoreSearch: true })
+        .catch(() => caches.match(page, { ignoreSearch: true })
+          .then((r) => r || caches.match('./index.html', { ignoreSearch: true }))
           .then((r) => r || caches.match('./')))
     );
     return;
