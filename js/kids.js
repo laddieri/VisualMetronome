@@ -70,18 +70,44 @@ function speedLabel(bpm) {
 
 // ── Audio ───────────────────────────────────────────────────────────────────
 
+// Called from the Play press (a user gesture), so a fresh context is
+// allowed to start. A context left over from earlier — suspended by the
+// browser, or "interrupted" after the page came back from the back/forward
+// cache — may never resume, and its clock would stay frozen along with the
+// animation, so swap it for a new one instead of trying to revive it.
+// Returns false if no audio context could be made.
 function ensureAudio() {
+  if (audioCtx && audioCtx.state !== 'running') releaseAudio();
   if (!audioCtx) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new Ctx();
-    fallbackBuffer = synthClap(audioCtx);
-    fetch('sounds/clap.wav')
-      .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(new Error(res.statusText))))
-      .then((data) => audioCtx.decodeAudioData(data))
-      .then((buf) => { clapBuffer = buf; })
-      .catch((err) => console.warn('Kids mode: using a synthesized clap', err));
+    let ctx;
+    try {
+      ctx = new Ctx();
+    } catch (err) {
+      console.warn('Kids mode: could not start audio', err);
+      return false;
+    }
+    audioCtx = ctx;
+    // AudioBuffers work in any context, so these are only made once.
+    if (!fallbackBuffer) fallbackBuffer = synthClap(ctx);
+    if (!clapBuffer) {
+      fetch('sounds/clap.wav')
+        .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(new Error(res.statusText))))
+        .then((data) => ctx.decodeAudioData(data))
+        .then((buf) => { clapBuffer = buf; })
+        .catch((err) => console.warn('Kids mode: using a synthesized clap', err));
+    }
   }
   if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+  return true;
+}
+
+// Close the context so it doesn't linger (browsers cap how many can exist,
+// and pages in the back/forward cache keep theirs alive).
+function releaseAudio() {
+  if (!audioCtx) return;
+  audioCtx.close().catch(() => {});
+  audioCtx = null;
 }
 
 // A few quick noise bursts and a short tail — close enough to a hand clap.
@@ -112,7 +138,26 @@ function beatInterval() {
   return 60 / settings.bpm;
 }
 
+// Watchdog: the beats (and so the animation) run on the audio clock. If it
+// stops advancing — the browser suspended audio and won't give it back —
+// stop cleanly so the next Play press starts on a fresh context, rather
+// than leaving the friend frozen mid-beat.
+const STALL_MS = 1200;
+let lastClock = 0;
+let lastClockChange = 0;
+
 function scheduler() {
+  const clock = audioCtx.currentTime;
+  const wall = performance.now();
+  if (clock !== lastClock) {
+    lastClock = clock;
+    lastClockChange = wall;
+  } else if (wall - lastClockChange > STALL_MS && !document.hidden) {
+    console.warn('Kids mode: audio clock stalled; stopping');
+    stop();
+    releaseAudio();
+    return;
+  }
   // After the tab was throttled, skip the beats we missed instead of
   // firing them all at once.
   if (nextBeatTime < audioCtx.currentTime - 0.05) nextBeatTime = audioCtx.currentTime + 0.05;
@@ -131,7 +176,9 @@ function scheduler() {
 }
 
 function start() {
-  ensureAudio();
+  if (!ensureAudio()) return;
+  lastClock = audioCtx.currentTime;
+  lastClockChange = performance.now();
   nextBeatIndex = 0;
   beatQueue = [];
   nextBeatTime = audioCtx.currentTime + 0.15;
@@ -264,8 +311,11 @@ function cancelExitHold() {
 
 function leaveKidsMode() {
   stop();
+  cancelExitHold();
   try { localStorage.removeItem(KIDS_MODE_KEY); } catch (e) {}
-  location.href = 'index.html';
+  // Replace rather than push: Back shouldn't bounce between the two modes,
+  // and a page with no history entry can't linger in the back/forward cache.
+  location.replace('index.html');
 }
 
 exitBtn.addEventListener('pointerdown', (e) => {
@@ -324,14 +374,33 @@ function draw(t) {
   drawScene(settings.scene, g, { w: cssW, h: cssH, t, beats: settings.beats, info });
 }
 
+let drawFailed = false;
 function frame(t) {
-  draw(t);
+  // Keep the loop alive even if one frame throws, so a single bad frame
+  // can't freeze the picture for good.
+  try {
+    draw(t);
+  } catch (err) {
+    if (!drawFailed) console.error('Kids mode: drawing failed', err);
+    drawFailed = true;
+  }
   requestAnimationFrame(frame);
 }
 
 // Pause when hidden so a backgrounded tab isn't clapping to nobody.
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && isPlaying()) stop();
+});
+
+// Leaving the page: let go of the audio. Coming back from the back/forward
+// cache: clear a half-finished exit hold (Play makes new audio as needed).
+window.addEventListener('pagehide', () => {
+  stop();
+  cancelExitHold();
+  releaseAudio();
+});
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) cancelExitHold();
 });
 
 // Test/debug hook.

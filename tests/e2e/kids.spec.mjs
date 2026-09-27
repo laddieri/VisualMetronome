@@ -102,3 +102,77 @@ test('every friend keeps the beat, and the pick is remembered', async ({ page, e
   await expect(page.locator('body')).toHaveAttribute('data-scene', 'ball');
   expect(errors).toEqual([]);
 });
+
+// Records every AudioContext the page makes, so tests can suspend them the
+// way a browser does behind the page's back.
+function trackAudioContexts(page) {
+  return page.addInitScript(() => {
+    window.__ctxs = [];
+    const Real = window.AudioContext;
+    window.AudioContext = class extends Real {
+      constructor(...args) { super(...args); window.__ctxs.push(this); }
+    };
+  });
+}
+
+test('switching between modes again and again keeps the friend moving', async ({ page, errors }) => {
+  await openApp(page);
+  for (let i = 0; i < 4; i++) {
+    await page.getByRole('link', { name: 'Kids mode' }).click();
+    await page.waitForURL('**/kids.html');
+    await page.locator('#kids-play').click();
+    await page.waitForFunction(() => window.kidsMetronome.beatsPlayed >= 2);
+
+    const exit = page.getByRole('button', { name: /Grown-ups/ });
+    const box = await exit.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForURL('**/index.html', { timeout: 5000 });
+    await page.mouse.up();
+    await page.waitForSelector('canvas');
+  }
+  expect(errors).toEqual([]);
+});
+
+test('Back does not lead out of Kids mode', async ({ page, errors }) => {
+  await openApp(page);
+  await page.getByRole('link', { name: 'Kids mode' }).click();
+  await page.waitForURL('**/kids.html');
+  await page.goBack();
+  expect(page.url()).not.toContain('index.html');
+  expect(errors).toEqual([]);
+});
+
+test('a suspended audio context is replaced on the next Play', async ({ page, errors }) => {
+  await trackAudioContexts(page);
+  await openKids(page);
+  const play = page.locator('#kids-play');
+  await play.click();
+  await page.waitForFunction(() => window.kidsMetronome.beatsPlayed >= 1);
+  await play.click();
+
+  // The browser suspends audio while we're stopped (as after the page
+  // comes back from the back/forward cache).
+  await page.evaluate(() => window.__ctxs[0].suspend());
+  await play.click();
+  await page.waitForFunction(() => window.kidsMetronome.beatsPlayed >= 2);
+  expect(await page.evaluate(() => window.__ctxs.map((c) => c.state))).toEqual(['closed', 'running']);
+  expect(errors).toEqual([]);
+});
+
+test('if audio stalls mid-play, it stops cleanly and Play works again', async ({ page, errors }) => {
+  await trackAudioContexts(page);
+  await openKids(page);
+  const play = page.locator('#kids-play');
+  await play.click();
+  await page.waitForFunction(() => window.kidsMetronome.beatsPlayed >= 1);
+
+  page.on('console', () => {}); // the watchdog's warning is expected
+  await page.evaluate(() => window.__ctxs[0].suspend());
+  await expect(play).toHaveAttribute('aria-pressed', 'false', { timeout: 4000 });
+
+  await play.click();
+  const before = await page.evaluate(() => window.kidsMetronome.beatsPlayed);
+  await page.waitForFunction((n) => window.kidsMetronome.beatsPlayed >= n + 2, before);
+  expect(errors).toEqual([]);
+});

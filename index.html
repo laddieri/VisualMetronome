@@ -830,6 +830,14 @@
     <!-- PWA: register the service worker so the app is installable and works
          offline. Skipped on file:// (service workers require http/https). -->
     <script>
+      // Open Kids mode in place of this page rather than on top of it, so the
+      // Back button can't take a kid out of Kids mode.
+      document.getElementById('kids-mode-btn').addEventListener('click', function (e) {
+        e.preventDefault();
+        location.replace(this.href);
+      });
+    </script>
+    <script>
       if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         window.addEventListener('load', function () {
           navigator.serviceWorker.register('sw.js').catch(function (err) {
