@@ -1,7 +1,10 @@
 // Kids mode (kids.html): a stripped-down metronome — play/stop, slower/faster
-// and "count to" 2, 3 or 4 — drawn as two cartoon hands clapping on the beat.
+// "count to" 2, 3 or 4, and a choice of cartoon friends (kids-scenes.js) who
+// clap, hop, bounce or stomp on the beat.
 // Standalone on purpose: it uses the Web Audio API directly rather than the
 // main app's Tone.js/p5 stack, so it loads fast and has nothing to configure.
+
+import { SCENES, drawScene, playSceneSound } from './kids-scenes.js';
 
 const MIN_BPM = 40;
 const MAX_BPM = 180;
@@ -13,9 +16,6 @@ const EXIT_HOLD_MS = 1500;
 // Scheduler: every TICK_MS, queue any beats due within LOOKAHEAD_S.
 const TICK_MS = 25;
 const LOOKAHEAD_S = 0.1;
-
-const INK = '#2b2250';
-const CUFF_COLORS = ['#ff6fb5', '#3ddc84'];
 
 const settings = loadSettings();
 
@@ -42,13 +42,14 @@ const g = canvas.getContext('2d');
 // ── Settings ────────────────────────────────────────────────────────────────
 
 function loadSettings() {
-  const defaults = { bpm: 90, beats: 4 };
+  const defaults = { bpm: 90, beats: 4, scene: 'hands' };
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
     const bpm = Math.round(Number(saved.bpm) / BPM_STEP) * BPM_STEP;
     return {
       bpm: bpm >= MIN_BPM && bpm <= MAX_BPM ? bpm : defaults.bpm,
       beats: [2, 3, 4].includes(saved.beats) ? saved.beats : defaults.beats,
+      scene: Object.hasOwn(SCENES, saved.scene) ? saved.scene : defaults.scene,
     };
   } catch (e) {
     return defaults;
@@ -102,14 +103,9 @@ function synthClap(ctx) {
   return buf;
 }
 
-function playClap(time, accent) {
-  const src = audioCtx.createBufferSource();
-  src.buffer = clapBuffer || fallbackBuffer;
-  src.playbackRate.value = accent ? 1 : 1.12;
-  const gain = audioCtx.createGain();
-  gain.gain.value = accent ? 1 : 0.6;
-  src.connect(gain).connect(audioCtx.destination);
-  src.start(time);
+function playBeat(time, accent) {
+  const audio = { ctx: audioCtx, clapBuffer: clapBuffer || fallbackBuffer };
+  playSceneSound(settings.scene, audio, time, accent);
 }
 
 function beatInterval() {
@@ -123,7 +119,7 @@ function scheduler() {
   while (nextBeatTime < audioCtx.currentTime + LOOKAHEAD_S) {
     const beat = nextBeatIndex % settings.beats;
     const interval = beatInterval();
-    playClap(nextBeatTime, beat === 0);
+    playBeat(nextBeatTime, beat === 0);
     beatQueue.push({ time: nextBeatTime, beat, interval });
     nextBeatTime += interval;
     nextBeatIndex = beat + 1;
@@ -203,6 +199,26 @@ function setBeats(n) {
   saveSettings();
   renderBeats();
 }
+
+function renderScene() {
+  const scene = SCENES[settings.scene];
+  document.body.dataset.scene = settings.scene;
+  document.querySelector('.kids-title').textContent = scene.title;
+  canvas.setAttribute('aria-label', scene.name + ' keeping the beat');
+  document.querySelectorAll('.kids-friend').forEach((btn) => {
+    btn.setAttribute('aria-checked', String(btn.dataset.scene === settings.scene));
+  });
+}
+
+function setScene(id) {
+  settings.scene = id;
+  saveSettings();
+  renderScene();
+}
+
+document.querySelectorAll('.kids-friend').forEach((btn) => {
+  btn.addEventListener('click', () => setScene(btn.dataset.scene));
+});
 
 playBtn.addEventListener('click', () => (isPlaying() ? stop() : start()));
 slowerBtn.addEventListener('click', () => changeTempo(-1));
@@ -301,190 +317,11 @@ function beatPhase() {
   return { phase: Math.min(1, (now - current.time) / current.interval), beat: current.beat };
 }
 
-// One glove, fingers up, drawn for the LEFT hand (thumb toward +x). The
-// palm centre is the origin and `s` is roughly the hand's height.
-const FINGERS = [
-  { x: -0.22, top: -0.5 },  // pinky
-  { x: -0.075, top: -0.64 },
-  { x: 0.075, top: -0.7 },
-  { x: 0.22, top: -0.62 },  // index
-];
-const FINGER_W = 0.16;
-
-function capsule(x1, y1, x2, y2, w) {
-  g.moveTo(x1, y1);
-  g.lineTo(x2, y2);
-  g.lineWidth = w;
-}
-
-function gloveParts(s, draw) {
-  // Thumb, fingers, palm and cuff, each as its own subpath so we can
-  // stroke all of them before filling all of them — that merges the
-  // outlines into one chunky cartoon silhouette.
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-
-  // Thumb
-  g.beginPath();
-  capsule(0.24 * s, 0.24 * s, 0.47 * s, -0.08 * s, 0.17 * s);
-  draw('limb');
-  // Fingers
-  for (const f of FINGERS) {
-    g.beginPath();
-    capsule(f.x * s, 0.1 * s, f.x * s, (f.top + FINGER_W / 2) * s, FINGER_W * s);
-    draw('limb');
-  }
-  // Palm
-  g.beginPath();
-  g.roundRect(-0.31 * s, -0.12 * s, 0.62 * s, 0.6 * s, 0.2 * s);
-  draw('body');
-  // Cuff
-  g.beginPath();
-  g.roundRect(-0.34 * s, 0.42 * s, 0.68 * s, 0.24 * s, 0.1 * s);
-  draw('cuff');
-}
-
-function drawGlove(s, cuffColor) {
-  const outline = Math.max(3, s * 0.045);
-  // Pass 1: outlines (a limb's outline is just a fatter stroke of it).
-  gloveParts(s, (kind) => {
-    g.strokeStyle = INK;
-    if (kind === 'limb') {
-      g.lineWidth += outline * 2;
-      g.stroke();
-    } else {
-      g.lineWidth = outline * 2;
-      g.stroke();
-    }
-  });
-  // Pass 2: fills on top, hiding the inner outlines.
-  gloveParts(s, (kind) => {
-    if (kind === 'limb') {
-      g.strokeStyle = '#ffffff';
-      g.stroke();
-    } else {
-      g.fillStyle = kind === 'cuff' ? cuffColor : '#ffffff';
-      g.fill();
-    }
-  });
-  // Cuff sits over the wrist — outline it on top so it reads as separate.
-  g.beginPath();
-  g.roundRect(-0.34 * s, 0.42 * s, 0.68 * s, 0.24 * s, 0.1 * s);
-  g.lineWidth = outline;
-  g.strokeStyle = INK;
-  g.stroke();
-
-  // Finger gaps and the three stitches on the back of the glove.
-  g.lineWidth = Math.max(2, outline * 0.6);
-  g.beginPath();
-  for (let i = 0; i < FINGERS.length - 1; i++) {
-    const x = (FINGERS[i].x + FINGERS[i + 1].x) / 2;
-    const top = Math.max(FINGERS[i].top, FINGERS[i + 1].top) + FINGER_W * 0.6;
-    g.moveTo(x * s, -0.06 * s);
-    g.lineTo(x * s, top * s);
-  }
-  for (const x of [-0.11, 0, 0.11]) {
-    g.moveTo(x * s, 0.1 * s);
-    g.lineTo(x * s, 0.3 * s);
-  }
-  g.stroke();
-}
-
-function starburst(x, y, r, points, fill) {
-  g.beginPath();
-  for (let i = 0; i < points * 2; i++) {
-    const a = (i / (points * 2)) * Math.PI * 2 - Math.PI / 2;
-    const rr = i % 2 === 0 ? r : r * 0.62;
-    g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
-  g.closePath();
-  g.fillStyle = fill;
-  g.fill();
-  g.lineWidth = 4;
-  g.strokeStyle = INK;
-  g.stroke();
-}
-
-function drawBackground(t) {
-  g.fillStyle = '#fff6d6';
-  g.fillRect(0, 0, cssW, cssH);
-  // Slowly turning sunbeams.
-  const cx = cssW / 2;
-  const cy = cssH * 0.45;
-  const r = Math.hypot(cssW, cssH);
-  g.fillStyle = '#ffeaa8';
-  g.beginPath();
-  const rays = 12;
-  for (let i = 0; i < rays; i++) {
-    const a = t * 0.00006 + (i / rays) * Math.PI * 2;
-    g.moveTo(cx, cy);
-    g.arc(cx, cy, r, a, a + Math.PI / rays);
-    g.closePath();
-  }
-  g.fill();
-}
-
 function draw(t) {
   if (!cssW || !cssH) return;
-  drawBackground(t);
-
   const info = beatPhase();
   highlightBeat(info ? info.beat : -1);
-
-  // Leave room for the beat dots along the bottom.
-  const areaH = cssH - 70;
-  const s = Math.max(40, Math.min(areaH / 1.5, cssW / 3.4));
-  const cx = cssW / 2;
-  const cy = areaH / 2 + 12;
-  const maxSep = Math.max(0, Math.min(cssW - 1.9 * s - 24, 1.8 * s));
-
-  // open: 0 = hands together, 1 = wide apart.
-  let open;
-  let bob = 0;
-  if (info) {
-    open = Math.sin(Math.PI * info.phase);
-  } else {
-    open = 0.55 + 0.08 * Math.sin(t / 600);
-    bob = Math.sin(t / 450) * s * 0.03;
-  }
-
-  // Burst of colour right at the clap.
-  const IMPACT = 0.3;
-  if (info && info.beat >= 0 && info.phase < IMPACT) {
-    const k = info.phase / IMPACT;
-    g.save();
-    g.globalAlpha = 1 - k * k;
-    starburst(cx, cy - s * 0.1, s * (0.75 + 0.35 * k), 10, info.beat === 0 ? '#ff6fb5' : '#ffd23f');
-    // Little "pop" lines flying out above the hands.
-    g.lineCap = 'round';
-    g.lineWidth = Math.max(3, s * 0.04);
-    g.strokeStyle = INK;
-    g.beginPath();
-    for (const a of [-2.3, -1.57, -0.84]) {
-      const r1 = s * (0.85 + 0.3 * k);
-      const r2 = r1 + s * 0.18;
-      g.moveTo(cx + Math.cos(a) * r1, cy - s * 0.1 + Math.sin(a) * r1);
-      g.lineTo(cx + Math.cos(a) * r2, cy - s * 0.1 + Math.sin(a) * r2);
-    }
-    g.stroke();
-    g.restore();
-  }
-
-  // Squash a little on impact.
-  const squash = info && info.beat >= 0 && info.phase < 0.12 ? 1 - info.phase / 0.12 : 0;
-  // Tilt outward as the hands open, upright as they meet.
-  const tilt = 0.06 - 0.32 * open;
-  const halfGap = maxSep * open / 2 + 0.47 * s;
-
-  for (const side of [-1, 1]) {
-    g.save();
-    g.translate(cx + side * halfGap, cy + bob);
-    if (side === 1) g.scale(-1, 1); // mirror to make the right hand
-    g.rotate(tilt);
-    g.scale(1 - 0.08 * squash, 1 + 0.06 * squash);
-    drawGlove(s, CUFF_COLORS[side === -1 ? 0 : 1]);
-    g.restore();
-  }
+  drawScene(settings.scene, g, { w: cssW, h: cssH, t, beats: settings.beats, info });
 }
 
 function frame(t) {
@@ -502,6 +339,7 @@ window.kidsMetronome = {
   get playing() { return isPlaying(); },
   get bpm() { return settings.bpm; },
   get beats() { return settings.beats; },
+  get scene() { return settings.scene; },
   // Claps that have actually sounded, not just been scheduled.
   get beatsPlayed() {
     const now = audioCtx ? audioCtx.currentTime : 0;
@@ -511,5 +349,6 @@ window.kidsMetronome = {
 
 renderTempo();
 renderBeats();
+renderScene();
 resizeCanvas();
 requestAnimationFrame(frame);

@@ -22,10 +22,29 @@ html, body {
   height: 100%;
 }
 
+/* Each friend brings its own colours for the page around the stage. */
+body {
+  --k-page: linear-gradient(var(--k-sky-top), var(--k-sky-bottom) 70%, var(--k-grass) 70%);
+  --k-label: var(--k-ink);
+}
+body[data-scene="frog"] {
+  --k-page: linear-gradient(#bff0d4, #e6fbf0 60%, #62c3d0 60%);
+}
+body[data-scene="ball"] {
+  --k-page: radial-gradient(circle at 20% 15%, #ffffff 0 2px, transparent 3px) 0 0 / 90px 90px,
+            radial-gradient(circle at 70% 60%, #fff6c2 0 1.5px, transparent 2.5px) 0 0 / 70px 70px,
+            linear-gradient(#120c33, #3a2a7a);
+  --k-label: #ffffff;
+}
+body[data-scene="dino"] {
+  --k-page: linear-gradient(#ffb86b, #ffe7a8 65%, #6cc94a 65%);
+}
+
 body {
   font-family: var(--k-font);
   color: var(--k-ink);
-  background: linear-gradient(var(--k-sky-top), var(--k-sky-bottom) 70%, var(--k-grass) 70%);
+  background: var(--k-page);
+  background-color: var(--k-sky-top);
   -webkit-tap-highlight-color: transparent;
   overflow: hidden;
 }
@@ -52,7 +71,8 @@ body {
 
 .kids-title {
   margin: 0;
-  font-size: clamp(1.6rem, 6vw, 2.6rem);
+  font-size: clamp(1.3rem, 6vw, 2.6rem);
+  white-space: nowrap;
   font-weight: 700;
   color: var(--k-sun);
   letter-spacing: 0.02em;
@@ -223,15 +243,31 @@ body {
 }
 .kids-speed-bpm output { font-weight: 700; }
 
-.kids-count {
+.kids-count,
+.kids-friends {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.kids-count-label {
+.kids-label {
   font-size: 1.1rem;
   font-weight: 600;
+  color: var(--k-label);
 }
+.kids-friend {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--k-white);
+  font-size: 1.7rem;
+  line-height: 1;
+  padding: 0;
+}
+.kids-friend[aria-checked="true"] {
+  background: var(--k-sun);
+  transform: translateY(-3px) rotate(-4deg);
+}
+.kids-friend[aria-checked="true"]:active { transform: translateY(4px); }
 .kids-chip {
   width: 48px;
   height: 48px;
@@ -247,6 +283,7 @@ body {
   .kids-play { font-size: 1.5rem; min-width: 150px; padding: 8px 22px; }
   .kids-round { width: 54px; height: 54px; font-size: 1.6rem; }
   .kids-chip { width: 44px; height: 44px; }
+  .kids-friend { width: 46px; height: 46px; font-size: 1.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v10';
+const CACHE_VERSION = 'vm-v11';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
@@ -61,6 +61,7 @@ const SHELL = [
   './kids.html',
   './kids.css',
   './js/kids.js',
+  './js/kids-scenes.js',
   './sounds/clap.wav',
   './manifest.webmanifest',
   './assets/logo.svg',

@@ -35,9 +35,11 @@ The app has no build step — it ships as native ES modules. `index.html` loads
 
 **Kids mode** (`kids.html`, `kids.css`, `js/kids.js`) is a separate,
 standalone page reached from the 👏 Kids button in the header: play/stop,
-slower/faster and "count to" 2/3/4, with two cartoon hands clapping on the
-beat. It uses the Web Audio API directly (no Tone.js or p5) and plays
-`sounds/clap.wav`. Once opened it stays on (the main page redirects to it)
+slower/faster, "count to" 2/3/4, and a choice of cartoon friends who keep
+the beat — clapping hands, a frog hopping between lily pads, a ball bouncing
+on the moon, or a stomping dino. Each friend (`js/kids-scenes.js`) draws its
+own scene and makes its own sound. It uses the Web Audio API directly (no
+Tone.js or p5); the hands play `sounds/clap.wav`, the others are synthesized. Once opened it stays on (the main page redirects to it)
 until a grown-up presses and holds the exit button.
 
 Single-module state lives as module-level variables in its owning module;
