@@ -362,9 +362,9 @@ function beatPhase() {
   if (!current) {
     // Before the first clap: bring the hands together for it.
     const first = beatQueue[0];
-    return { phase: Math.max(0, 1 - (first.time - now) / first.interval), beat: -1 };
+    return { phase: Math.max(0, 1 - (first.time - now) / first.interval), beat: -1, interval: first.interval };
   }
-  return { phase: Math.min(1, (now - current.time) / current.interval), beat: current.beat };
+  return { phase: Math.min(1, (now - current.time) / current.interval), beat: current.beat, interval: current.interval };
 }
 
 function draw(t) {

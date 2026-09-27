@@ -176,3 +176,38 @@ test('if audio stalls mid-play, it stops cleanly and Play works again', async ({
   await page.waitForFunction((n) => window.kidsMetronome.beatsPlayed >= n + 2, before);
   expect(errors).toEqual([]);
 });
+
+test('every friend draws each moment of a beat, slow or fast, and tidies up after', async ({ page, errors }) => {
+  await openKids(page);
+  const problems = await page.evaluate(async () => {
+    const { SCENES, drawScene } = await import('./js/kids-scenes.js');
+    const c = document.createElement('canvas');
+    c.width = 360;
+    c.height = 420;
+    const g = c.getContext('2d');
+    const view = (info, t = 0) => ({ w: 360, h: 420, t, beats: 3, info });
+    const out = [];
+    for (const id of Object.keys(SCENES)) {
+      for (const bpm of [40, 90, 180]) {
+        for (let i = 0; i <= 24; i++) {
+          for (const beat of [-1, 0, 2]) {
+            drawScene(id, g, view({ phase: i / 24, beat, interval: 60 / bpm }, i * 40));
+            // A scene that leaves a transform or fade behind would drift.
+            const m = g.getTransform();
+            if (!m.isIdentity || g.globalAlpha !== 1) out.push(`${id} ${bpm}bpm phase ${i}/24 left the canvas state changed`);
+          }
+        }
+      }
+      drawScene(id, g, view(null));
+    }
+    // The hands really come together on the beat and part in between.
+    const snap = (phase) => {
+      drawScene('hands', g, view({ phase, beat: 0, interval: 0.6 }));
+      return c.toDataURL();
+    };
+    if (snap(0) === snap(0.4)) out.push('hands look the same on the beat and between beats');
+    return out;
+  });
+  expect(problems).toEqual([]);
+  expect(errors).toEqual([]);
+});
