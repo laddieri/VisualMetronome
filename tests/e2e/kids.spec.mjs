@@ -71,3 +71,34 @@ test('Space plays and stops in Kids mode', async ({ page, errors }) => {
   await page.waitForFunction(() => !window.kidsMetronome.playing);
   expect(errors).toEqual([]);
 });
+
+test('every friend keeps the beat, and the pick is remembered', async ({ page, errors }) => {
+  await openKids(page);
+  expect(await kids(page)).toMatchObject({ scene: 'hands' });
+  const play = page.locator('#kids-play');
+  await play.click();
+
+  for (const [name, scene, title] of [
+    ['Hopping frog', 'frog', 'Hop Along!'],
+    ['Bouncy ball', 'ball', 'Bounce Along!'],
+    ['Stomping dino', 'dino', 'Stomp Along!'],
+    ['Clapping hands', 'hands', 'Clap Along!'],
+  ]) {
+    const friend = page.getByRole('radio', { name });
+    await friend.click();
+    await expect(friend).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('body')).toHaveAttribute('data-scene', scene);
+    await expect(page.locator('.kids-title')).toHaveText(title);
+    // Switching friends doesn't interrupt the beat.
+    const before = await page.evaluate(() => window.kidsMetronome.beatsPlayed);
+    await page.waitForFunction((n) => window.kidsMetronome.beatsPlayed >= n + 2, before);
+  }
+  await play.click();
+
+  await page.getByRole('radio', { name: 'Bouncy ball' }).click();
+  await page.reload();
+  await page.waitForFunction(() => window.kidsMetronome);
+  expect(await kids(page)).toMatchObject({ scene: 'ball' });
+  await expect(page.locator('body')).toHaveAttribute('data-scene', 'ball');
+  expect(errors).toEqual([]);
+});

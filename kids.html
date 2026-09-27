@@ -32,7 +32,7 @@
       </header>
 
       <main class="kids-stage">
-        <canvas id="kids-canvas" aria-label="Two hands clapping to the beat" role="img"></canvas>
+        <canvas id="kids-canvas" aria-label="Clapping hands keeping the beat" role="img"></canvas>
         <div id="kids-beats" class="kids-beats" aria-hidden="true"></div>
       </main>
 
@@ -51,8 +51,16 @@
           <button id="kids-faster" class="kids-btn kids-round" type="button" aria-label="Faster">🐇</button>
         </div>
 
+        <div class="kids-friends" role="radiogroup" aria-label="Pick a friend">
+          <span class="kids-label">Pick</span>
+          <button class="kids-btn kids-friend" type="button" role="radio" data-scene="hands" aria-checked="true" aria-label="Clapping hands" title="Clapping hands">👏</button>
+          <button class="kids-btn kids-friend" type="button" role="radio" data-scene="frog" aria-checked="false" aria-label="Hopping frog" title="Hopping frog">🐸</button>
+          <button class="kids-btn kids-friend" type="button" role="radio" data-scene="ball" aria-checked="false" aria-label="Bouncy ball" title="Bouncy ball">⚽</button>
+          <button class="kids-btn kids-friend" type="button" role="radio" data-scene="dino" aria-checked="false" aria-label="Stomping dino" title="Stomping dino">🦕</button>
+        </div>
+
         <div class="kids-count" role="radiogroup" aria-label="Count to">
-          <span class="kids-count-label">Count to</span>
+          <span class="kids-label">Count to</span>
           <button class="kids-btn kids-chip" type="button" role="radio" data-beats="2" aria-checked="false">2</button>
           <button class="kids-btn kids-chip" type="button" role="radio" data-beats="3" aria-checked="false">3</button>
           <button class="kids-btn kids-chip" type="button" role="radio" data-beats="4" aria-checked="true">4</button>
