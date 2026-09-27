@@ -2,8 +2,9 @@
 // makes its own sound on the beat.
 //
 // draw(view) gets { w, h, t, beats, info }, where info is null while stopped
-// or { phase, beat }: phase 0 is the beat itself, rising to 1 just before
-// the next one (beat is -1 during the lead-in to the first beat).
+// or { phase, beat, interval }: phase 0 is the beat itself, rising to 1 just
+// before the next one, `interval` seconds later (beat is -1 during the
+// lead-in to the first beat).
 // sound(audio, time, accent) schedules one beat's sound at `time`.
 
 const INK = '#2b2250';
@@ -147,121 +148,338 @@ function blip(audio, time, { type, f0, f1, glide, len, vol, filter }) {
 }
 
 // ── 👏 Clapping hands ───────────────────────────────────────────────────────
+//
+// A little puppet rig rather than two stickers sliding together. Each hand
+// is on a bendy cartoon arm that swings up from behind a counter, and turns
+// to face the other hand as it comes in: the flat palm narrows while the
+// round fingers keep their width, so the hands look solid. The fingers fan
+// out when open, drag behind a fast swing and flick through on impact.
+// Timing is in seconds rather than fractions of a beat, so the hands snap
+// together, bounce apart and wait, like real clapping, instead of drifting
+// to and fro in slow motion at slow tempos.
 
-const CUFF_COLORS = ['#ff6fb5', '#3ddc84'];
-// One glove, fingers up, drawn for the LEFT hand (thumb toward +x). The
-// palm centre is the origin and `s` is roughly the hand's height.
+const SLEEVES = ['#ff6fb5', '#3ddc84'];     // left arm, right arm
+const SLEEVE_BANDS = ['#ffc2e0', '#b8f5d2'];
+const PALM_LINE = '43, 34, 80';             // INK as r, g, b
+const COUNTER = '#ffb347';
+
+// The glove, in hand units with the wrist at the origin and the fingers up
+// (−y), drawn as the LEFT hand: palm toward us, thumb toward the middle (+x).
+// Fingers run pinky → index.
 const FINGERS = [
-  { x: -0.22, top: -0.5 },  // pinky
-  { x: -0.075, top: -0.64 },
-  { x: 0.075, top: -0.7 },
-  { x: 0.22, top: -0.62 },  // index
+  { x: -0.22, len: 0.34 },
+  { x: -0.075, len: 0.44 },
+  { x: 0.075, len: 0.48 },
+  { x: 0.22, len: 0.41 },
 ];
-const FINGER_W = 0.16;
+const FINGER_W = 0.155;
+const KNUCKLE_Y = -0.5;
 
-function drawGlove(s, cuffColor) {
-  const lineW = Math.max(3, s * 0.045);
-  const cuff = () => { g.roundRect(-0.34 * s, 0.42 * s, 0.68 * s, 0.24 * s, 0.1 * s); return 0; };
-  blob([
-    () => { g.moveTo(0.24 * s, 0.24 * s); g.lineTo(0.47 * s, -0.08 * s); return 0.17 * s; }, // thumb
-    ...FINGERS.map((f) => () => {
-      g.moveTo(f.x * s, 0.1 * s);
-      g.lineTo(f.x * s, (f.top + FINGER_W / 2) * s);
-      return FINGER_W * s;
-    }),
-    () => { g.roundRect(-0.31 * s, -0.12 * s, 0.62 * s, 0.6 * s, 0.2 * s); return 0; }, // palm
-    cuff,
-  ], '#ffffff', lineW);
-  // The cuff sits over the wrist: its own colour and outline on top.
-  g.beginPath();
-  cuff();
-  g.fillStyle = cuffColor;
-  g.fill();
-  outline(lineW);
+// Clap timing for a clap every `interval` seconds: how long the palms stay
+// pressed together, how long the swing in and the bounce back out take, and
+// how much wider the hands open while winding up in between. The swing
+// keeps to a natural speed rather than stretching across slow beats, but
+// always leads into the next clap.
+function clapTiming(interval) {
+  return {
+    press: Math.min(0.04, 0.1 * interval),
+    close: Math.min(0.42 * interval, 0.45),
+    recoil: Math.min(0.33 * interval, 0.35),
+    windUp: 0.08 + 0.1 * clamp01((interval - 0.6) / 0.9),
+  };
+}
 
-  // Finger gaps and the three stitches on the back of the glove.
-  g.beginPath();
-  for (let i = 0; i < FINGERS.length - 1; i++) {
-    const x = (FINGERS[i].x + FINGERS[i + 1].x) / 2;
-    const top = Math.max(FINGERS[i].top, FINGERS[i + 1].top) + FINGER_W * 0.6;
-    g.moveTo(x * s, -0.06 * s);
-    g.lineTo(x * s, top * s);
+// How open the hands are `since` seconds after a clap: 0 = together,
+// 1 = open (a little more while winding up for the next clap).
+function clapOpen(since, interval) {
+  const { press, close, recoil, windUp } = clapTiming(interval);
+  const closeStart = interval - close;
+  if (since >= closeStart) {
+    const k = (since - closeStart) / close;
+    return (1 + windUp) * (1 - Math.pow(k, 2.2)); // speeding up into the clap
   }
-  for (const x of [-0.11, 0, 0.11]) {
-    g.moveTo(x * s, 0.1 * s);
-    g.lineTo(x * s, 0.3 * s);
+  if (since < press) return 0; // palms pressed together for a moment
+  if (since < press + recoil) return 1 - Math.pow(1 - (since - press) / recoil, 3); // bounce off
+  const k = (since - press - recoil) / (closeStart - press - recoil);
+  return 1 + windUp * k * k * (3 - 2 * k); // winding up
+}
+
+// Sideways bend of the fingers (radians, + = toward the other hand): they
+// drag behind a fast swing in, then flick through on impact and wobble back.
+function fingerFlex(since, interval) {
+  const { close } = clapTiming(interval);
+  const k = clamp01((since - (interval - close)) / close);
+  return -0.2 * k * k + 0.32 * Math.exp(-since / 0.07) * Math.cos(since * 26);
+}
+
+// Maps hand units to the screen: turn (narrow the palm as it faces the
+// middle), tilt, then place at the wrist; m = 1 for the left hand, −1 to
+// mirror it into the right.
+function handXform(wx, wy, m, tilt, turn, s, sy = 1) {
+  const c = Math.cos(tilt);
+  const sn = Math.sin(tilt);
+  return (x, y) => {
+    const x1 = x * s * turn;
+    const y1 = y * s * sy;
+    return [wx + m * (x1 * c - y1 * sn), wy + x1 * sn + y1 * c];
+  };
+}
+
+function tracePts(pts, P, close) {
+  pts.forEach(([x, y], i) => {
+    const [X, Y] = P(x, y);
+    if (i) g.lineTo(X, Y); else g.moveTo(X, Y);
+  });
+  if (close) g.closePath();
+}
+
+function roundRectPts(l, t, r, b, rad) {
+  const pts = [];
+  const corners = [[r - rad, t + rad, -0.5], [r - rad, b - rad, 0], [l + rad, b - rad, 0.5], [l + rad, t + rad, 1]];
+  for (const [cx, cy, a0] of corners) {
+    for (let i = 0; i <= 4; i++) {
+      const a = (a0 + i / 8) * Math.PI;
+      pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+    }
+  }
+  return pts;
+}
+const PALM_PTS = roundRectPts(-0.31, -0.62, 0.31, 0.02, 0.2);
+const CUFF_PTS = roundRectPts(-0.33, -0.06, 0.33, 0.24, 0.08);
+
+// A finger (or thumb) as a bendy two-joint polyline from inside the palm.
+function fingerPts(x, y, len, angle, bend) {
+  const a1 = angle + bend * 0.4;
+  const a2 = angle + bend;
+  const jx = x + Math.sin(a1) * len * 0.55;
+  const jy = y - Math.cos(a1) * len * 0.55;
+  return [[x, y + 0.14], [x, y], [jx, jy], [jx + Math.sin(a2) * len * 0.45, jy - Math.cos(a2) * len * 0.45]];
+}
+
+function drawGlove(P, s, pose) {
+  const lineW = Math.max(3, s * 0.045);
+  const fingers = FINGERS.map((f, i) =>
+    fingerPts(f.x, KNUCKLE_Y, f.len, (i - 1.5) * pose.spread, pose.bend * (0.75 + 0.1 * i) + (pose.wiggle ? pose.wiggle[i] : 0)));
+  const thumb = fingerPts(0.24, -0.1, 0.4, pose.thumb, pose.bend * 0.5);
+  // Round fingers keep their width however the palm turns.
+  blob([
+    () => { tracePts(thumb, P); return 0.17 * s; },
+    ...fingers.map((pts) => () => { tracePts(pts, P); return FINGER_W * s; }),
+    () => { tracePts(PALM_PTS, P, true); return 0; },
+  ], '#ffffff', lineW);
+
+  // Where neighbouring fingers overlap, a line keeps them apart.
+  g.beginPath();
+  for (let i = 0; i < fingers.length - 1; i++) {
+    const a = fingers[i];
+    const b = fingers[i + 1];
+    const reach = Math.min(FINGERS[i].len, FINGERS[i + 1].len) * 0.8;
+    const apart = Math.max(0.001, pose.spread);
+    const upTo = Math.min(1, (0.185 - 0.145) / apart / reach);
+    const mid = (u) => {
+      // Point u of the way up both fingers' first joint, averaged.
+      const pa = [a[1][0] + (a[2][0] - a[1][0]) * u, a[1][1] + (a[2][1] - a[1][1]) * u];
+      const pb = [b[1][0] + (b[2][0] - b[1][0]) * u, b[1][1] + (b[2][1] - b[1][1]) * u];
+      return [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2];
+    };
+    tracePts([[(a[1][0] + b[1][0]) / 2, KNUCKLE_Y - 0.06], mid(upTo * 0.5), mid(upTo)], P);
   }
   outline(Math.max(2, lineW * 0.6));
+
+  // Palm creases, fading as the palm turns away from us.
+  const show = clamp01((pose.turn - 0.55) / 0.45);
+  if (show > 0) {
+    g.beginPath();
+    tracePts([[0.27, -0.43], [0.13, -0.36], [0.08, -0.22], [0.11, -0.07]], P);
+    tracePts([[-0.27, -0.4], [-0.1, -0.42], [0.06, -0.47]], P);
+    g.lineWidth = Math.max(2, lineW * 0.55);
+    g.strokeStyle = `rgba(${PALM_LINE}, ${0.35 * show})`;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.stroke();
+  }
+}
+
+// A bendy "rubber hose" arm from the elbow (below the counter) to the wrist.
+function drawArm(ex, ey, wx, wy, bow, width, fill, band, lineW) {
+  const qx = (ex + wx) / 2 + bow[0];
+  const qy = (ey + wy) / 2 + bow[1];
+  const at = (u) => [
+    (1 - u) * (1 - u) * ex + 2 * (1 - u) * u * qx + u * u * wx,
+    (1 - u) * (1 - u) * ey + 2 * (1 - u) * u * qy + u * u * wy,
+  ];
+  g.beginPath();
+  g.moveTo(ex, ey);
+  g.quadraticCurveTo(qx, qy, wx, wy);
+  g.lineCap = 'butt';
+  g.lineWidth = width + lineW * 2;
+  g.strokeStyle = INK;
+  g.stroke();
+  g.lineWidth = width;
+  g.strokeStyle = fill;
+  g.stroke();
+  // A stripe near the cuff.
+  g.beginPath();
+  for (let u = 0.8; u <= 0.9001; u += 0.025) {
+    const [x, y] = at(u);
+    if (u === 0.8) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.lineWidth = width;
+  g.strokeStyle = band;
+  g.stroke();
+  g.lineCap = 'round';
 }
 
 function drawHands({ w, h, t, info }) {
-  // Sunny background with slowly turning rays.
+  const areaH = h - DOTS_H;
+  const s = Math.max(30, Math.min(areaH / 2, (w - 24) / 3.4));
+  const cx = w / 2;
+  const L = 2.2 * s;                   // forearm: elbow (out of sight) to wrist
+  const LEAN_IN = 0.38;                // forearm lean at the clap (radians)…
+  const LEAN_OUT = 0.05;               // …and with the hands open
+  const wristY = areaH * 0.45 + 0.55 * s;
+  const elbowDX = 0.17 * s + L * Math.sin(LEAN_IN);
+  const elbowY = wristY + L * Math.cos(LEAN_IN);
+  const clapY = wristY - 0.5 * s;      // where the palms meet
+  const lineW = Math.max(3, s * 0.045);
+
+  // Sunny background, rays spreading from the clap.
   g.fillStyle = '#fff6d6';
   g.fillRect(0, 0, w, h);
-  const rx = w / 2;
-  const ry = h * 0.45;
   const rr = Math.hypot(w, h);
   g.fillStyle = '#ffeaa8';
   g.beginPath();
   const rays = 12;
   for (let i = 0; i < rays; i++) {
     const a = t * 0.00006 + (i / rays) * Math.PI * 2;
-    g.moveTo(rx, ry);
-    g.arc(rx, ry, rr, a, a + Math.PI / rays);
+    g.moveTo(cx, clapY);
+    g.arc(cx, clapY, rr, a, a + Math.PI / rays);
     g.closePath();
   }
   g.fill();
 
-  const areaH = h - DOTS_H;
-  const s = Math.max(40, Math.min(areaH / 1.5, w / 3.4));
-  const cx = w / 2;
-  const cy = areaH / 2 + 12;
-  const maxSep = Math.max(0, Math.min(w - 1.9 * s - 24, 1.8 * s));
-
-  // open: 0 = hands together, 1 = wide apart.
+  // Pose for this frame.
   let open;
+  let bend;
+  let wiggle = null;
+  let bow;           // arm bend, in forearm lengths (+ = toward the middle)
+  let since = Infinity;
+  let swoosh = 0;    // 0–1: how fast the hands are swinging in
+  let squash = 0;
   let bob = 0;
   if (info) {
-    open = Math.sin(Math.PI * info.phase);
+    const interval = info.interval;
+    since = info.phase * interval;
+    open = clapOpen(since, interval);
+    bend = fingerFlex(since, interval);
+    // The arms lag behind the hands: bowed out on the way in, in on the way out.
+    const a = Math.max(0, since - 0.012);
+    const b = Math.min(interval, since + 0.012);
+    const speed = (clapOpen(b, interval) - clapOpen(a, interval)) / (b - a);
+    bow = -0.05 + Math.max(-0.1, Math.min(0.1, speed * 0.015));
+    const { close } = clapTiming(interval);
+    swoosh = clamp01((since - (interval - close)) / close);
+    if (info.beat >= 0) squash = since < 0.08 ? 1 - since / 0.08 : 0;
+    else since = Infinity; // lead-in: no burst for a clap that hasn't happened
   } else {
-    open = 0.55 + 0.08 * Math.sin(t / 600);
+    // Waiting to play: hands up and ready, fingers wiggling.
+    open = 0.92 + 0.05 * Math.sin(t / 700);
+    bend = 0;
+    wiggle = FINGERS.map((_, i) => 0.08 * Math.sin(t / 260 + i * 0.9));
+    bow = -0.05 + 0.02 * Math.sin(t / 700);
     bob = Math.sin(t / 450) * s * 0.03;
+  }
+  const o = clamp01(open);
+  const pose = {
+    spread: 0.11 * o + 0.06 * squash,
+    bend,
+    wiggle,
+    thumb: lerp(0.3, 0.95, o) + 0.5 * bend,
+    turn: lerp(0.42, 1, o) * (1 - 0.12 * squash),
+  };
+  const tilt = lerp(0.03, -0.28, open);
+  const lean = lerp(LEAN_IN, LEAN_OUT, open);
+
+  // Where each hand is: m = 1 for the left, −1 for the right.
+  const rig = [1, -1].map((m) => {
+    const ex = cx - m * elbowDX;
+    const wx = cx - m * (elbowDX - L * Math.sin(lean)) + m * 0.04 * s * squash;
+    const wy = elbowY - L * Math.cos(lean) + bob;
+    return { m, ex, wx, wy, P: handXform(wx, wy, m, tilt, pose.turn, s, 1 + 0.04 * squash) };
+  });
+
+  // Motion lines along each hand's swing, trailing behind it.
+  if (swoosh > 0.25) {
+    g.save();
+    g.globalAlpha = Math.min(1, (swoosh - 0.25) / 0.5) * 0.7;
+    g.beginPath();
+    // Each line runs from `back` behind the hand's centre to just behind it
+    // (the hand, drawn later, covers the near end).
+    const back = 0.32 * swoosh * swoosh;
+    const gap = 0.04;
+    for (const { m, ex, P } of rig) {
+      for (const up of back > gap + 0.01 ? [-0.2, -0.55, -0.9] : []) {
+        const [px, py] = P(0, up);
+        const r = Math.hypot(px - ex, py - elbowY);
+        const a = Math.atan2(py - elbowY, px - ex);
+        g.moveTo(ex + Math.cos(a - m * back) * r, elbowY + Math.sin(a - m * back) * r);
+        g.arc(ex, elbowY, r, a - m * back, a - m * gap, m < 0);
+      }
+    }
+    outline(Math.max(3, s * 0.035));
+    g.restore();
   }
 
   // Burst of colour right at the clap.
-  const hit = impact(info, 0.3);
-  if (hit > 0) {
-    const k = 1 - hit;
+  const burstLen = Math.min(0.22, (info ? info.interval : 1) * 0.6);
+  if (since < burstLen) {
+    const k = since / burstLen;
     g.save();
     g.globalAlpha = 1 - k * k;
-    starburst(cx, cy - s * 0.1, s * (0.75 + 0.35 * k), info.beat === 0 ? '#ff6fb5' : '#ffd23f');
-    // Little "pop" lines flying out above the hands.
+    starburst(cx, clapY, s * (0.55 + 0.45 * k), info.beat === 0 ? '#ff6fb5' : '#ffd23f');
     g.beginPath();
     for (const a of [-2.3, -1.57, -0.84]) {
-      const r1 = s * (0.85 + 0.3 * k);
+      const r1 = s * (0.75 + 0.35 * k);
       const r2 = r1 + s * 0.18;
-      g.moveTo(cx + Math.cos(a) * r1, cy - s * 0.1 + Math.sin(a) * r1);
-      g.lineTo(cx + Math.cos(a) * r2, cy - s * 0.1 + Math.sin(a) * r2);
+      g.moveTo(cx + Math.cos(a) * r1, clapY + Math.sin(a) * r1);
+      g.lineTo(cx + Math.cos(a) * r2, clapY + Math.sin(a) * r2);
     }
     outline(Math.max(3, s * 0.04));
     g.restore();
   }
 
-  // Squash a little on impact.
-  const squash = impact(info, 0.12);
-  // Tilt outward as the hands open, upright as they meet.
-  const tilt = 0.06 - 0.32 * open;
-  const halfGap = maxSep * open / 2 + 0.47 * s;
+  // Left hand first, so the right one lands in front of it.
+  rig.forEach(({ m, ex, wx, wy, P }, i) => {
+    const dx = wx - ex;
+    const dy = wy - elbowY;
+    const len = Math.hypot(dx, dy);
+    // Perpendicular to the forearm, pointing toward the middle.
+    const nx = (-dy / len) * m;
+    const ny = (dx / len) * m;
+    drawArm(ex, elbowY, wx, wy, [nx * bow * L, ny * bow * L], 0.42 * s, SLEEVES[i], SLEEVE_BANDS[i], lineW);
+    // The cuff is round, so it doesn't narrow as the hand turns.
+    const cuff = handXform(wx, wy, m, tilt, 1, s);
+    g.beginPath();
+    tracePts(CUFF_PTS, cuff, true);
+    g.fillStyle = '#ffffff';
+    g.fill();
+    outline(lineW);
+    g.beginPath();
+    tracePts([[-0.3, 0.07], [0, 0.1], [0.3, 0.07]], cuff);
+    outline(Math.max(2, lineW * 0.6));
+    drawGlove(P, s, pose);
+  });
 
-  for (const side of [-1, 1]) {
-    g.save();
-    g.translate(cx + side * halfGap, cy + bob);
-    if (side === 1) g.scale(-1, 1); // mirror to make the right hand
-    g.rotate(tilt);
-    g.scale(1 - 0.08 * squash, 1 + 0.06 * squash);
-    drawGlove(s, CUFF_COLORS[side === -1 ? 0 : 1]);
-    g.restore();
-  }
+  // The counter the arms come up from behind.
+  const top = areaH - 6;
+  g.fillStyle = COUNTER;
+  g.fillRect(-4, top, w + 8, h - top + 4);
+  g.fillStyle = 'rgba(255, 255, 255, 0.35)';
+  g.fillRect(-4, top + 9, w + 8, 7);
+  g.beginPath();
+  g.moveTo(-4, top);
+  g.lineTo(w + 4, top);
+  outline(4);
 }
 
 function clapSound(audio, time, accent) {
