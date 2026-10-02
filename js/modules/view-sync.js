@@ -29,7 +29,7 @@ export function updateColorPickerVisibility() {
   }
   const directionGroup = document.getElementById('direction-group');
   if (directionGroup) {
-    directionGroup.style.display = (isConductor || state.animalType === 'conductor3d' || state.animalType === 'score' || state.animalType === 'pendulum') ? 'none' : '';
+    directionGroup.style.display = (isConductor || state.animalType === 'conductor3d' || state.animalType === 'score' || state.animalType === 'pendulum' || state.animalType === 'hands') ? 'none' : '';
   }
   // Notation ball color picker — shown only for Score animation
   const notationBallColorGroup = document.getElementById('notation-ball-color-group');

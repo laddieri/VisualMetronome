@@ -229,3 +229,22 @@ test('on a phone the badge opens the Practice tab on the mode\'s settings', asyn
   await expect(page.locator('#panel-host-mobile #song-sections-modal')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('the clapping hands from Kids mode are an animation too', async ({ page, errors }) => {
+  await openApp(page);
+  await setControl(page, 'animal-selector', 'hands');
+  expect(await animation(page)).toBe('hands');
+  await expect(page.locator('#direction-group')).toBeHidden();
+
+  // Grown-up grey sleeves, not Kids mode's pink and green.
+  const sleeves = () => page.evaluate(() => {
+    const c = document.querySelector('canvas');
+    const g = c.getContext('2d');
+    const seen = new Set();
+    const { data } = g.getImageData(0, 0, c.width, c.height);
+    for (let i = 0; i < data.length; i += 16) seen.add(`${data[i]},${data[i + 1]},${data[i + 2]}`);
+    return { grey: seen.has('125,135,148'), pink: seen.has('255,111,181') };
+  });
+  await expect.poll(sleeves).toEqual({ grey: true, pink: false });
+  expect(errors).toEqual([]);
+});

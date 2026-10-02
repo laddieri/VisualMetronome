@@ -1,11 +1,15 @@
 // Kids mode scenes: each "friend" draws its own world on the canvas and
 // makes its own sound on the beat.
 //
-// draw(view) gets { w, h, t, beats, info }, where info is null while stopped
+// draw(view) gets { w, h, t, beats, info, ... }, where info is null while stopped
 // or { phase, beat, interval }: phase 0 is the beat itself, rising to 1 just
 // before the next one, `interval` seconds later (beat is -1 during the
 // lead-in to the first beat).
 // sound(audio, time, accent) schedules one beat's sound at `time`.
+//
+// The hands also take two optional view fields, for the main app's
+// Animation menu: `sleeves` ({ colors, bands }, left arm then right) and
+// `bottom` (room left below the counter, instead of DOTS_H).
 
 const INK = '#2b2250';
 
@@ -330,8 +334,10 @@ function drawArm(ex, ey, wx, wy, bow, width, fill, band, lineW) {
   g.lineCap = 'round';
 }
 
-function drawHands({ w, h, t, info }) {
-  const areaH = h - DOTS_H;
+function drawHands({ w, h, t, info, sleeves, bottom = DOTS_H }) {
+  const areaH = h - bottom;
+  const sleeveColors = sleeves ? sleeves.colors : SLEEVES;
+  const sleeveBands = sleeves ? sleeves.bands : SLEEVE_BANDS;
   const s = Math.max(30, Math.min(areaH / 2, (w - 24) / 3.4));
   const cx = w / 2;
   const L = 2.2 * s;                   // forearm: elbow (out of sight) to wrist
@@ -456,7 +462,7 @@ function drawHands({ w, h, t, info }) {
     // Perpendicular to the forearm, pointing toward the middle.
     const nx = (-dy / len) * m;
     const ny = (dx / len) * m;
-    drawArm(ex, elbowY, wx, wy, [nx * bow * L, ny * bow * L], 0.42 * s, SLEEVES[i], SLEEVE_BANDS[i], lineW);
+    drawArm(ex, elbowY, wx, wy, [nx * bow * L, ny * bow * L], 0.42 * s, sleeveColors[i], sleeveBands[i], lineW);
     // The cuff is round, so it doesn't narrow as the hand turns.
     const cuff = handXform(wx, wy, m, tilt, 1, s);
     g.beginPath();

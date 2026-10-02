@@ -16,7 +16,7 @@ The app has no build step — it ships as native ES modules. `index.html` loads
 | `tempo.js` | BPM controls, tap tempo, and editable tempo presets |
 | `tempo-math.js` | Pure tempo maths: song ramps/ritardando, two-measure link, tap averaging |
 | `sketch.js` | p5.js `setup()` / `draw()` / `windowResized()` entry points |
-| `animations.js` | Circle / conductor / pendulum / selfie animation classes |
+| `animations.js` | Circle / conductor / pendulum / selfie / clapping-hands animation classes (the hands are drawn by `kids-scenes.js`) |
 | `stage.js` | Canvas sizing, fullscreen mode, beat-animation easing |
 | `camera.js` | Selfie capture, sound recording, saved selfies |
 | `settings.js` | Advanced-settings modal and the reset button |
