@@ -14,8 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="kids.css">
     <script>
-      // Kids mode is sticky: the main page sends you back here until a
-      // grown-up holds the exit button.
+      // Kids mode is sticky: the main page sends you back here until the
+      // Kids mode switch is turned off.
       try { localStorage.setItem('vm.kidsMode', '1'); } catch (e) { /* ignore */ }
     </script>
   </head>
@@ -24,10 +24,10 @@
       <header class="kids-header">
         <h1 class="kids-title">Clap Along!</h1>
         <button id="kids-exit" class="kids-exit" type="button"
-                aria-label="Grown-ups: hold to leave Kids mode"
-                title="Grown-ups: press and hold to leave Kids mode">
-          <span class="kids-exit-fill" aria-hidden="true"></span>
-          <span class="kids-exit-label">Grown-ups: hold</span>
+                role="switch" aria-checked="true"
+                title="Turn off to leave Kids mode">
+          <span class="kids-exit-label">Kids mode</span>
+          <span class="kids-exit-track" aria-hidden="true"><span class="kids-exit-knob"></span></span>
         </button>
       </header>
 

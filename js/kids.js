@@ -11,7 +11,8 @@ const MAX_BPM = 180;
 const BPM_STEP = 10;
 const SETTINGS_KEY = 'vm.kids';
 const KIDS_MODE_KEY = 'vm.kidsMode';
-const EXIT_HOLD_MS = 1500;
+// Long enough to see the switch slide off before the page changes.
+const EXIT_SLIDE_MS = 250;
 
 // Scheduler: every TICK_MS, queue any beats due within LOOKAHEAD_S.
 const TICK_MS = 25;
@@ -288,52 +289,23 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Grown-ups: press and hold to leave ──────────────────────────────────────
+// ── Kids mode switch: flip it off to leave ──────────────────────────────────
 
 const exitBtn = $('kids-exit');
-const exitLabel = exitBtn.querySelector('.kids-exit-label');
-let exitTimer = null;
-exitBtn.style.setProperty('--hold-ms', EXIT_HOLD_MS + 'ms');
-
-function beginExitHold() {
-  if (exitTimer) return;
-  exitBtn.classList.add('is-holding');
-  exitLabel.textContent = 'Keep holding…';
-  exitTimer = setTimeout(leaveKidsMode, EXIT_HOLD_MS);
-}
-
-function cancelExitHold() {
-  clearTimeout(exitTimer);
-  exitTimer = null;
-  exitBtn.classList.remove('is-holding');
-  exitLabel.textContent = 'Grown-ups: hold';
-}
+let leaving = false;
 
 function leaveKidsMode() {
+  if (leaving) return;
+  leaving = true;
   stop();
-  cancelExitHold();
+  exitBtn.setAttribute('aria-checked', 'false');
   try { localStorage.removeItem(KIDS_MODE_KEY); } catch (e) {}
   // Replace rather than push: Back shouldn't bounce between the two modes,
   // and a page with no history entry can't linger in the back/forward cache.
-  location.replace('index.html');
+  setTimeout(() => location.replace('index.html'), EXIT_SLIDE_MS);
 }
 
-exitBtn.addEventListener('pointerdown', (e) => {
-  exitBtn.setPointerCapture?.(e.pointerId);
-  beginExitHold();
-});
-['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => {
-  exitBtn.addEventListener(type, cancelExitHold);
-});
-exitBtn.addEventListener('keydown', (e) => {
-  if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) {
-    e.preventDefault();
-    beginExitHold();
-  }
-});
-exitBtn.addEventListener('keyup', cancelExitHold);
-exitBtn.addEventListener('blur', cancelExitHold);
-exitBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+exitBtn.addEventListener('click', leaveKidsMode);
 
 // ── Drawing ─────────────────────────────────────────────────────────────────
 
@@ -393,14 +365,16 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Leaving the page: let go of the audio. Coming back from the back/forward
-// cache: clear a half-finished exit hold (Play makes new audio as needed).
+// cache: flip the switch back on (Play makes new audio as needed).
 window.addEventListener('pagehide', () => {
   stop();
-  cancelExitHold();
   releaseAudio();
 });
 window.addEventListener('pageshow', (e) => {
-  if (e.persisted) cancelExitHold();
+  if (!e.persisted) return;
+  leaving = false;
+  exitBtn.setAttribute('aria-checked', 'true');
+  try { localStorage.setItem(KIDS_MODE_KEY, '1'); } catch (err) {}
 });
 
 // Test/debug hook.

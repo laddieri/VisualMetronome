@@ -40,7 +40,7 @@ the beat — clapping hands, a frog hopping between lily pads, a ball bouncing
 on the moon, or a stomping dino. Each friend (`js/kids-scenes.js`) draws its
 own scene and makes its own sound. It uses the Web Audio API directly (no
 Tone.js or p5); the hands play `sounds/clap.wav`, the others are synthesized. Once opened it stays on (the main page redirects to it)
-until a grown-up presses and holds the exit button.
+until the Kids mode switch in its header is turned off.
 
 Single-module state lives as module-level variables in its owning module;
 anything shared across modules lives on the `state` object from `state.js`.

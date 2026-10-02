@@ -7,7 +7,7 @@ async function openKids(page) {
   await page.waitForFunction(() => window.kidsMetronome);
 }
 
-test('the header link opens Kids mode, and it sticks until a grown-up leaves', async ({ page, errors }) => {
+test('the header link opens Kids mode, and it sticks until its switch is turned off', async ({ page, errors }) => {
   await openApp(page);
   await page.getByRole('link', { name: 'Kids mode' }).click();
   await page.waitForURL('**/kids.html');
@@ -16,17 +16,11 @@ test('the header link opens Kids mode, and it sticks until a grown-up leaves', a
   await page.goto('/index.html');
   await page.waitForURL('**/kids.html');
 
-  // A quick tap doesn't leave; holding does.
-  const exit = page.getByRole('button', { name: /Grown-ups/ });
+  // Turning the Kids mode switch off leaves.
+  const exit = page.getByRole('switch', { name: 'Kids mode' });
+  await expect(exit).toBeChecked();
   await exit.click();
-  await page.waitForTimeout(1700);
-  expect(page.url()).toContain('kids.html');
-
-  const box = await exit.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
   await page.waitForURL('**/index.html', { timeout: 5000 });
-  await page.mouse.up();
   await page.waitForSelector('canvas');
   expect(page.url()).toContain('index.html');
   expect(errors).toEqual([]);
@@ -123,12 +117,8 @@ test('switching between modes again and again keeps the friend moving', async ({
     await page.locator('#kids-play').click();
     await page.waitForFunction(() => window.kidsMetronome.beatsPlayed >= 2);
 
-    const exit = page.getByRole('button', { name: /Grown-ups/ });
-    const box = await exit.boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
+    await page.getByRole('switch', { name: 'Kids mode' }).click();
     await page.waitForURL('**/index.html', { timeout: 5000 });
-    await page.mouse.up();
     await page.waitForSelector('canvas');
   }
   expect(errors).toEqual([]);
