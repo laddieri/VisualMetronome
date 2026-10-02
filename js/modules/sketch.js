@@ -233,6 +233,9 @@ function draw() {
     state.animal2.pigmove();
     state.animal1.display();
     state.animal2.display();
+  } else if (state.animalType === 'hands') {
+    // Clapping hands (from Kids mode): draws its own scene, no direction
+    state.animal1.display();
   } else if (state.animalType === 'pendulum') {
     // Pendulum metronome: single object, no direction or bounce-line needed
     state.animal1.display();

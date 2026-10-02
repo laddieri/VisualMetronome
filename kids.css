@@ -82,34 +82,45 @@ body {
   transform: rotate(-2deg);
 }
 
-/* Hold-to-exit: the fill grows while a grown-up keeps pressing. */
+/* Kids mode switch: on while here; turning it off leaves. */
 .kids-exit {
-  position: relative;
-  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
   font: 600 0.8rem var(--k-font);
   color: var(--k-ink);
   background: rgba(255, 255, 255, 0.7);
   border: 2px solid var(--k-ink);
   border-radius: 999px;
-  padding: 6px 12px;
+  padding: 4px 6px 4px 12px;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
 }
-.kids-exit-fill {
+.kids-exit-track {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border: 2px solid var(--k-ink);
+  border-radius: 999px;
+  background: #c9c4d8;
+  transition: background 0.2s;
+}
+.kids-exit-knob {
   position: absolute;
-  inset: 0;
-  background: var(--k-sun);
-  transform: scaleX(0);
-  transform-origin: left center;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--k-white);
+  border: 2px solid var(--k-ink);
+  box-sizing: border-box;
+  transition: transform 0.2s;
 }
-.kids-exit.is-holding .kids-exit-fill {
-  transform: scaleX(1);
-  transition: transform var(--hold-ms, 1500ms) linear;
-}
-.kids-exit-label { position: relative; }
+.kids-exit[aria-checked="true"] .kids-exit-track { background: var(--k-green); }
+.kids-exit[aria-checked="true"] .kids-exit-knob { transform: translateX(18px); }
 
 /* ── Stage ──────────────────────────────────────────────────────────── */
 

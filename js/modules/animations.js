@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { getAnimalX, getAnimationProgress } from './stage.js';
+import { drawScene } from '../kids-scenes.js';
 
 
 class Circle {
@@ -693,6 +694,55 @@ class PendulumMetronome {
   }
 }
 
+// Kids mode's clapping hands, in grown-up sleeves.
+const NEUTRAL_SLEEVES = {
+  colors: ['#7d8794', '#7d8794'],
+  bands: ['#b9c0c9', '#b9c0c9'],
+};
+
+class ClappingHands {
+  constructor() {
+    this.direction = 1; // kept for API compatibility
+  }
+
+  pigmove() {}
+
+  // Where we are in the current beat, in the shape kids-scenes.js expects:
+  // { phase, beat, interval }, or null while stopped. Same clock math as
+  // stage.getAnimationProgress().
+  beatInfo() {
+    if (Tone.Transport.state !== 'started' || state.lastBeatTime <= 0) return null;
+    const interval = state.secondsPerBeat || (60 / (Tone.Transport.bpm.value || 96));
+    const since = Tone.now() - state.lastBeatTime - (state.bluetoothDelay / 1000);
+    let phase = since / interval;
+    let animBeat = state.animBeat;
+    if (since < 0) {
+      // Bluetooth delay window: still finishing the previous beat.
+      phase = Math.max(0, phase + 1);
+      animBeat -= 1;
+    }
+    const n = state.beatsPerMeasure;
+    const beat = (((animBeat - 1) % n) + n) % n;
+    return { phase: Math.min(phase, 0.999), beat, interval };
+  }
+
+  display() {
+    const g = drawingContext;
+    g.save();
+    drawScene('hands', g, {
+      // The canvas is already scaled to the 640×480 stage.
+      w: state.canvasWidth / state.canvasScale,
+      h: state.canvasHeight / state.canvasScale,
+      t: performance.now(),
+      beats: state.beatsPerMeasure,
+      info: this.beatInfo(),
+      sleeves: NEUTRAL_SLEEVES,
+      bottom: 40,
+    });
+    g.restore();
+  }
+}
+
 // Function to create animals based on selected type
 export function createAnimals() {
   switch(state.animalType) {
@@ -722,6 +772,10 @@ export function createAnimals() {
       break;
     case 'pendulum':
       state.animal1 = new PendulumMetronome();
+      state.animal2 = null;
+      break;
+    case 'hands':
+      state.animal1 = new ClappingHands();
       state.animal2 = null;
       break;
     case 'conductor3d':
