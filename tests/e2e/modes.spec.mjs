@@ -246,5 +246,19 @@ test('the clapping hands from Kids mode are an animation too', async ({ page, er
     return { grey: seen.has('125,135,148'), pink: seen.has('255,111,181') };
   });
   await expect.poll(sleeves).toEqual({ grey: true, pink: false });
+
+  // …and they clap on the beat with Kids mode's clap sample (the only
+  // sample a plain beat plays; the other sounds are synths).
+  await page.evaluate(() => {
+    window.__claps = 0;
+    const start = Tone.Player.prototype.start;
+    Tone.Player.prototype.start = function (...args) {
+      window.__claps++;
+      return start.apply(this, args);
+    };
+  });
+  await page.locator('tone-play-toggle').click();
+  await expect.poll(() => page.evaluate(() => window.__claps), { timeout: 5000 }).toBeGreaterThan(1);
+  await page.locator('#stop-btn').click();
   expect(errors).toEqual([]);
 });

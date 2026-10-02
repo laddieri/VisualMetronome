@@ -5,6 +5,14 @@ import { state } from './state.js';
 var pigPlayer = new Tone.Player("./sounds/oink.wav").toMaster();
 pigPlayer.volume.value = 6;
 
+// Clapping hands: the same clap sample as Kids mode. Beat 1 gets a full,
+// lower clap; the other beats a lighter, slightly brighter one. Two players,
+// so changing one's rate never bends a clap that's still ringing.
+var clapAccentPlayer = new Tone.Player("./sounds/clap.wav").toMaster();
+var clapPlayer = new Tone.Player("./sounds/clap.wav").toMaster();
+clapPlayer.playbackRate = 1.12;
+clapPlayer.volume.value = -4.4; // ≈ 0.6 gain, matching Kids mode
+
 // Selfie clap synth - snappy percussive sound
 var selfieSynth = new Tone.NoiseSynth({
   noise: { type: "white" },
@@ -237,6 +245,12 @@ export function triggerSound(time, isAccent = false){
   if (!state.animalSoundEnabled) return;
 
   switch(state.animalType) {
+    case 'hands': {
+      var player = isAccent ? clapAccentPlayer : clapPlayer;
+      if (player.loaded) player.start(time);
+      else triggerClickSound(time); // sample not loaded yet (or offline miss)
+      break;
+    }
     case 'circle':
     case 'conductor':
     case 'conductor3d':

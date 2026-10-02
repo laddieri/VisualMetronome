@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v13';
+const CACHE_VERSION = 'vm-v14';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
