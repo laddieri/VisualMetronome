@@ -14,7 +14,7 @@
  */
 'use strict';
 
-const CACHE_VERSION = 'vm-v14';
+const CACHE_VERSION = 'vm-v15';
 const PRECACHE = CACHE_VERSION + '-precache';
 const RUNTIME  = CACHE_VERSION + '-runtime';
 
@@ -54,6 +54,7 @@ const SHELL = [
   './js/modules/two-measure.js',
   './js/modules/modes.js',
   './js/modules/keep-awake.js',
+  './js/modules/screen-awake.js',
   './js/modules/storage.js',
   './js/modules/persist-settings.js',
   './js/modules/tempo-math.js',

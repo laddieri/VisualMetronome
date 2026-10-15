@@ -124,6 +124,36 @@ test('switching between modes again and again keeps the friend moving', async ({
   expect(errors).toEqual([]);
 });
 
+test('the screen stays awake while Kids mode plays', async ({ page, errors }) => {
+  // Stand-in Wake Lock API that records what the page asks for.
+  await page.addInitScript(() => {
+    window.wakeLog = [];
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: {
+        request(type) {
+          window.wakeLog.push('request:' + type);
+          const lock = new EventTarget();
+          lock.released = false;
+          lock.release = () => {
+            lock.released = true;
+            window.wakeLog.push('release');
+            return Promise.resolve();
+          };
+          return Promise.resolve(lock);
+        },
+      },
+    });
+  });
+  await openKids(page);
+  const play = page.locator('#kids-play');
+  await play.click();
+  await expect.poll(() => page.evaluate(() => window.wakeLog)).toEqual(['request:screen']);
+  await play.click();
+  await expect.poll(() => page.evaluate(() => window.wakeLog)).toEqual(['request:screen', 'release']);
+  expect(errors).toEqual([]);
+});
+
 test('Back does not lead out of Kids mode', async ({ page, errors }) => {
   await openApp(page);
   await page.getByRole('link', { name: 'Kids mode' }).click();

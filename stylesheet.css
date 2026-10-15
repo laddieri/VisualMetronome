@@ -3344,17 +3344,6 @@ footer p {
 /* ─────────────────────────────────────────────────────────────────────── */
 
 /* ── Keep-awake (js/modules/keep-awake.js) ─────────────────────────────── */
-/* Silent video that keeps iOS from auto-locking; must stay "visible" to play. */
-.keep-awake-video {
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  bottom: 0;
-  left: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* Shown when iOS interrupts audio (call, Siri, alarm) mid-playback. */
 .audio-resume-overlay {
   position: fixed;

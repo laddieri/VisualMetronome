@@ -5,6 +5,7 @@
 // main app's Tone.js/p5 stack, so it loads fast and has nothing to configure.
 
 import { SCENES, drawScene, playSceneSound } from './kids-scenes.js';
+import { screenAwakeStart, screenAwakeStop } from './modules/screen-awake.js';
 
 const MIN_BPM = 40;
 const MAX_BPM = 180;
@@ -185,6 +186,7 @@ function start() {
   nextBeatTime = audioCtx.currentTime + 0.15;
   scheduler();
   schedulerId = setInterval(scheduler, TICK_MS);
+  screenAwakeStart();
   setPlayingUI(true);
 }
 
@@ -192,6 +194,7 @@ function stop() {
   clearInterval(schedulerId);
   schedulerId = null;
   beatQueue = [];
+  screenAwakeStop();
   setPlayingUI(false);
 }
 
